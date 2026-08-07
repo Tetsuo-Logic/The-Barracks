@@ -23,7 +23,7 @@ export default async function LoginPage() {
           Three players. One president. No appeals.
         </p>
         <p className="mt-4 text-ink-soft">
-          Enter your email. We&apos;ll send a link.
+          Email and a password. That&apos;s it.
         </p>
         <div className="mt-8">
           <LoginForm />
