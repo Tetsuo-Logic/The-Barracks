@@ -149,7 +149,7 @@ export function CompSheet({
         style={{ opacity: shown ? 1 : 0 }}
       />
       <div
-        className="absolute inset-x-0 bottom-0 mx-auto max-h-[92dvh] w-full max-w-[520px] overflow-y-auto rounded-t-[10px] border-t border-rule bg-paper transition-transform duration-[220ms] ease-out"
+        className="absolute inset-x-0 bottom-0 mx-auto max-h-[92dvh] w-full max-w-[520px] overflow-y-auto overflow-x-hidden rounded-t-[10px] border-t border-rule bg-paper transition-transform duration-[220ms] ease-out"
         style={{ transform: shown ? "translateY(0)" : "translateY(100%)" }}
       >
         <div className="px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4">
@@ -162,24 +162,25 @@ export function CompSheet({
           <label className="label mb-1 block">Course</label>
           <CoursePicker value={course} onChange={setCourse} recent={recentCourses} />
 
-          {/* Date + tee time */}
+          {/* Date + tee time — min-w-0 lets native inputs shrink instead of
+              overflowing the sheet (§10-style mobile fix) */}
           <div className="mt-4 flex gap-3">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <label className="label mb-1 block">Date</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
+                className="w-full min-w-0 rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
               />
             </div>
-            <div className="w-32">
+            <div className="min-w-0 flex-1">
               <label className="label mb-1 block">Tee</label>
               <input
                 type="time"
                 value={teeTime}
                 onChange={(e) => setTeeTime(e.target.value)}
-                className="w-full rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
+                className="w-full min-w-0 rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
               />
             </div>
           </div>
