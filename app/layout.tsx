@@ -18,6 +18,10 @@ const archivoNarrow = Archivo_Narrow({
   display: "swap",
 });
 
+// Run the server functions next to the Supabase database (eu-west-1, Ireland)
+// so page data doesn't round-trip across the Atlantic on every navigation.
+export const preferredRegion = "dub1";
+
 export const metadata: Metadata = {
   title: "The Threeball",
   description: "A private league. Three players. One president. No appeals.",
