@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* ── The Threeball — design tokens (§4) ─────────────────────────────────────
+   The visual language is a printed golf scorecard: card stock, two-colour
+   offset printing, hairline rules, condensed numerals, a red flag mark. */
+@theme {
+  /* Colour (§4.2) */
+  --color-paper: #eae6db; /* app background — card stock          */
+  --color-card: #f5f2e9; /* raised surfaces, sheets, inputs       */
+  --color-ink: #16241b; /* primary text — bottle green ~ black    */
+  --color-ink-soft: #4c5c51; /* secondary text, labels           */
+  --color-rule: #cbc4b2; /* every hairline and border             */
+  --color-flag: #b4372a; /* THE accent — scarce                   */
+  --color-moss: #2f6b4c; /* in / confirmed / birdies              */
+  --color-sand: #c9a227; /* season leader, earned gold            */
+
+  /* Type (§4.3) — CSS vars wired from next/font in layout.tsx */
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-narrow: var(--font-archivo-narrow), var(--font-archivo), sans-serif;
+
+  /* Radius (§4.2) — square-ish, die-cut card. Avatars override to full. */
+  --radius-card: 3px;
+
+  /* Shadow — almost invisible; printed cards sit flat (§4.2) */
+  --shadow-card: 0 1px 0 rgba(22, 36, 27, 0.06);
+}
+
+@layer base {
+  html {
+    /* 100dvh, not 100vh — mobile Safari chrome (§10) */
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px; /* body (§4.3) */
+    line-height: 1.45;
+    /* numbers align everywhere */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iOS zooms the viewport on focus for inputs under 16px (§10) */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Section labels: Archivo Narrow, uppercase, tracked (§4.3) */
+  .label {
+    font-family: var(--font-narrow);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    font-size: 11px;
+  }
+
+  /* A single hairline rule — the workhorse separator (§4.2) */
+  .rule {
+    border: 0;
+    border-top: 1px solid var(--color-rule);
+  }
+}
+
+/* Respect reduced motion by cutting all of it (§4.5) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

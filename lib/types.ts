@@ -1,0 +1,132 @@
+// Domain types — mirror the Supabase schema (§3). Hand-maintained; if the
+// schema grows large, swap for `supabase gen types typescript`.
+
+export type CompetitionFormat = "stroke" | "skins" | "stableford";
+export type CompetitionStatus = "upcoming" | "played" | "cancelled";
+export type RsvpStatus = "in" | "out" | "maybe";
+
+export interface Profile {
+  id: string;
+  name: string;
+  nickname: string | null; // scorecard grid, max 4 chars
+  avatar_url: string | null;
+  handicap: number | null;
+  home_course: string | null;
+  colour: string; // their ink colour across the app
+  is_admin: boolean; // the organiser can add/edit/cancel dates
+  created_at: string;
+}
+
+export interface Competition {
+  id: string;
+  created_by: string | null;
+  title: string | null;
+  course: string;
+  date: string; // bare 'YYYY-MM-DD'
+  tee_time: string | null; // bare 'HH:MM:SS'
+  holes: 9 | 18;
+  format: CompetitionFormat;
+  stake: string | null;
+  notes: string | null;
+  par: number[] | null;
+  stroke_index: number[] | null;
+  status: CompetitionStatus;
+  for_cup: boolean; // counts toward the Threeball Cup, vs a casual round
+  created_at: string;
+}
+
+export interface Rsvp {
+  competition_id: string;
+  player_id: string;
+  status: RsvpStatus;
+  note: string | null;
+  updated_at: string;
+}
+
+export interface Score {
+  competition_id: string;
+  player_id: string;
+  strokes: (number | null)[];
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: string;
+  competition_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface Photo {
+  id: string;
+  competition_id: string;
+  uploader_id: string | null;
+  storage_path: string;
+  caption: string | null;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+}
+
+export type TrialStatus = "open" | "closed";
+export type Verdict = "guilty" | "not_guilty";
+
+export interface Trial {
+  id: string;
+  defendant_id: string;
+  competition_id: string | null;
+  charge: string;
+  defence: string | null;
+  status: TrialStatus;
+  verdict: Verdict | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface TrialVote {
+  trial_id: string;
+  juror_id: string;
+  vote: Verdict;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface Strike {
+  id: string;
+  player_id: string;
+  reason: string | null;
+  competition_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type BroadcastKind = "announce" | "yesno" | "ask";
+
+export interface Broadcast {
+  id: string;
+  created_by: string | null;
+  kind: BroadcastKind;
+  title: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface BroadcastResponse {
+  broadcast_id: string;
+  player_id: string;
+  answer: "yes" | "no" | null;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface NotificationPrefs {
+  player_id: string;
+  new_comp: boolean;
+  rsvp_changes: boolean;
+  comments: boolean;
+  results: boolean;
+  day_of: boolean;
+  chase_undecided: boolean;
+}

@@ -1,0 +1,32 @@
+// The courses available in PGA Tour 2K25 (this is a video-game league). Used to
+// populate the course picker when creating a date. Players can still type a
+// custom course if they want one that isn't listed.
+export const COURSES: string[] = [
+  "Aronimink Golf Club",
+  "Detroit Golf Club",
+  "East Lake Golf Club",
+  "Oakmont Country Club",
+  "The Old Course at St Andrews",
+  "Payne's Valley",
+  "Pebble Beach",
+  "Pinehurst Resort and Country Club",
+  "Quail Hollow Club",
+  "The Riviera Country Club",
+  "Royal Birkdale",
+  "Royal Portrush Golf Club",
+  "Shinnecock Hills",
+  "Spyglass Hill",
+  "St. George's Golf and Country Club",
+  "Top of the Rock",
+  "Torrey Pines",
+  "TPC Boston",
+  "TPC Deere Run",
+  "TPC Louisiana",
+  "TPC River Highlands",
+  "TPC San Antonio",
+  "TPC Sawgrass",
+  "TPC Scottsdale",
+  "TPC Southwind",
+  "TPC Summerlin",
+  "TPC Twin Cities",
+];
