@@ -21,13 +21,15 @@ export function Header({ profile }: { profile: Profile }) {
         >
           <BoardIcon />
         </Link>
-        <Link
-          href="/broadcast"
-          aria-label="Messages"
-          className="text-ink-soft transition-colors hover:text-ink"
-        >
-          <MegaphoneIcon />
-        </Link>
+        {profile.is_admin && (
+          <Link
+            href="/broadcast"
+            aria-label="Ping the lads"
+            className="text-ink-soft transition-colors hover:text-ink"
+          >
+            <MegaphoneIcon />
+          </Link>
+        )}
         <Link
           href="/settings"
           aria-label="Settings"

@@ -32,17 +32,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: do not run code between createServerClient and getUser().
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verify the JWT locally (signature checked against Supabase's public keys)
+  // instead of a network round-trip to the auth server on every navigation.
+  const { data } = await supabase.auth.getClaims();
+  const authed = Boolean(data?.claims);
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 
-  if (!user && !isPublic) {
+  if (!authed && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

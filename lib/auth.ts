@@ -8,15 +8,15 @@ import type { Profile } from "@/lib/types";
  */
 export async function getCurrentProfile(): Promise<Profile | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Local JWT verification — no network round-trip to the auth server.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const uid = claimsData?.claims?.sub;
+  if (!uid) return null;
 
   const { data } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", uid)
     .single();
 
   return (data as Profile) ?? null;
