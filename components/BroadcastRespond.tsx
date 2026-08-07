@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { respondBroadcast } from "@/app/actions/broadcasts";
-import { shortDate } from "@/lib/dates";
+import { heroDate } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse } from "@/lib/types";
 
 // The recipient's answer surface. Yes/No poll, tick-the-dates poll, a reply
@@ -48,32 +48,32 @@ export function BroadcastRespond({
       <p className="label mb-3">Your answer</p>
 
       {broadcast.kind === "dates" && (
-        <div className="mb-3 flex flex-col gap-2">
-          <p className="text-sm text-ink-soft">Tick the ones you can do:</p>
-          {(broadcast.option_dates ?? []).map((d) => {
-            const on = dates.includes(d);
-            return (
-              <button
-                key={d}
-                onClick={() =>
-                  setDates((ds) => (on ? ds.filter((x) => x !== d) : [...ds, d]))
-                }
-                className="flex items-center justify-between rounded-[3px] border px-4 py-3"
-                style={{
-                  borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
-                  backgroundColor: on ? "rgba(47,107,76,0.08)" : "transparent",
-                }}
-              >
-                <span className="text-ink">{shortDate(d)}</span>
-                <span
-                  className="font-narrow text-xs font-semibold uppercase tracking-[0.08em]"
-                  style={{ color: on ? "var(--color-moss)" : "var(--color-rule)" }}
+        <div className="mb-3">
+          <p className="mb-2 text-sm text-ink-soft">Tap the days you can play:</p>
+          <div className="flex flex-wrap gap-2">
+            {(broadcast.option_dates ?? []).map((d) => {
+              const on = dates.includes(d);
+              const { dow, day, mon } = heroDate(d);
+              return (
+                <button
+                  key={d}
+                  onClick={() =>
+                    setDates((ds) => (on ? ds.filter((x) => x !== d) : [...ds, d]))
+                  }
+                  className="flex w-[4.2rem] flex-col items-center rounded-[3px] border py-2 leading-none"
+                  style={{
+                    borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
+                    backgroundColor: on ? "var(--color-moss)" : "transparent",
+                    color: on ? "var(--color-paper)" : "var(--color-ink)",
+                  }}
                 >
-                  {on ? "Can do" : "Tap"}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="font-narrow text-[10px] font-semibold uppercase tracking-[0.08em]">{dow}</span>
+                  <span className="my-0.5 font-narrow text-[22px] font-bold tabular-nums">{day}</span>
+                  <span className="font-narrow text-[10px] font-semibold uppercase tracking-[0.08em]">{mon}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
