@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { StrikesManager } from "@/components/StrikesManager";
+import { PresidentPicker } from "@/components/PresidentPicker";
 import { MegaphoneIcon } from "@/components/Icons";
 import type { Profile, Strike } from "@/lib/types";
 
@@ -39,6 +40,14 @@ export default async function AdminPage() {
         <span className="text-ink">The Courtroom</span>
         <span className="label text-ink-soft">Convene →</span>
       </Link>
+
+      <section>
+        <p className="label mb-1">The president</p>
+        <p className="mb-4 text-sm text-ink-soft">
+          Hand over the title. You keep every other power.
+        </p>
+        <PresidentPicker profiles={(profiles ?? []) as Profile[]} />
+      </section>
 
       <section>
         <p className="label mb-1">Strikes</p>

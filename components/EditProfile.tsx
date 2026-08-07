@@ -46,8 +46,8 @@ export function EditProfile({ profile }: { profile: Profile }) {
       <label className="label mb-1 block">Name</label>
       <input value={name} onChange={(e) => setName(e.target.value)} className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink" />
 
-      <label className="label mb-1 block">Nickname (4)</label>
-      <input value={nickname} maxLength={4} onChange={(e) => setNickname(e.target.value.slice(0, 4))} className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 font-narrow uppercase tracking-[0.08em] text-ink outline-none focus:border-ink" />
+      <label className="label mb-1 block">Nickname</label>
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 font-narrow uppercase tracking-[0.08em] text-ink outline-none focus:border-ink" />
 
       <div className="mb-3 flex gap-3">
         <div className="flex-1">

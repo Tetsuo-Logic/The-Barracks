@@ -25,7 +25,7 @@ export function OnboardingFlow({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nick = nickname.toUpperCase().slice(0, 4);
+  const nick = nickname.toUpperCase();
 
   // Save the profile, then move to the notification prompt (§6.2).
   async function saveAndContinue() {
@@ -77,15 +77,12 @@ export function OnboardingFlow({
             className="mb-6 w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
           />
 
-          <label className="label mb-1 block">
-            Nickname — four characters, on the card
-          </label>
+          <label className="label mb-1 block">Nickname — on the scorecard</label>
           <input
             value={nickname}
-            onChange={(e) => setNickname(e.target.value.slice(0, 4))}
-            maxLength={4}
+            onChange={(e) => setNickname(e.target.value)}
             autoCapitalize="characters"
-            placeholder="DAVE"
+            placeholder="MACCA"
             className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 font-narrow uppercase tracking-[0.08em] text-ink outline-none focus:border-ink"
           />
 
@@ -94,7 +91,7 @@ export function OnboardingFlow({
             <p className="label mb-2">On the scorecard</p>
             <div className="inline-flex overflow-hidden rounded-[3px] border border-ink">
               <div
-                className="flex w-16 items-center justify-center px-3 py-2 font-narrow font-semibold uppercase tracking-[0.08em] text-paper"
+                className="flex min-w-[3.5rem] max-w-[9rem] items-center justify-center truncate px-3 py-2 font-narrow font-semibold uppercase tracking-[0.08em] text-paper"
                 style={{ backgroundColor: colour }}
               >
                 {nick || "····"}

@@ -14,7 +14,23 @@ export interface Profile {
   home_course: string | null;
   colour: string; // their ink colour across the app
   is_admin: boolean; // the organiser can add/edit/cancel dates
+  is_president: boolean; // a nameable title; rules on board complaints
   created_at: string;
+}
+
+export type ComplaintStatus = "open" | "addressed";
+
+export interface Complaint {
+  id: string;
+  filed_by: string | null;
+  reason: string;
+  action: string | null;
+  comment: string | null;
+  status: ComplaintStatus;
+  ruling: string | null;
+  addressed_by: string | null;
+  created_at: string;
+  addressed_at: string | null;
 }
 
 export interface Competition {

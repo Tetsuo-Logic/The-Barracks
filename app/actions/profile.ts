@@ -20,7 +20,7 @@ export async function saveProfile(
   if (!user) return { ok: false, error: "Not signed in." };
 
   const name = input.name.trim();
-  const nickname = input.nickname.trim().toUpperCase().slice(0, 4);
+  const nickname = input.nickname.trim().toUpperCase();
   if (!name) return { ok: false, error: "A name is needed." };
   if (!nickname) return { ok: false, error: "A nickname is needed." };
 

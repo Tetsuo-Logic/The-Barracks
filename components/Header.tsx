@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { GearIcon, MegaphoneIcon } from "@/components/Icons";
+import { GearIcon, MegaphoneIcon, BoardIcon } from "@/components/Icons";
 import type { Profile } from "@/lib/types";
 
 // App header (§4.6): league name, settings, your avatar.
@@ -14,6 +14,13 @@ export function Header({ profile }: { profile: Profile }) {
         The Threeball
       </Link>
       <div className="flex items-center gap-3">
+        <Link
+          href="/board"
+          aria-label="The board"
+          className="text-ink-soft transition-colors hover:text-ink"
+        >
+          <BoardIcon />
+        </Link>
         <Link
           href="/broadcast"
           aria-label="Messages"

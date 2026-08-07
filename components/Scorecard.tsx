@@ -202,7 +202,7 @@ function Cell({
       }}
     >
       <span
-        className="font-narrow tabular-nums"
+        className={`font-narrow tabular-nums${label ? " block max-w-full truncate" : ""}`}
         style={{
           fontSize: label ? 11 : header ? 12 : 14,
           fontWeight: header || label ? 600 : player ? 600 : 500,
