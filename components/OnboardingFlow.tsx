@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { saveProfile } from "@/app/actions/profile";
 import { NotificationSetup } from "@/components/NotificationSetup";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 // Progress dashes (§5). Photo (step 2) is a placeholder until the photos work;
 // the last screen is the notification prompt, straight after setup (§6.2).
@@ -12,9 +13,11 @@ const STEPS = ["Name", "Photo", "Details", "Alerts"] as const;
 export function OnboardingFlow({
   initialName,
   colour,
+  avatarUrl,
 }: {
   initialName: string;
   colour: string;
+  avatarUrl: string | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -125,10 +128,13 @@ export function OnboardingFlow({
           <h1 className="mb-6 text-[32px] font-extrabold leading-tight text-ink">
             A photo
           </h1>
-          <p className="text-ink-soft">
-            Camera and crop come with the photos work. You can add one from your
-            profile any time.
+          <p className="mb-6 text-ink-soft">
+            Take one or pick from your library — it&apos;ll show on the
+            scorecard and everywhere else. Or skip and add it later.
           </p>
+
+          <AvatarUpload name={name || "You"} colour={colour} avatarUrl={avatarUrl} />
+
           <div className="mt-auto flex gap-3 pt-10">
             <button
               onClick={() => setStep(0)}
@@ -140,7 +146,7 @@ export function OnboardingFlow({
               onClick={() => setStep(2)}
               className="flex-1 rounded-[3px] bg-ink px-4 py-3 font-narrow font-semibold uppercase tracking-[0.08em] text-paper"
             >
-              Skip for now
+              Next
             </button>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveProfile } from "@/app/actions/profile";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import type { Profile } from "@/lib/types";
 
 // In-place editing of your own profile (§5).
@@ -43,6 +44,10 @@ export function EditProfile({ profile }: { profile: Profile }) {
 
   return (
     <div className="rounded-[3px] border border-rule bg-card p-4">
+      <div className="mb-4">
+        <AvatarUpload name={profile.name} colour={profile.colour} avatarUrl={profile.avatar_url} />
+      </div>
+
       <label className="label mb-1 block">Name</label>
       <input value={name} onChange={(e) => setName(e.target.value)} className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink" />
 

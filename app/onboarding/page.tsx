@@ -14,6 +14,7 @@ export default async function OnboardingPage() {
       <OnboardingFlow
         initialName={profile.name}
         colour={profile.colour}
+        avatarUrl={profile.avatar_url}
       />
     </main>
   );

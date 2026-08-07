@@ -39,3 +39,25 @@ export async function compressImage(file: File): Promise<Compressed> {
 
   return { blob, width, height };
 }
+
+/** Centre-crop to a square and shrink — for round profile avatars (§5). */
+export async function compressToSquare(file: File, size = 512): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unsupported");
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.8),
+  );
+  if (!blob) throw new Error("Compression failed");
+  return blob;
+}
