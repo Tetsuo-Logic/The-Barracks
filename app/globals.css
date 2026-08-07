@@ -30,6 +30,8 @@
     /* 100dvh, not 100vh — mobile Safari chrome (§10) */
     min-height: 100dvh;
     -webkit-text-size-adjust: 100%;
+    /* nothing may push the page sideways on a phone */
+    overflow-x: hidden;
   }
 
   body {
@@ -41,6 +43,19 @@
     /* numbers align everywhere */
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Native date/time inputs can report an intrinsic width wider than their box
+     on iOS — clamp them so they never spill. */
+  input[type="date"],
+  input[type="time"] {
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   /* iOS zooms the viewport on focus for inputs under 16px (§10) */
