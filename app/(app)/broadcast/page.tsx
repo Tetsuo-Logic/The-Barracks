@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastCompose } from "@/components/BroadcastCompose";
@@ -10,6 +11,7 @@ import type { Broadcast, BroadcastResponse, Profile, Trial } from "@/lib/types";
 
 export default async function BroadcastPage() {
   const profile = await requireProfile();
+  if (!profile.is_admin) redirect("/"); // Ping the lads is the president's alone
   const supabase = await createClient();
 
   const [{ data: broadcasts }, { data: responses }, { data: profiles }, { data: trials }] =
