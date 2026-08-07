@@ -1,11 +1,14 @@
 import { requireProfile } from "@/lib/auth";
 import { getFixturesData, getCompetition } from "@/lib/queries";
+import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/components/EmptyState";
 import { NextUpCard } from "@/components/NextUpCard";
 import { CompListRow } from "@/components/CompListRow";
 import { AddDateButton } from "@/components/AddDateButton";
 import { CompSheet } from "@/components/CompSheet";
 import { GolfBanner } from "@/components/GolfScene";
+import { PendingAsks } from "@/components/PendingAsks";
+import type { Broadcast } from "@/lib/types";
 
 // / — Fixtures (home). Next-up hero, upcoming + recent lists, add/edit sheet.
 export default async function FixturesPage({
@@ -35,12 +38,34 @@ export default async function FixturesPage({
     ),
   ).slice(0, 6);
 
+  // Questions put to you (yes/no or ask) that you haven't answered — surfaced
+  // here so they always reach you, notification or not.
+  const supabase = await createClient();
+  const [{ data: bx }, { data: myResp }] = await Promise.all([
+    supabase
+      .from("broadcasts")
+      .select("*")
+      .in("kind", ["yesno", "ask"])
+      .neq("created_by", profile.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("broadcast_responses")
+      .select("broadcast_id")
+      .eq("player_id", profile.id),
+  ]);
+  const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
+  const pendingAsks = ((bx ?? []) as Broadcast[]).filter(
+    (b) => !answered.has(b.id),
+  );
+
   return (
     <div>
       {/* course-horizon banner — the illustration you meet every visit */}
       <div className="mb-6 overflow-hidden rounded-[3px] border border-rule">
         <GolfBanner className="block h-24 w-full" />
       </div>
+
+      <PendingAsks pending={pendingAsks} />
 
       {next ? (
         <NextUpCard
