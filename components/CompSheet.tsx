@@ -162,27 +162,25 @@ export function CompSheet({
           <label className="label mb-1 block">Course</label>
           <CoursePicker value={course} onChange={setCourse} recent={recentCourses} />
 
-          {/* Date + tee time — min-w-0 lets native inputs shrink instead of
-              overflowing the sheet (§10-style mobile fix) */}
-          <div className="mt-4 flex gap-3">
-            <div className="min-w-0 flex-1">
-              <label className="label mb-1 block">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full min-w-0 rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <label className="label mb-1 block">Tee</label>
-              <input
-                type="time"
-                value={teeTime}
-                onChange={(e) => setTeeTime(e.target.value)}
-                className="w-full min-w-0 rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
-              />
-            </div>
+          {/* Date and tee stacked, each full width — native date/time inputs
+              are unreliable side-by-side on mobile, so we don't risk it. */}
+          <div className="mt-4">
+            <label className="label mb-1 block">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
+            />
+          </div>
+          <div className="mt-4">
+            <label className="label mb-1 block">Tee time</label>
+            <input
+              type="time"
+              value={teeTime}
+              onChange={(e) => setTeeTime(e.target.value)}
+              className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
+            />
           </div>
 
           {/* Holes */}
