@@ -6,6 +6,7 @@ const KIND_LABEL: Record<string, string> = {
   announce: "Notice",
   yesno: "Yes / No",
   ask: "Question",
+  dates: "Date poll",
 };
 
 export function BroadcastRow({
@@ -22,6 +23,7 @@ export function BroadcastRow({
   const yes = responses.filter((r) => r.answer === "yes").length;
   const no = responses.filter((r) => r.answer === "no").length;
   const replies = responses.filter((r) => r.comment).length;
+  const picked = responses.filter((r) => (r.available_dates?.length ?? 0) > 0).length;
 
   return (
     <Link href={`/broadcast/${broadcast.id}`} className="block border-b border-rule py-3">
@@ -46,6 +48,11 @@ export function BroadcastRow({
       {broadcast.kind === "ask" && (
         <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
           {replies} of {totalPlayers} replied
+        </p>
+      )}
+      {broadcast.kind === "dates" && (
+        <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+          {picked} of {totalPlayers} picked
         </p>
       )}
     </Link>

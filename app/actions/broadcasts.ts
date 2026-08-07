@@ -13,6 +13,7 @@ export async function createBroadcast(input: {
   kind: BroadcastKind;
   title?: string;
   body: string;
+  optionDates?: string[];
 }): Promise<Result> {
   const supabase = await createClient();
   const {
@@ -37,6 +38,10 @@ export async function createBroadcast(input: {
       kind: input.kind,
       title: input.title?.trim() || null,
       body,
+      option_dates:
+        input.kind === "dates" && input.optionDates?.length
+          ? input.optionDates
+          : null,
     })
     .select("id")
     .single();
@@ -68,6 +73,7 @@ export async function respondBroadcast(
   broadcastId: string,
   answer: "yes" | "no" | null,
   comment?: string,
+  availableDates?: string[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
@@ -81,6 +87,7 @@ export async function respondBroadcast(
       player_id: user.id,
       answer,
       comment: comment?.trim() || null,
+      available_dates: availableDates ?? null,
       created_at: new Date().toISOString(),
     },
     { onConflict: "broadcast_id,player_id" },

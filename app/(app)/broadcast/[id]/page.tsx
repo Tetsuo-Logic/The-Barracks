@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastRespond } from "@/components/BroadcastRespond";
 import { Avatar } from "@/components/Avatar";
+import { shortDate } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse, Profile } from "@/lib/types";
 
 export default async function BroadcastDetailPage({
@@ -45,6 +46,43 @@ export default async function BroadcastDetailPage({
         <BroadcastRespond broadcast={b} mine={mine} />
       </div>
 
+      {/* date poll — availability tally, best day first */}
+      {b.kind === "dates" && b.option_dates && (
+        <div className="mt-6">
+          <p className="label mb-2">Who can do what</p>
+          <div className="overflow-hidden rounded-[3px] border border-rule">
+            {[...b.option_dates]
+              .map((d) => ({
+                date: d,
+                count: rs.filter((r) => r.available_dates?.includes(d)).length,
+              }))
+              .sort((a, z) => z.count - a.count)
+              .map(({ date, count }, i) => {
+                const best = i === 0 && count > 0;
+                return (
+                  <div
+                    key={date}
+                    className="flex items-center justify-between border-t border-rule px-4 py-3 first:border-t-0"
+                    style={{ backgroundColor: best ? "rgba(47,107,76,0.08)" : undefined }}
+                  >
+                    <span className="text-ink">{shortDate(date)}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="font-narrow text-sm font-semibold text-ink">
+                        {count} can do
+                      </span>
+                      {best && (
+                        <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-moss">
+                          Best
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* everyone can see who said what — it's a group of three */}
       <div className="mt-6">
         <p className="label mb-2">Answers</p>
@@ -71,6 +109,13 @@ export default async function BroadcastDetailPage({
                       </span>
                     )}
                   </p>
+                  {b.kind === "dates" && r?.available_dates && (
+                    <p className="text-sm text-ink-soft">
+                      {r.available_dates.length
+                        ? r.available_dates.map((d) => shortDate(d)).join(", ")
+                        : "none of them"}
+                    </p>
+                  )}
                   {r?.comment && <p className="text-ink-soft">“{r.comment}”</p>}
                 </div>
               </li>

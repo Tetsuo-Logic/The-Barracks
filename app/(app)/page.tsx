@@ -45,7 +45,7 @@ export default async function FixturesPage({
     supabase
       .from("broadcasts")
       .select("*")
-      .in("kind", ["yesno", "ask"])
+      .in("kind", ["yesno", "ask", "dates"])
       .neq("created_by", profile.id)
       .order("created_at", { ascending: false }),
     supabase

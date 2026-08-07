@@ -118,7 +118,7 @@ export interface Strike {
   created_at: string;
 }
 
-export type BroadcastKind = "announce" | "yesno" | "ask";
+export type BroadcastKind = "announce" | "yesno" | "ask" | "dates";
 
 export interface Broadcast {
   id: string;
@@ -126,6 +126,7 @@ export interface Broadcast {
   kind: BroadcastKind;
   title: string | null;
   body: string;
+  option_dates: string[] | null; // candidate dates for a 'dates' poll
   created_at: string;
 }
 
@@ -134,6 +135,7 @@ export interface BroadcastResponse {
   player_id: string;
   answer: "yes" | "no" | null;
   comment: string | null;
+  available_dates: string[] | null; // which candidate dates this player can do
   created_at: string;
 }
 

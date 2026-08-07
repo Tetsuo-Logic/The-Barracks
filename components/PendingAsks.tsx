@@ -23,7 +23,7 @@ export function PendingAsks({ pending }: { pending: Broadcast[] }) {
                 {b.body}
               </span>
               <span className="shrink-0 rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper">
-                {b.kind === "yesno" ? "Answer" : "Reply"}
+                {b.kind === "yesno" ? "Answer" : b.kind === "dates" ? "Pick dates" : "Reply"}
               </span>
             </Link>
           </li>

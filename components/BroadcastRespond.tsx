@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { respondBroadcast } from "@/app/actions/broadcasts";
+import { shortDate } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse } from "@/lib/types";
 
-// The recipient's answer surface. Yes/No for a poll, a reply box for a
-// question, a simple acknowledge for a plain notice.
+// The recipient's answer surface. Yes/No poll, tick-the-dates poll, a reply
+// box for a question, or a simple acknowledge for a plain notice.
 export function BroadcastRespond({
   broadcast,
   mine,
@@ -17,6 +18,7 @@ export function BroadcastRespond({
   const router = useRouter();
   const [answer, setAnswer] = useState<"yes" | "no" | null>(mine?.answer ?? null);
   const [comment, setComment] = useState(mine?.comment ?? "");
+  const [dates, setDates] = useState<string[]>(mine?.available_dates ?? []);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(Boolean(mine));
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,12 @@ export function BroadcastRespond({
     setSaving(true);
     setError(null);
     setAnswer(nextAnswer);
-    const res = await respondBroadcast(broadcast.id, nextAnswer, comment);
+    const res = await respondBroadcast(
+      broadcast.id,
+      nextAnswer,
+      comment,
+      broadcast.kind === "dates" ? dates : undefined,
+    );
     if (!res.ok) {
       setError(res.error);
       setSaving(false);
@@ -39,6 +46,36 @@ export function BroadcastRespond({
   return (
     <div className="rounded-[3px] border border-rule bg-card p-4">
       <p className="label mb-3">Your answer</p>
+
+      {broadcast.kind === "dates" && (
+        <div className="mb-3 flex flex-col gap-2">
+          <p className="text-sm text-ink-soft">Tick the ones you can do:</p>
+          {(broadcast.option_dates ?? []).map((d) => {
+            const on = dates.includes(d);
+            return (
+              <button
+                key={d}
+                onClick={() =>
+                  setDates((ds) => (on ? ds.filter((x) => x !== d) : [...ds, d]))
+                }
+                className="flex items-center justify-between rounded-[3px] border px-4 py-3"
+                style={{
+                  borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
+                  backgroundColor: on ? "rgba(47,107,76,0.08)" : "transparent",
+                }}
+              >
+                <span className="text-ink">{shortDate(d)}</span>
+                <span
+                  className="font-narrow text-xs font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: on ? "var(--color-moss)" : "var(--color-rule)" }}
+                >
+                  {on ? "Can do" : "Tap"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {broadcast.kind === "yesno" && (
         <div className="mb-3 grid grid-cols-2 gap-2">

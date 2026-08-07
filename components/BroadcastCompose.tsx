@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import { createBroadcast } from "@/app/actions/broadcasts";
 import { createTrial } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
+import { shortDate } from "@/lib/dates";
 import type { BroadcastKind, Profile } from "@/lib/types";
 
 type Mode = BroadcastKind | "court";
 
 const KINDS: { value: Mode; label: string; hint: string }[] = [
-  { value: "announce", label: "Tell", hint: "Just say something." },
   { value: "yesno", label: "Yes / No", hint: "They answer yes or no." },
+  { value: "dates", label: "Dates", hint: "Offer dates; they tick what they can do." },
   { value: "ask", label: "Ask", hint: "They reply in words." },
+  { value: "announce", label: "Tell", hint: "Just say something." },
   { value: "court", label: "Court", hint: "Put someone on trial for flaking." },
 ];
 
@@ -22,10 +24,19 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [defendant, setDefendant] = useState<string | null>(null);
+  const [dateOptions, setDateOptions] = useState<string[]>([]);
+  const [newDate, setNewDate] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hint = KINDS.find((k) => k.value === mode)?.hint;
   const isCourt = mode === "court";
+  const isDates = mode === "dates";
+
+  function addDate() {
+    if (!newDate || dateOptions.includes(newDate)) return;
+    setDateOptions((d) => [...d, newDate].sort());
+    setNewDate("");
+  }
 
   async function send() {
     setSending(true);
@@ -47,7 +58,18 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
       return;
     }
 
-    const res = await createBroadcast({ kind: mode, title: title || undefined, body });
+    if (isDates && dateOptions.length === 0) {
+      setError("Add at least one date.");
+      setSending(false);
+      return;
+    }
+
+    const res = await createBroadcast({
+      kind: mode,
+      title: title || undefined,
+      body: body || (isDates ? "Which of these can you do?" : ""),
+      optionDates: isDates ? dateOptions : undefined,
+    });
     if (!res.ok) {
       setError(res.error);
       setSending(false);
@@ -121,6 +143,47 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
         />
       )}
 
+      {isDates && (
+        <div className="mb-3">
+          <p className="label mb-1">Dates to offer</p>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="min-w-0 flex-1 rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+            />
+            <button
+              type="button"
+              onClick={addDate}
+              className="shrink-0 rounded-[3px] border border-ink px-4 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink"
+            >
+              Add
+            </button>
+          </div>
+          {dateOptions.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {dateOptions.map((d) => (
+                <span
+                  key={d}
+                  className="flex items-center gap-2 rounded-[3px] border border-rule px-2.5 py-1 text-sm text-ink"
+                >
+                  {shortDate(d)}
+                  <button
+                    type="button"
+                    onClick={() => setDateOptions((o) => o.filter((x) => x !== d))}
+                    className="text-ink-soft"
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -130,9 +193,11 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
             ? "Said in, no-showed at Pebble with no word"
             : mode === "yesno"
               ? "Anyone fancy nine holes Sunday?"
-              : mode === "ask"
-                ? "What day suits everyone next week?"
-                : "Servers are down tonight, heads up."
+              : mode === "dates"
+                ? "Which of these can you do? (optional note)"
+                : mode === "ask"
+                  ? "What day suits everyone next week?"
+                  : "Servers are down tonight, heads up."
         }
         className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
       />
@@ -141,7 +206,11 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
 
       <button
         onClick={send}
-        disabled={sending || !body.trim() || (isCourt && !defendant)}
+        disabled={
+          sending ||
+          (isCourt && !defendant) ||
+          (isDates ? dateOptions.length === 0 : !body.trim())
+        }
         className="mt-3 w-full rounded-[3px] px-4 py-3 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
         style={{ backgroundColor: isCourt ? "var(--color-flag)" : "var(--color-ink)" }}
       >
