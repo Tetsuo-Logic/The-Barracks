@@ -2,8 +2,7 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { getPrefs } from "@/app/actions/prefs";
 import { signOut } from "@/app/actions/auth";
-import { NotificationSetup } from "@/components/NotificationSetup";
-import { NotificationPrefs } from "@/components/NotificationPrefs";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { InstallCard } from "@/components/InstallCard";
 
 export default async function SettingsPage() {
@@ -33,10 +32,7 @@ export default async function SettingsPage() {
 
       <section>
         <p className="label mb-3">Notifications</p>
-        <div className="mb-5">
-          <NotificationSetup />
-        </div>
-        <NotificationPrefs prefs={prefs} />
+        <NotificationSettings prefs={prefs} />
       </section>
 
       <form action={signOut}>
