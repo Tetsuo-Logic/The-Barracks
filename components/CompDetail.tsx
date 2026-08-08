@@ -226,6 +226,7 @@ export function CompDetail({
             initial={comments}
             profiles={profiles}
             currentUserId={currentUserId}
+            isAdmin={isAdmin}
           />
         )}
       </div>

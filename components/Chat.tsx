@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { postComment } from "@/app/actions/comments";
+import { postComment, deleteComment } from "@/app/actions/comments";
 import { Avatar } from "@/components/Avatar";
 import { relativeTime } from "@/lib/dates";
 import type { Comment, Profile } from "@/lib/types";
@@ -14,11 +14,13 @@ export function Chat({
   initial,
   profiles,
   currentUserId,
+  isAdmin = false,
 }: {
   competitionId: string;
   initial: Comment[];
   profiles: Profile[];
   currentUserId: string;
+  isAdmin?: boolean;
 }) {
   const [comments, setComments] = useState<Comment[]>(initial);
   const [body, setBody] = useState("");
@@ -46,6 +48,14 @@ export function Chat({
           );
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "comments" },
+        (payload) => {
+          const id = (payload.old as { id?: string })?.id;
+          if (id) setComments((prev) => prev.filter((x) => x.id !== id));
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -71,6 +81,17 @@ export function Chat({
     setSending(false);
   }
 
+  async function remove(id: string) {
+    if (!confirm("Delete this comment?")) return;
+    const prev = comments;
+    setComments((cs) => cs.filter((c) => c.id !== id)); // optimistic
+    const res = await deleteComment(id, competitionId);
+    if (!res.ok) {
+      setComments(prev); // put it back
+      setError(res.error);
+    }
+  }
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-4 pb-4">
@@ -82,6 +103,7 @@ export function Chat({
         {comments.map((c) => {
           const author = c.author_id ? profileById.get(c.author_id) : null;
           const mine = c.author_id === currentUserId;
+          const canDelete = mine || isAdmin;
           return (
             <div key={c.id} className="flex gap-3">
               <Avatar
@@ -98,6 +120,15 @@ export function Chat({
                   <span className="text-xs text-ink-soft">
                     {relativeTime(c.created_at)}
                   </span>
+                  {canDelete && (
+                    <button
+                      onClick={() => remove(c.id)}
+                      className="ml-auto shrink-0 text-xs text-ink-soft hover:text-flag"
+                      aria-label="Delete comment"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </p>
                 <p className="text-ink">{c.body}</p>
               </div>

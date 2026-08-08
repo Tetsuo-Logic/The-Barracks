@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
 import type { Profile } from "@/lib/types";
@@ -45,5 +46,24 @@ export async function postComment(
     },
   );
 
+  return { ok: true };
+}
+
+// Remove a comment. RLS allows the author or the organiser; anyone else is
+// rejected by the database.
+export async function deleteComment(
+  commentId: string,
+  competitionId?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase.from("comments").delete().eq("id", commentId);
+  if (error) return { ok: false, error: "Couldn't delete that." };
+
+  if (competitionId) revalidatePath(`/comp/${competitionId}`);
   return { ok: true };
 }
