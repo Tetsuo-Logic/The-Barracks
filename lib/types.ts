@@ -97,6 +97,7 @@ export interface Photo {
 
 export type TrialStatus = "open" | "closed";
 export type Verdict = "guilty" | "not_guilty";
+export type Penalty = "strike" | "warning";
 
 export interface Trial {
   id: string;
@@ -106,6 +107,7 @@ export interface Trial {
   defence: string | null;
   status: TrialStatus;
   verdict: Verdict | null;
+  penalty: Penalty | null; // the outcome when guilty
   created_by: string | null;
   created_at: string;
 }
@@ -114,6 +116,7 @@ export interface TrialVote {
   trial_id: string;
   juror_id: string;
   vote: Verdict;
+  penalty: Penalty | null; // this juror's steer when voting guilty
   comment: string | null;
   created_at: string;
 }
@@ -123,6 +126,15 @@ export interface Strike {
   player_id: string;
   reason: string | null;
   competition_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface Warning {
+  id: string;
+  player_id: string;
+  reason: string | null;
+  trial_id: string | null;
   created_by: string | null;
   created_at: string;
 }

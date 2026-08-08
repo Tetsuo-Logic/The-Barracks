@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
-import type { Profile, Verdict } from "@/lib/types";
+import type { Penalty, Profile, Verdict } from "@/lib/types";
 
 type Result = { ok: true; id: string } | { ok: false; error: string };
 
@@ -91,6 +91,7 @@ export async function submitDefence(
 export async function castVote(
   trialId: string,
   vote: Verdict,
+  penalty?: Penalty,
   comment?: string,
 ): Promise<{ ok: true; verdict: string | null } | { ok: false; error: string }> {
   const supabase = await createClient();
@@ -104,6 +105,7 @@ export async function castVote(
       trial_id: trialId,
       juror_id: user.id,
       vote,
+      penalty: vote === "guilty" ? (penalty ?? "warning") : null,
       comment: comment?.trim() || null,
       created_at: new Date().toISOString(),
     },
@@ -116,21 +118,25 @@ export async function castVote(
   if (verdict === "guilty" || verdict === "not_guilty") {
     const { data: trial } = await supabase
       .from("trials")
-      .select("defendant_id, charge")
+      .select("defendant_id, charge, penalty")
       .eq("id", trialId)
       .single();
+    const tx = trial as { defendant_id?: string; penalty?: Penalty | null } | null;
     const { data: everyone } = await supabase.from("profiles").select("id, name");
     const people = (everyone ?? []) as (Pick<Profile, "id"> & { name: string })[];
-    const defendant = people.find((p) => p.id === (trial as { defendant_id?: string })?.defendant_id);
+    const defendant = people.find((p) => p.id === tx?.defendant_id);
+    const name = defendant?.name ?? "The accused";
     await sendToPlayers(
       people.map((p) => p.id),
       "results",
       {
         title: verdict === "guilty" ? "Verdict: guilty" : "Verdict: not guilty",
         body:
-          verdict === "guilty"
-            ? `${defendant?.name ?? "The accused"} takes a strike.`
-            : `${defendant?.name ?? "The accused"} walks free.`,
+          verdict !== "guilty"
+            ? `${name} walks free.`
+            : tx?.penalty === "strike"
+              ? `${name} takes a strike.`
+              : `${name} gets a warning.`,
         url: `/trial/${trialId}`,
         tag: `trial-${trialId}`,
       },

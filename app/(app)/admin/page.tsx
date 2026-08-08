@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { StrikesManager } from "@/components/StrikesManager";
 import { PresidentPicker } from "@/components/PresidentPicker";
 import { MegaphoneIcon } from "@/components/Icons";
-import type { Profile, Strike } from "@/lib/types";
+import type { Profile, Strike, Warning } from "@/lib/types";
 
 // The organiser's control room. Admin only.
 export default async function AdminPage() {
@@ -13,9 +13,10 @@ export default async function AdminPage() {
   if (!profile.is_admin) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: profiles }, { data: strikes }] = await Promise.all([
+  const [{ data: profiles }, { data: strikes }, { data: warnings }] = await Promise.all([
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
     supabase.from("strikes").select("*"),
+    supabase.from("warnings").select("*"),
   ]);
 
   return (
@@ -50,13 +51,14 @@ export default async function AdminPage() {
       </section>
 
       <section>
-        <p className="label mb-1">Strikes</p>
+        <p className="label mb-1">Strikes &amp; warnings</p>
         <p className="mb-4 text-sm text-ink-soft">
           Said they&apos;d turn up and didn&apos;t? Mark it.
         </p>
         <StrikesManager
           profiles={(profiles ?? []) as Profile[]}
           strikes={(strikes ?? []) as Strike[]}
+          warnings={(warnings ?? []) as Warning[]}
         />
       </section>
     </div>

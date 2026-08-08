@@ -4,7 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitDefence, castVote } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
-import type { Profile, Trial, TrialVote, Verdict } from "@/lib/types";
+import type { Penalty, Profile, Trial, TrialVote, Verdict } from "@/lib/types";
+
+// The three ways a juror can land: acquit, warn, or strike.
+const CHOICES: { key: string; vote: Verdict; penalty?: Penalty; label: string; colour: string }[] = [
+  { key: "not_guilty", vote: "not_guilty", label: "Not guilty", colour: "var(--color-moss)" },
+  { key: "warning", vote: "guilty", penalty: "warning", label: "Warning", colour: "var(--color-sand)" },
+  { key: "strike", vote: "guilty", penalty: "strike", label: "Strike", colour: "var(--color-flag)" },
+];
+
+function labelFor(v: TrialVote): { text: string; colour: string } {
+  if (v.vote !== "guilty") return { text: "Not guilty", colour: "var(--color-moss)" };
+  if (v.penalty === "strike") return { text: "Guilty · strike", colour: "var(--color-flag)" };
+  return { text: "Guilty · warning", colour: "var(--color-sand)" };
+}
 
 // The Courtroom. The accused files a defence; the jury (everyone else) votes
 // guilty or not. Unanimous guilty adds a strike — decided server-side.
@@ -41,10 +54,10 @@ export function TrialView({
     router.refresh();
   }
 
-  async function vote(v: Verdict) {
+  async function vote(v: Verdict, penalty?: Penalty) {
     setBusy(true);
     setError(null);
-    const res = await castVote(trial.id, v, comment);
+    const res = await castVote(trial.id, v, penalty, comment);
     if (!res.ok) setError(res.error);
     setBusy(false);
     router.refresh();
@@ -69,11 +82,20 @@ export function TrialView({
         <div
           className="mt-4 rounded-[3px] p-4 text-center font-narrow text-[20px] font-bold uppercase tracking-[0.08em]"
           style={{
-            backgroundColor: trial.verdict === "guilty" ? "var(--color-flag)" : "var(--color-moss)",
+            backgroundColor:
+              trial.verdict === "guilty"
+                ? trial.penalty === "strike"
+                  ? "var(--color-flag)"
+                  : "var(--color-sand)"
+                : "var(--color-moss)",
             color: "var(--color-paper)",
           }}
         >
-          {trial.verdict === "guilty" ? "Guilty — strike added" : "Not guilty"}
+          {trial.verdict === "guilty"
+            ? trial.penalty === "strike"
+              ? "Guilty — strike added"
+              : "Guilty — warning"
+            : "Not guilty"}
         </div>
       )}
 
@@ -117,27 +139,32 @@ export function TrialView({
               placeholder="Your remarks (optional)"
               className="mb-3 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
             />
-            <div className="grid grid-cols-2 gap-2">
-              {(["guilty", "not_guilty"] as Verdict[]).map((v) => {
-                const active = myVote?.vote === v;
+            <div className="grid grid-cols-3 gap-2">
+              {CHOICES.map((ch) => {
+                const active =
+                  myVote?.vote === ch.vote &&
+                  (ch.vote !== "guilty" || (myVote?.penalty ?? "warning") === ch.penalty);
                 return (
                   <button
-                    key={v}
-                    onClick={() => vote(v)}
+                    key={ch.key}
+                    onClick={() => vote(ch.vote, ch.penalty)}
                     disabled={busy}
-                    className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.08em]"
+                    className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
                     style={{
-                      backgroundColor: active ? (v === "guilty" ? "var(--color-flag)" : "var(--color-moss)") : "transparent",
-                      borderColor: active ? (v === "guilty" ? "var(--color-flag)" : "var(--color-moss)") : "var(--color-rule)",
+                      backgroundColor: active ? ch.colour : "transparent",
+                      borderColor: active ? ch.colour : "var(--color-rule)",
                       color: active ? "var(--color-paper)" : "var(--color-ink)",
                     }}
                   >
-                    {v === "guilty" ? "Guilty" : "Not guilty"}
+                    {ch.label}
                   </button>
                 );
               })}
             </div>
-            {myVote && <p className="mt-2 text-sm text-ink-soft">Vote cast. You can change it until the last juror votes.</p>}
+            <p className="mt-2 text-xs text-ink-soft">
+              A strike needs both of you. If either picks warning, it&apos;s a warning. Three warnings add up to a strike.
+            </p>
+            {myVote && <p className="mt-1 text-sm text-ink-soft">Vote cast. You can change it until the last juror votes.</p>}
           </div>
         )}
 
@@ -153,9 +180,9 @@ export function TrialView({
                     {v ? (
                       <span
                         className="font-narrow text-xs font-semibold uppercase tracking-[0.08em]"
-                        style={{ color: v.vote === "guilty" ? "var(--color-flag)" : "var(--color-moss)" }}
+                        style={{ color: labelFor(v).colour }}
                       >
-                        {v.vote === "guilty" ? "Guilty" : "Not guilty"}
+                        {labelFor(v).text}
                       </span>
                     ) : (
                       <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-rule">
