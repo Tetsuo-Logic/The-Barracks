@@ -25,6 +25,7 @@ const ROWS: { key: Key; label: string }[] = [
   { key: "results", label: "Results" },
   { key: "day_of", label: "Day-of reminder" },
   { key: "chase_undecided", label: "Chase me if undecided" },
+  { key: "board", label: "The board" },
 ];
 
 export function NotificationSettings({ prefs }: { prefs: NotificationPrefs | null }) {

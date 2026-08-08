@@ -24,12 +24,19 @@ export type ComplaintStatus = "open" | "addressed";
 export interface Complaint {
   id: string;
   filed_by: string | null;
+  against_id: string | null; // who the complaint is about
   reason: string;
   action: string | null;
   comment: string | null;
   status: ComplaintStatus;
   ruling: string | null;
   addressed_by: string | null;
+  response: string | null; // the subject's reply
+  response_at: string | null;
+  second_opinion_by: string | null; // player asked for a second opinion
+  second_opinion: string | null; // their response
+  second_opinion_at: string | null;
+  second_opinion_to_court: boolean | null; // their steer: take it to court?
   created_at: string;
   addressed_at: string | null;
 }
@@ -150,4 +157,5 @@ export interface NotificationPrefs {
   results: boolean;
   day_of: boolean;
   chase_undecided: boolean;
+  board: boolean;
 }

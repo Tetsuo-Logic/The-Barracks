@@ -17,7 +17,8 @@ export type NotifKind =
   | "comments"
   | "results"
   | "day_of"
-  | "chase_undecided";
+  | "chase_undecided"
+  | "board";
 
 let configured = false;
 function ensureVapid(): boolean {

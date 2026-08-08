@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fileComplaint, ruleOnComplaint } from "@/app/actions/board";
+import {
+  fileComplaint,
+  ruleOnComplaint,
+  respondToComplaint,
+  requestSecondOpinion,
+  submitSecondOpinion,
+} from "@/app/actions/board";
 import { Avatar } from "@/components/Avatar";
 import { relativeTime } from "@/lib/dates";
 import type { Complaint, Profile } from "@/lib/types";
@@ -24,13 +30,16 @@ export function ComplaintBoard({
   const [reason, setReason] = useState("");
   const [action, setAction] = useState("");
   const [comment, setComment] = useState("");
+  const [againstId, setAgainstId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const others = profiles.filter((p) => p.id !== currentUserId);
 
   async function file() {
     setBusy(true);
     setError(null);
-    const res = await fileComplaint({ reason, action, comment });
+    const res = await fileComplaint({ reason, action, comment, againstId: againstId || null });
     if (!res.ok) {
       setError(res.error);
       setBusy(false);
@@ -39,6 +48,7 @@ export function ComplaintBoard({
     setReason("");
     setAction("");
     setComment("");
+    setAgainstId("");
     setBusy(false);
     router.refresh();
   }
@@ -51,11 +61,26 @@ export function ComplaintBoard({
       {/* file a complaint */}
       <div className="rounded-[3px] border border-rule bg-card p-4">
         <p className="label mb-3">Raise it with the board</p>
+
+        <label className="label mb-1 block">Who&apos;s it about?</label>
+        <select
+          value={againstId}
+          onChange={(e) => setAgainstId(e.target.value)}
+          className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+        >
+          <option value="">No one in particular</option>
+          {others.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+
         <label className="label mb-1 block">The complaint</label>
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Mac takes 20 minutes on every green"
+          placeholder="Player in question takes 20 minutes on every green"
           className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
         />
         <label className="label mb-1 block">Action you want</label>
@@ -91,7 +116,14 @@ export function ComplaintBoard({
           <p className="py-6 text-center text-ink-soft">Nothing outstanding. A peaceful reign.</p>
         ) : (
           open.map((c) => (
-            <ComplaintCard key={c.id} c={c} byId={byId} currentUserId={currentUserId} canRule={canRule} />
+            <ComplaintCard
+              key={c.id}
+              c={c}
+              byId={byId}
+              others={others}
+              currentUserId={currentUserId}
+              canRule={canRule}
+            />
           ))
         )}
       </div>
@@ -102,7 +134,14 @@ export function ComplaintBoard({
           <p className="label mb-1">Ruled on</p>
           <hr className="rule mb-2" />
           {closed.map((c) => (
-            <ComplaintCard key={c.id} c={c} byId={byId} currentUserId={currentUserId} canRule={false} />
+            <ComplaintCard
+              key={c.id}
+              c={c}
+              byId={byId}
+              others={others}
+              currentUserId={currentUserId}
+              canRule={false}
+            />
           ))}
         </div>
       )}
@@ -113,22 +152,35 @@ export function ComplaintBoard({
 function ComplaintCard({
   c,
   byId,
+  others,
   currentUserId,
   canRule,
 }: {
   c: Complaint;
   byId: Map<string, Profile>;
+  others: Profile[];
   currentUserId: string;
   canRule: boolean;
 }) {
   const router = useRouter();
   const filer = c.filed_by ? byId.get(c.filed_by) : null;
+  const against = c.against_id ? byId.get(c.against_id) : null;
+  const opinionGiver = c.second_opinion_by ? byId.get(c.second_opinion_by) : null;
+
+  const isSubject = c.against_id === currentUserId;
+  const isOpinionGiver = c.second_opinion_by === currentUserId;
+  const open = c.status === "open";
+
   const [ruling, setRuling] = useState("");
+  const [response, setResponse] = useState("");
+  const [opinion, setOpinion] = useState("");
+  const [toCourt, setToCourt] = useState(false);
+  const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function rule() {
+  async function run(fn: () => Promise<{ ok: boolean }>) {
     setBusy(true);
-    const res = await ruleOnComplaint(c.id, ruling);
+    const res = await fn();
     setBusy(false);
     if (res.ok) router.refresh();
   }
@@ -142,6 +194,13 @@ function ComplaintCard({
         </span>
         <span className="text-xs text-ink-soft">{relativeTime(c.created_at)}</span>
       </div>
+
+      {against && (
+        <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">
+          About: {against.id === currentUserId ? "you" : against.name}
+        </p>
+      )}
+
       <p className="mt-1 font-semibold text-ink">{c.reason}</p>
       {c.action && (
         <p className="text-sm text-ink-soft">
@@ -150,33 +209,142 @@ function ComplaintCard({
       )}
       {c.comment && <p className="text-sm text-ink-soft">“{c.comment}”</p>}
 
-      {c.status === "addressed" ? (
+      {/* the subject's response */}
+      {c.response ? (
+        <div className="mt-2 rounded-[3px] border-l-2 border-rule bg-card px-3 py-2">
+          <p className="label mb-0.5">{against?.id === currentUserId ? "Your response" : `${against?.name ?? "Response"}`}</p>
+          <p className="text-ink">{c.response}</p>
+        </div>
+      ) : (
+        isSubject &&
+        open && (
+          <div className="mt-3 rounded-[3px] border border-rule bg-card p-3">
+            <p className="label mb-1">Your response</p>
+            <textarea
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
+              rows={2}
+              placeholder="In my defence…"
+              className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
+            />
+            <button
+              onClick={() => run(() => respondToComplaint(c.id, response))}
+              disabled={busy || !response.trim()}
+              className="rounded-[3px] bg-ink px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
+            >
+              {busy ? "Saving" : "Respond"}
+            </button>
+          </div>
+        )
+      )}
+
+      {/* second opinion — given, pending, or a box for the nominated player */}
+      {c.second_opinion ? (
+        <div className="mt-2 rounded-[3px] border-l-2 border-moss bg-card px-3 py-2">
+          <p className="label mb-0.5" style={{ color: "var(--color-moss)" }}>
+            Second opinion{opinionGiver ? ` — ${opinionGiver.name}` : ""}
+          </p>
+          <p className="text-ink">{c.second_opinion}</p>
+          {c.second_opinion_to_court && (
+            <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">
+              Reckons it&apos;s one for the court
+            </p>
+          )}
+        </div>
+      ) : isOpinionGiver && open ? (
+        <div className="mt-3 rounded-[3px] border border-moss bg-card p-3">
+          <p className="label mb-1" style={{ color: "var(--color-moss)" }}>
+            Your second opinion
+          </p>
+          <textarea
+            value={opinion}
+            onChange={(e) => setOpinion(e.target.value)}
+            rows={2}
+            placeholder="Honestly, he's got a point…"
+            className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
+          />
+          <label className="mb-2 flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={toCourt}
+              onChange={(e) => setToCourt(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Should this be taken to court?
+          </label>
+          <button
+            onClick={() => run(() => submitSecondOpinion(c.id, opinion, toCourt))}
+            disabled={busy || !opinion.trim()}
+            className="rounded-[3px] bg-ink px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
+          >
+            {busy ? "Saving" : "Give opinion"}
+          </button>
+        </div>
+      ) : (
+        c.second_opinion_by &&
+        open && (
+          <p className="mt-2 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-moss">
+            Second opinion wanted from {opinionGiver?.name ?? "a player"}
+          </p>
+        )
+      )}
+
+      {/* president tools: ask for a second opinion + rule */}
+      {open && canRule && (
+        <div className="mt-3 space-y-3">
+          {!c.second_opinion && (
+            <div className="rounded-[3px] border border-rule bg-card p-3">
+              <p className="label mb-1">Ask for a second opinion</p>
+              <div className="flex gap-2">
+                <select
+                  value={pick}
+                  onChange={(e) => setPick(e.target.value)}
+                  className="min-w-0 flex-1 rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
+                >
+                  <option value="">Pick a player</option>
+                  {others.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => run(() => requestSecondOpinion(c.id, pick))}
+                  disabled={busy || !pick}
+                  className="shrink-0 rounded-[3px] border border-ink px-4 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink disabled:opacity-50"
+                >
+                  Ask
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-[3px] border border-rule bg-card p-3">
+            <p className="label mb-1">Your ruling</p>
+            <textarea
+              value={ruling}
+              onChange={(e) => setRuling(e.target.value)}
+              rows={2}
+              placeholder="Complaint upheld. Slow play to buy the first round."
+              className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
+            />
+            <button
+              onClick={() => run(() => ruleOnComplaint(c.id, ruling))}
+              disabled={busy}
+              className="rounded-[3px] bg-ink px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
+            >
+              {busy ? "Ruling" : "Rule on it"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* the ruling, once made */}
+      {c.status === "addressed" && (
         <div className="mt-2 rounded-[3px] border-l-2 border-sand bg-card px-3 py-2">
           <p className="label mb-0.5" style={{ color: "var(--color-sand)" }}>The ruling</p>
           <p className="text-ink">{c.ruling || "Dismissed without comment."}</p>
         </div>
-      ) : canRule ? (
-        <div className="mt-3 rounded-[3px] border border-rule bg-card p-3">
-          <p className="label mb-1">Your ruling</p>
-          <textarea
-            value={ruling}
-            onChange={(e) => setRuling(e.target.value)}
-            rows={2}
-            placeholder="Complaint upheld. Mac to buy the first round."
-            className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
-          />
-          <button
-            onClick={rule}
-            disabled={busy}
-            className="rounded-[3px] bg-ink px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
-          >
-            {busy ? "Ruling" : "Rule on it"}
-          </button>
-        </div>
-      ) : (
-        <p className="mt-2 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-sand">
-          Awaiting the president&apos;s ruling
-        </p>
       )}
     </div>
   );

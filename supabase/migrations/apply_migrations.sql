@@ -436,3 +436,30 @@ where player_id in (select id from profiles where is_admin);
 drop policy if exists comments_delete on comments;
 create policy comments_delete on comments
   for delete using (author_id = auth.uid() or public.is_admin());
+
+-- ==================== 0018_board_upgrades.sql ====================
+-- Board upgrades: name who a complaint is about (they get pinged and can
+-- respond), and let the president ask a chosen player for a second opinion
+-- before ruling. Also a 'board' notification preference. Run after 0017.
+
+alter table complaints add column if not exists against_id         uuid references profiles(id) on delete set null;
+alter table complaints add column if not exists response           text;
+alter table complaints add column if not exists response_at        timestamptz;
+alter table complaints add column if not exists second_opinion_by       uuid references profiles(id) on delete set null;
+alter table complaints add column if not exists second_opinion          text;
+alter table complaints add column if not exists second_opinion_at       timestamptz;
+alter table complaints add column if not exists second_opinion_to_court boolean;
+
+drop policy if exists complaints_update on complaints;
+create policy complaints_update on complaints
+  for update
+  using (
+    public.is_admin() or public.is_president()
+    or against_id = auth.uid() or second_opinion_by = auth.uid()
+  )
+  with check (
+    public.is_admin() or public.is_president()
+    or against_id = auth.uid() or second_opinion_by = auth.uid()
+  );
+
+alter table notification_prefs add column if not exists board boolean default true;
