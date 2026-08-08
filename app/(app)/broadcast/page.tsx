@@ -1,49 +1,40 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
-import { getActivityFeed, getInbox } from "@/lib/queries";
+import { getActivityFeed } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastCompose } from "@/components/BroadcastCompose";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { Inbox } from "@/components/Inbox";
 import type { Profile } from "@/lib/types";
 
-// The shared activity timeline — open to everyone. Your outstanding items sit
-// pinned at the top; the full history (messages, rounds, results, comments,
-// trials) runs below. Only the organiser gets the compose box.
+// "Ping the lads" — the organiser's compose screen, with the activity history
+// below it. Organiser only; everyone else reaches the history via the bell
+// (/activity).
 export default async function BroadcastPage() {
   const profile = await requireProfile();
+  if (!profile.is_admin) redirect("/activity");
 
-  const [inbox, activity] = await Promise.all([
-    getInbox(profile),
-    getActivityFeed(profile.id),
-  ]);
-
-  // Candidates for the "Court" composer (organiser only).
-  let candidates: Profile[] = [];
-  if (profile.is_admin) {
-    const supabase = await createClient();
-    const { data } = await supabase
+  const supabase = await createClient();
+  const [{ data: candidateRows }, activity] = await Promise.all([
+    supabase
       .from("profiles")
       .select("*")
       .neq("id", profile.id)
-      .order("created_at", { ascending: true });
-    candidates = (data ?? []) as Profile[];
-  }
+      .order("created_at", { ascending: true }),
+    getActivityFeed(profile.id),
+  ]);
+  const candidates = (candidateRows ?? []) as Profile[];
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <p className="label">Activity</p>
+        <p className="label">Ping the lads</p>
         <Link href="/" className="label text-ink-soft">← Fixtures</Link>
       </div>
 
-      <Inbox inbox={inbox} />
-
-      {profile.is_admin && (
-        <div className="mb-8">
-          <BroadcastCompose candidates={candidates} />
-        </div>
-      )}
+      <div className="mb-8">
+        <BroadcastCompose candidates={candidates} />
+      </div>
 
       <p className="label mb-1">History</p>
       <hr className="rule" />

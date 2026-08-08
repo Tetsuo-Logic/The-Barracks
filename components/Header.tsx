@@ -23,7 +23,7 @@ export function Header({
         {/* Notifications — outstanding items plus the full activity history.
             Everyone sees this, so a missed push is never lost. */}
         <Link
-          href="/broadcast"
+          href="/activity"
           aria-label={
             pendingCount > 0
               ? `${pendingCount} thing${pendingCount === 1 ? "" : "s"} waiting on you`
@@ -45,13 +45,15 @@ export function Header({
         >
           <BoardIcon />
         </Link>
-        <Link
-          href="/broadcast"
-          aria-label={profile.is_admin ? "Ping the lads" : "Activity"}
-          className="text-ink-soft transition-colors hover:text-ink"
-        >
-          <MegaphoneIcon />
-        </Link>
+        {profile.is_admin && (
+          <Link
+            href="/broadcast"
+            aria-label="Ping the lads"
+            className="text-ink-soft transition-colors hover:text-ink"
+          >
+            <MegaphoneIcon />
+          </Link>
+        )}
         <Link
           href="/settings"
           aria-label="Settings"
