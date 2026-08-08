@@ -39,7 +39,7 @@ export default async function BroadcastPage() {
 
       <p className="label mb-1">History</p>
       <hr className="rule" />
-      <ActivityFeed activity={activity} currentUserId={profile.id} />
+      <ActivityFeed activity={activity} currentUserId={profile.id} isAdmin={profile.is_admin} />
 
       <ClearHistory clearedBefore={activity.clearedBefore} />
     </div>

@@ -1,12 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BroadcastRow } from "@/components/BroadcastRow";
 import { Avatar } from "@/components/Avatar";
+import { deleteActivity, type DeletableKind } from "@/app/actions/activity";
 import { relativeTime, shortDate } from "@/lib/dates";
 import type { Activity, ActivityItem } from "@/lib/queries";
 import type { Profile, Trial } from "@/lib/types";
+
+// A stable key per feed row, and — where the row maps to a deletable entity —
+// its {kind, id}. "result" rows aren't deletable on their own (delete the round
+// via its "Round added" row instead).
+function rowKey(item: ActivityItem): string {
+  switch (item.kind) {
+    case "broadcast":
+      return `b-${item.broadcast.id}`;
+    case "trial":
+      return `t-${item.trial.id}`;
+    case "round":
+      return `r-${item.comp.id}`;
+    case "result":
+      return `res-${item.comp.id}`;
+    case "comment":
+      return `c-${item.comment.id}`;
+  }
+}
+
+function deleteTarget(item: ActivityItem): { kind: DeletableKind; id: string } | null {
+  switch (item.kind) {
+    case "broadcast":
+      return { kind: "broadcast", id: item.broadcast.id };
+    case "trial":
+      return { kind: "trial", id: item.trial.id };
+    case "round":
+      return { kind: "competition", id: item.comp.id };
+    case "comment":
+      return { kind: "comment", id: item.comment.id };
+    case "result":
+      return null;
+  }
+}
 
 type FilterKey = "all" | "messages" | "rounds" | "comments" | "court";
 
@@ -23,19 +58,92 @@ const FILTERS: { key: FilterKey; label: string; match: (i: ActivityItem) => bool
 export function ActivityFeed({
   activity,
   currentUserId,
+  isAdmin = false,
 }: {
   activity: Activity;
   currentUserId: string;
+  isAdmin?: boolean;
 }) {
+  const router = useRouter();
   const { items, profiles, totalPlayers } = activity;
   const byId = new Map(profiles.map((p) => [p.id, p]));
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
   const shown = items.filter(active.match);
 
+  function toggle(key: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function cancel() {
+    setSelecting(false);
+    setSelected(new Set());
+    setError(null);
+  }
+
+  async function doDelete() {
+    // Map selected row-keys back to their delete targets, deduped by the action.
+    const targets = shown
+      .filter((it) => selected.has(rowKey(it)))
+      .map(deleteTarget)
+      .filter((t): t is { kind: DeletableKind; id: string } => t !== null);
+    if (targets.length === 0) return;
+    if (!confirm(`Delete ${targets.length} item${targets.length === 1 ? "" : "s"} for good? This can't be undone.`)) return;
+    setBusy(true);
+    setError(null);
+    const res = await deleteActivity(targets);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Couldn't delete those.");
+      return;
+    }
+    cancel();
+    router.refresh();
+  }
+
   return (
     <div>
+      {isAdmin && (
+        <div className="mb-3 flex items-center justify-between">
+          {!selecting ? (
+            <button
+              onClick={() => setSelecting(true)}
+              className="font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+            >
+              Select to delete
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={doDelete}
+                disabled={busy || selected.size === 0}
+                className="rounded-[3px] bg-flag px-4 py-1.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+              >
+                {busy ? "Deleting" : `Delete (${selected.size})`}
+              </button>
+              <button
+                onClick={cancel}
+                disabled={busy}
+                className="font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {error && <p className="mb-2 text-sm text-flag">{error}</p>}
+
       <div className="mb-3 flex overflow-hidden rounded-[3px] border border-rule">
         {FILTERS.map((f, i) => {
           const on = f.key === filter;
@@ -61,7 +169,40 @@ export function ActivityFeed({
           {filter === "all" ? "Nothing here yet." : `No ${active.label.toLowerCase()} yet.`}
         </p>
       ) : (
-        shown.map((item) => renderItem(item, byId, totalPlayers, currentUserId))
+        shown.map((item) => {
+          const node = renderItem(item, byId, totalPlayers, currentUserId);
+          if (!selecting) return node;
+          const target = deleteTarget(item);
+          const key = rowKey(item);
+          const on = selected.has(key);
+          return (
+            <div key={`sel-${key}`} className="relative">
+              {node}
+              {/* Overlay intercepts the row's click so it selects instead of
+                  navigating. Result rows aren't deletable → no overlay. */}
+              {target && (
+                <button
+                  type="button"
+                  onClick={() => toggle(key)}
+                  aria-label={on ? "Deselect" : "Select"}
+                  aria-pressed={on}
+                  className="absolute inset-0 flex items-center justify-end pr-1"
+                  style={{ backgroundColor: on ? "rgba(180,55,42,0.08)" : "transparent" }}
+                >
+                  <span
+                    className="flex h-5 w-5 items-center justify-center rounded-[3px] border text-[11px] font-bold text-paper"
+                    style={{
+                      borderColor: on ? "var(--color-flag)" : "var(--color-rule)",
+                      backgroundColor: on ? "var(--color-flag)" : "var(--color-paper)",
+                    }}
+                  >
+                    {on ? "✓" : ""}
+                  </span>
+                </button>
+              )}
+            </div>
+          );
+        })
       )}
     </div>
   );

@@ -27,7 +27,7 @@ export default async function ActivityPage() {
 
       <p className="label mb-1">History</p>
       <hr className="rule" />
-      <ActivityFeed activity={activity} currentUserId={profile.id} />
+      <ActivityFeed activity={activity} currentUserId={profile.id} isAdmin={profile.is_admin} />
 
       {profile.is_admin && <ClearHistory clearedBefore={activity.clearedBefore} />}
     </div>
