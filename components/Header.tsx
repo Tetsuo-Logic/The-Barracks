@@ -20,10 +20,10 @@ export function Header({
         The Threeball
       </Link>
       <div className="flex items-center gap-3">
-        {/* Notifications — outstanding questions put to you. Everyone sees this,
-            so a missed push never means a missed ask. */}
+        {/* Notifications — outstanding items plus the full activity history.
+            Everyone sees this, so a missed push is never lost. */}
         <Link
-          href="/#asks"
+          href="/broadcast"
           aria-label={
             pendingCount > 0
               ? `${pendingCount} thing${pendingCount === 1 ? "" : "s"} waiting on you`
@@ -45,15 +45,13 @@ export function Header({
         >
           <BoardIcon />
         </Link>
-        {profile.is_admin && (
-          <Link
-            href="/broadcast"
-            aria-label="Ping the lads"
-            className="text-ink-soft transition-colors hover:text-ink"
-          >
-            <MegaphoneIcon />
-          </Link>
-        )}
+        <Link
+          href="/broadcast"
+          aria-label={profile.is_admin ? "Ping the lads" : "Activity"}
+          className="text-ink-soft transition-colors hover:text-ink"
+        >
+          <MegaphoneIcon />
+        </Link>
         <Link
           href="/settings"
           aria-label="Settings"

@@ -2,12 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
 import type {
   Broadcast,
+  BroadcastResponse,
   Comment,
   Competition,
   Photo,
   Profile,
   Rsvp,
   Score,
+  Trial,
 } from "@/lib/types";
 import type { PhotoWithUrl } from "@/components/Photos";
 
@@ -140,6 +142,113 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     newComments,
     total: asks.length + rsvpNeeded.length + newComments.length,
   };
+}
+
+// One entry in the shared activity timeline. A discriminated union so the feed
+// component can render each kind with the right row.
+export type ActivityItem =
+  | {
+      kind: "broadcast";
+      at: string;
+      broadcast: Broadcast;
+      responses: BroadcastResponse[];
+      answered: boolean;
+    }
+  | { kind: "trial"; at: string; trial: Trial }
+  | { kind: "round"; at: string; comp: Competition }
+  | { kind: "result"; at: string; comp: Competition }
+  | { kind: "comment"; at: string; comment: Comment; comp: Competition; authorName: string };
+
+export type Activity = {
+  items: ActivityItem[];
+  profiles: Profile[];
+  totalPlayers: number;
+};
+
+/**
+ * The whole group's activity, newest first: questions and notices sent, rounds
+ * added, results posted, comments, and courtroom trials. Read-only history that
+ * everyone can browse, so a missed push is never lost for good.
+ */
+export async function getActivityFeed(playerId: string): Promise<Activity> {
+  const supabase = await createClient();
+
+  const [
+    { data: broadcasts },
+    { data: responses },
+    { data: trials },
+    { data: comps },
+    { data: comments },
+    { data: scores },
+    { data: profiles },
+  ] = await Promise.all([
+    supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
+    supabase.from("broadcast_responses").select("*"),
+    supabase.from("trials").select("*"),
+    supabase.from("competitions").select("*"),
+    supabase.from("comments").select("*").order("created_at", { ascending: false }).limit(60),
+    supabase.from("scores").select("competition_id, updated_at"),
+    supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+  ]);
+
+  const allProfiles = (profiles ?? []) as Profile[];
+  const nameById = new Map(allProfiles.map((p) => [p.id, p.name]));
+  const compById = new Map(((comps ?? []) as Competition[]).map((c) => [c.id, c]));
+
+  const respByBroadcast = new Map<string, BroadcastResponse[]>();
+  for (const r of (responses ?? []) as BroadcastResponse[]) {
+    const list = respByBroadcast.get(r.broadcast_id) ?? [];
+    list.push(r);
+    respByBroadcast.set(r.broadcast_id, list);
+  }
+
+  // Latest score edit per competition — the moment a result went up.
+  const resultAt = new Map<string, string>();
+  for (const s of (scores ?? []) as Pick<Score, "competition_id" | "updated_at">[]) {
+    const prev = resultAt.get(s.competition_id);
+    if (!prev || s.updated_at > prev) resultAt.set(s.competition_id, s.updated_at);
+  }
+
+  const items: ActivityItem[] = [];
+
+  for (const b of (broadcasts ?? []) as Broadcast[]) {
+    const rs = respByBroadcast.get(b.id) ?? [];
+    items.push({
+      kind: "broadcast",
+      at: b.created_at,
+      broadcast: b,
+      responses: rs,
+      answered: rs.some((r) => r.player_id === playerId),
+    });
+  }
+
+  for (const t of (trials ?? []) as Trial[]) {
+    items.push({ kind: "trial", at: t.created_at, trial: t });
+  }
+
+  for (const c of (comps ?? []) as Competition[]) {
+    items.push({ kind: "round", at: c.created_at, comp: c });
+    const at = resultAt.get(c.id);
+    if (c.status === "played" && at) {
+      items.push({ kind: "result", at, comp: c });
+    }
+  }
+
+  for (const c of (comments ?? []) as Comment[]) {
+    const comp = compById.get(c.competition_id);
+    if (!comp) continue;
+    items.push({
+      kind: "comment",
+      at: c.created_at,
+      comment: c,
+      comp,
+      authorName: (c.author_id && nameById.get(c.author_id)) || "Someone",
+    });
+  }
+
+  items.sort((a, z) => (a.at < z.at ? 1 : -1));
+
+  return { items, profiles: allProfiles, totalPlayers: allProfiles.length };
 }
 
 export async function getCompetition(id: string): Promise<Competition | null> {
