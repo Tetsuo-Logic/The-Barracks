@@ -8,7 +8,7 @@ import { AvatarUpload } from "@/components/AvatarUpload";
 
 // Progress dashes (§5). Photo (step 2) is a placeholder until the photos work;
 // the last screen is the notification prompt, straight after setup (§6.2).
-const STEPS = ["Name", "Photo", "Details", "Alerts"] as const;
+const STEPS = ["Name", "Photo", "Setup", "Alerts"] as const;
 
 export function OnboardingFlow({
   initialName,
@@ -23,8 +23,7 @@ export function OnboardingFlow({
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
   const [nickname, setNickname] = useState("");
-  const [handicap, setHandicap] = useState("");
-  const [homeCourse, setHomeCourse] = useState("");
+  const [platform, setPlatform] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,8 +36,7 @@ export function OnboardingFlow({
     const res = await saveProfile({
       name,
       nickname: nick,
-      handicap,
-      home_course: homeCourse,
+      home_course: platform,
     });
     if (!res.ok) {
       setError(res.error);
@@ -80,33 +78,24 @@ export function OnboardingFlow({
             className="mb-6 w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
           />
 
-          <label className="label mb-1 block">Nickname — on the scorecard</label>
+          <label className="label mb-1 block">Nickname — your callsign</label>
           <input
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             autoCapitalize="characters"
             placeholder="MACCA"
-            className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 font-narrow uppercase tracking-[0.08em] text-ink outline-none focus:border-ink"
+            className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 font-mono uppercase tracking-[0.14em] text-ink outline-none focus:border-ink"
           />
 
-          {/* live preview of how it reads in the grid */}
+          {/* live preview of the callsign tag */}
           <div className="mt-8">
-            <p className="label mb-2">On the scorecard</p>
-            <div className="inline-flex overflow-hidden rounded-[3px] border border-ink">
-              <div
-                className="flex min-w-[3.5rem] max-w-[9rem] items-center justify-center truncate px-3 py-2 font-narrow font-semibold uppercase tracking-[0.08em] text-paper"
-                style={{ backgroundColor: colour }}
-              >
-                {nick || "····"}
-              </div>
-              {[4, 3, 5].map((n, i) => (
-                <div
-                  key={i}
-                  className="w-10 border-l border-rule py-2 text-center font-narrow font-semibold text-ink"
-                >
-                  {n}
-                </div>
-              ))}
+            <p className="label mb-2">Callsign</p>
+            <div
+              className="inline-flex items-center gap-2 rounded-[4px] px-4 py-2 font-mono font-semibold uppercase tracking-[0.14em] text-paper"
+              style={{ backgroundColor: colour }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-paper/80" aria-hidden />
+              {nick || "····"}
             </div>
           </div>
 
@@ -129,8 +118,8 @@ export function OnboardingFlow({
             A photo
           </h1>
           <p className="mb-6 text-ink-soft">
-            Take one or pick from your library — it&apos;ll show on the
-            scorecard and everywhere else. Or skip and add it later.
+            Take one or pick from your library — it&apos;ll show on your dossier
+            and everywhere else. Or skip and add it later.
           </p>
 
           <AvatarUpload name={name || "You"} colour={colour} avatarUrl={avatarUrl} />
@@ -156,24 +145,15 @@ export function OnboardingFlow({
         <div className="flex flex-1 flex-col">
           <p className="label mb-2">Step three</p>
           <h1 className="mb-6 text-[32px] font-extrabold leading-tight text-ink">
-            The details
+            Your setup
           </h1>
-          <p className="mb-6 text-ink-soft">Both skippable.</p>
+          <p className="mb-6 text-ink-soft">Skippable.</p>
 
-          <label className="label mb-1 block">Handicap</label>
+          <label className="label mb-1 block">Platform</label>
           <input
-            value={handicap}
-            onChange={(e) => setHandicap(e.target.value)}
-            inputMode="decimal"
-            placeholder="12.4"
-            className="mb-6 w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
-          />
-
-          <label className="label mb-1 block">Home course</label>
-          <input
-            value={homeCourse}
-            onChange={(e) => setHomeCourse(e.target.value)}
-            placeholder="Royal Ashdown"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            placeholder="PS5, Xbox, PC…"
             className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
           />
 
@@ -204,8 +184,8 @@ export function OnboardingFlow({
             Stay in the loop
           </h1>
           <p className="mb-6 text-ink-soft">
-            Get a nudge when a date goes in the diary, when the others chip in,
-            and when results land. You choose which in settings later.
+            Get a nudge when a game goes up, when the others chip in, and when
+            results land. You choose which in settings later.
           </p>
 
           <NotificationSetup />

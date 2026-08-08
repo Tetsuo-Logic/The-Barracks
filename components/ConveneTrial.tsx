@@ -82,7 +82,7 @@ export function ConveneTrial({
       <input
         value={charge}
         onChange={(e) => setCharge(e.target.value)}
-        placeholder="Said in, no-showed at Piltdown"
+        placeholder="Said in, then ghosted us on the night"
         className="w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
       />
 

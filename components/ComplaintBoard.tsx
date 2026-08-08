@@ -83,14 +83,14 @@ export function ComplaintBoard({
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Player in question takes 20 minutes on every green"
+          placeholder="Went AWOL and left us a man down"
           className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
         />
         <label className="label mb-1 block">Action you want</label>
         <input
           value={action}
           onChange={(e) => setAction(e.target.value)}
-          placeholder="A formal warning and a two-shot penalty"
+          placeholder="A formal warning"
           className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
         />
         <label className="label mb-1 block">Comment</label>
@@ -360,7 +360,7 @@ function ComplaintCard({
               value={ruling}
               onChange={(e) => setRuling(e.target.value)}
               rows={2}
-              placeholder="Complaint upheld. Slow play to buy the first round."
+              placeholder="Complaint upheld — offender buys the first round."
               className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
             />
             <button

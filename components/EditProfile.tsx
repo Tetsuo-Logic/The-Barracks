@@ -12,8 +12,7 @@ export function EditProfile({ profile }: { profile: Profile }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(profile.name);
   const [nickname, setNickname] = useState(profile.nickname ?? "");
-  const [handicap, setHandicap] = useState(profile.handicap?.toString() ?? "");
-  const [homeCourse, setHomeCourse] = useState(profile.home_course ?? "");
+  const [platform, setPlatform] = useState(profile.home_course ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +30,7 @@ export function EditProfile({ profile }: { profile: Profile }) {
   async function save() {
     setSaving(true);
     setError(null);
-    const res = await saveProfile({ name, nickname, handicap, home_course: homeCourse });
+    const res = await saveProfile({ name, nickname, home_course: platform });
     if (!res.ok) {
       setError(res.error);
       setSaving(false);
@@ -54,16 +53,8 @@ export function EditProfile({ profile }: { profile: Profile }) {
       <label className="label mb-1 block">Nickname</label>
       <input value={nickname} onChange={(e) => setNickname(e.target.value)} className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 font-narrow uppercase tracking-[0.08em] text-ink outline-none focus:border-ink" />
 
-      <div className="mb-3 flex gap-3">
-        <div className="flex-1">
-          <label className="label mb-1 block">Handicap</label>
-          <input value={handicap} inputMode="decimal" onChange={(e) => setHandicap(e.target.value)} className="w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink" />
-        </div>
-        <div className="flex-1">
-          <label className="label mb-1 block">Home course</label>
-          <input value={homeCourse} onChange={(e) => setHomeCourse(e.target.value)} className="w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink" />
-        </div>
-      </div>
+      <label className="label mb-1 block">Platform</label>
+      <input value={platform} onChange={(e) => setPlatform(e.target.value)} placeholder="PS5, Xbox, PC…" className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink" />
 
       {error && <p className="mb-2 text-sm text-flag">{error}</p>}
 

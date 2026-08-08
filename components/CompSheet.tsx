@@ -295,7 +295,7 @@ export function CompSheet({
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Dave's Testimonial, Winter Cup…"
+                      placeholder="Grand final, charity night…"
                       className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
                     />
                   </div>
@@ -312,7 +312,7 @@ export function CompSheet({
                 <input
                   value={stake}
                   onChange={(e) => setStake(e.target.value)}
-                  placeholder="£5 a skin, loser buys lunch"
+                  placeholder="£5 a game, loser buys the drinks"
                   className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
                 />
               </div>

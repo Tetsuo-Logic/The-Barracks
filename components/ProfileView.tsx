@@ -19,7 +19,6 @@ export function ProfileView({ record }: { record: PlayerRecord }) {
               <span className="font-narrow uppercase tracking-[0.08em]">{profile.nickname}</span>
             )}
             {profile.home_course ? ` · ${profile.home_course}` : ""}
-            {profile.handicap != null ? ` · hcp ${profile.handicap}` : ""}
           </p>
         </div>
       </div>
