@@ -5,6 +5,7 @@ import { getActivityFeed } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastCompose } from "@/components/BroadcastCompose";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { ClearHistory } from "@/components/ClearHistory";
 import type { Profile } from "@/lib/types";
 
 // "Ping the lads" — the organiser's compose screen, with the activity history
@@ -39,6 +40,8 @@ export default async function BroadcastPage() {
       <p className="label mb-1">History</p>
       <hr className="rule" />
       <ActivityFeed activity={activity} currentUserId={profile.id} />
+
+      <ClearHistory clearedBefore={activity.clearedBefore} />
     </div>
   );
 }

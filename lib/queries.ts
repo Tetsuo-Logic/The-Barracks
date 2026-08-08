@@ -70,11 +70,13 @@ export async function getFixturesData(): Promise<FixturesData> {
 }
 
 export type NewComment = { comment: Comment; comp: Competition };
+export type NewAnswer = { broadcast: Broadcast; count: number };
 
 export type Inbox = {
   asks: Broadcast[]; // questions put to you that you haven't answered
   rsvpNeeded: Competition[]; // upcoming rounds you haven't said in/out/maybe to
   newComments: NewComment[]; // comments by others since you last opened the inbox
+  newAnswers: NewAnswer[]; // replies to your own polls since you last looked
   total: number; // badge count
 };
 
@@ -94,6 +96,8 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     { data: comps },
     { data: myRsvps },
     { data: comments },
+    { data: myBroadcasts },
+    { data: respToMine },
   ] = await Promise.all([
     supabase
       .from("broadcasts")
@@ -116,6 +120,15 @@ export async function getInbox(player: Profile): Promise<Inbox> {
       .neq("author_id", player.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("broadcasts")
+      .select("*")
+      .eq("created_by", player.id)
+      .in("kind", ["yesno", "ask", "dates"]),
+    supabase
+      .from("broadcast_responses")
+      .select("broadcast_id, player_id, created_at")
+      .neq("player_id", player.id),
   ]);
 
   const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
@@ -136,11 +149,25 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     .map((c) => ({ comment: c, comp: compById.get(c.competition_id)! }))
     .filter((x) => Boolean(x.comp));
 
+  // Replies to your own polls since you last looked — so answers reach you too.
+  const mine = new Map(((myBroadcasts ?? []) as Broadcast[]).map((b) => [b.id, b]));
+  const answerCounts = new Map<string, number>();
+  for (const r of (respToMine ?? []) as Pick<BroadcastResponse, "broadcast_id" | "created_at">[]) {
+    if (!mine.has(r.broadcast_id)) continue;
+    if (new Date(r.created_at).getTime() <= seenMs) continue;
+    answerCounts.set(r.broadcast_id, (answerCounts.get(r.broadcast_id) ?? 0) + 1);
+  }
+  const newAnswers: NewAnswer[] = [...answerCounts.entries()].map(([id, count]) => ({
+    broadcast: mine.get(id)!,
+    count,
+  }));
+
   return {
     asks,
     rsvpNeeded,
     newComments,
-    total: asks.length + rsvpNeeded.length + newComments.length,
+    newAnswers,
+    total: asks.length + rsvpNeeded.length + newComments.length + newAnswers.length,
   };
 }
 
@@ -163,6 +190,7 @@ export type Activity = {
   items: ActivityItem[];
   profiles: Profile[];
   totalPlayers: number;
+  clearedBefore: string | null; // history cutoff, if the organiser set one
 };
 
 /**
@@ -181,6 +209,7 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     { data: comments },
     { data: scores },
     { data: profiles },
+    { data: settings },
   ] = await Promise.all([
     supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
     supabase.from("broadcast_responses").select("*"),
@@ -189,7 +218,13 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     supabase.from("comments").select("*").order("created_at", { ascending: false }).limit(60),
     supabase.from("scores").select("competition_id, updated_at"),
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+    supabase.from("app_settings").select("activity_cleared_before").eq("id", 1).maybeSingle(),
   ]);
+
+  const clearedBefore =
+    (settings as { activity_cleared_before: string | null } | null)?.activity_cleared_before ??
+    null;
+  const clearedMs = clearedBefore ? new Date(clearedBefore).getTime() : 0;
 
   const allProfiles = (profiles ?? []) as Profile[];
   const nameById = new Map(allProfiles.map((p) => [p.id, p.name]));
@@ -246,9 +281,17 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     });
   }
 
-  items.sort((a, z) => (a.at < z.at ? 1 : -1));
+  const visible = clearedMs
+    ? items.filter((i) => new Date(i.at).getTime() > clearedMs)
+    : items;
+  visible.sort((a, z) => (a.at < z.at ? 1 : -1));
 
-  return { items, profiles: allProfiles, totalPlayers: allProfiles.length };
+  return {
+    items: visible,
+    profiles: allProfiles,
+    totalPlayers: allProfiles.length,
+    clearedBefore,
+  };
 }
 
 export async function getCompetition(id: string): Promise<Competition | null> {

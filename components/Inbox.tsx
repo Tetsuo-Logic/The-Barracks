@@ -7,7 +7,7 @@ import type { Inbox as InboxData } from "@/lib/queries";
 // rounds that still need your RSVP, and new comments — so a missed push
 // notification never means a missed thing. Mirrors the header bell count.
 export function Inbox({ inbox }: { inbox: InboxData }) {
-  const { asks, rsvpNeeded, newComments, total } = inbox;
+  const { asks, rsvpNeeded, newComments, newAnswers, total } = inbox;
   if (total === 0) return null;
 
   return (
@@ -15,7 +15,7 @@ export function Inbox({ inbox }: { inbox: InboxData }) {
       id="asks"
       className="mb-6 scroll-mt-20 rounded-[3px] border border-flag/50 bg-card p-4"
     >
-      <MarkInboxSeen when={newComments.length > 0} />
+      <MarkInboxSeen when={newComments.length > 0 || newAnswers.length > 0} />
       <p className="label mb-2" style={{ color: "var(--color-flag)" }}>
         Waiting on you
       </p>
@@ -50,6 +50,25 @@ export function Inbox({ inbox }: { inbox: InboxData }) {
               </span>
               <span className="shrink-0 rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper">
                 RSVP
+              </span>
+            </Link>
+          </li>
+        ))}
+
+        {newAnswers.map(({ broadcast, count }) => (
+          <li key={`ans-${broadcast.id}`}>
+            <Link
+              href={`/broadcast/${broadcast.id}`}
+              className="flex items-center justify-between gap-3 py-2.5"
+            >
+              <span className="min-w-0 flex-1 truncate text-ink-soft">
+                <span className="text-ink">
+                  {count} new {count === 1 ? "answer" : "answers"}
+                </span>{" "}
+                on “{broadcast.title || broadcast.body}”
+              </span>
+              <span className="shrink-0 rounded-[3px] border border-rule px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+                View
               </span>
             </Link>
           </li>

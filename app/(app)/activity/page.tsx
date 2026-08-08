@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth";
 import { getActivityFeed, getInbox } from "@/lib/queries";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { Inbox } from "@/components/Inbox";
+import { ClearHistory } from "@/components/ClearHistory";
 
 // The bell's destination — everyone's notifications and history. Outstanding
 // items pinned at the top, the full read-only timeline below. No compose here;
@@ -27,6 +28,8 @@ export default async function ActivityPage() {
       <p className="label mb-1">History</p>
       <hr className="rule" />
       <ActivityFeed activity={activity} currentUserId={profile.id} />
+
+      {profile.is_admin && <ClearHistory clearedBefore={activity.clearedBefore} />}
     </div>
   );
 }
