@@ -8,6 +8,7 @@ import {
   respondToComplaint,
   requestSecondOpinion,
   submitSecondOpinion,
+  sendComplaintToCourt,
 } from "@/app/actions/board";
 import { Avatar } from "@/components/Avatar";
 import { relativeTime } from "@/lib/dates";
@@ -18,11 +19,13 @@ export function ComplaintBoard({
   profiles,
   currentUserId,
   canRule,
+  isAdmin = false,
 }: {
   complaints: Complaint[];
   profiles: Profile[];
   currentUserId: string;
   canRule: boolean;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const byId = new Map(profiles.map((p) => [p.id, p]));
@@ -123,6 +126,7 @@ export function ComplaintBoard({
               others={others}
               currentUserId={currentUserId}
               canRule={canRule}
+              isAdmin={isAdmin}
             />
           ))
         )}
@@ -141,6 +145,7 @@ export function ComplaintBoard({
               others={others}
               currentUserId={currentUserId}
               canRule={false}
+              isAdmin={false}
             />
           ))}
         </div>
@@ -155,12 +160,14 @@ function ComplaintCard({
   others,
   currentUserId,
   canRule,
+  isAdmin,
 }: {
   c: Complaint;
   byId: Map<string, Profile>;
   others: Profile[];
   currentUserId: string;
   canRule: boolean;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const filer = c.filed_by ? byId.get(c.filed_by) : null;
@@ -183,6 +190,14 @@ function ComplaintCard({
     const res = await fn();
     setBusy(false);
     if (res.ok) router.refresh();
+  }
+
+  async function toCourtHandler() {
+    if (!confirm("Send this to the Courtroom? It opens a trial with them as the defendant.")) return;
+    setBusy(true);
+    const res = await sendComplaintToCourt(c.id);
+    setBusy(false);
+    if (res.ok) router.push(`/trial/${res.trialId}`);
   }
 
   return (
@@ -316,6 +331,26 @@ function ComplaintCard({
                   Ask
                 </button>
               </div>
+            </div>
+          )}
+
+          {isAdmin && c.against_id && (
+            <div className="rounded-[3px] border border-flag/50 bg-card p-3">
+              <p className="label mb-1" style={{ color: "var(--color-flag)" }}>
+                Take it to court
+              </p>
+              <p className="mb-2 text-sm text-ink-soft">
+                {c.second_opinion_to_court
+                  ? "The second opinion says this is one for the court."
+                  : "Open a trial with them as the defendant."}
+              </p>
+              <button
+                onClick={toCourtHandler}
+                disabled={busy}
+                className="rounded-[3px] bg-flag px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
+              >
+                {busy ? "Opening" : "Send to court"}
+              </button>
             </div>
           )}
 

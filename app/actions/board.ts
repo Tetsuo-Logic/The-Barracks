@@ -220,6 +220,78 @@ export async function ruleOnComplaint(
   return { ok: true };
 }
 
+// Refer a complaint to the Courtroom: convene a trial with the subject as the
+// defendant, close the complaint, and ping everyone involved. Organiser only
+// (the trials insert policy requires admin).
+export async function sendComplaintToCourt(
+  complaintId: string,
+): Promise<{ ok: true; trialId: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  const { data: me } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+  if (!me?.is_admin) return { ok: false, error: "Only the organiser can convene the court." };
+
+  const { data: complaint } = await supabase
+    .from("complaints")
+    .select("against_id, reason, filed_by, second_opinion_by")
+    .eq("id", complaintId)
+    .single();
+  const cx = complaint as {
+    against_id: string | null;
+    reason: string;
+    filed_by: string | null;
+    second_opinion_by: string | null;
+  } | null;
+  if (!cx) return { ok: false, error: "Complaint not found." };
+  if (!cx.against_id) return { ok: false, error: "Say who it's about before sending it to court." };
+
+  const { data: trial, error } = await supabase
+    .from("trials")
+    .insert({ defendant_id: cx.against_id, charge: cx.reason, created_by: user.id })
+    .select("id")
+    .single();
+  if (error || !trial) return { ok: false, error: "Couldn't open the case." };
+  const trialId = (trial as { id: string }).id;
+
+  // Close the complaint on the board — it's now in the Courtroom.
+  await supabase
+    .from("complaints")
+    .update({
+      status: "addressed",
+      ruling: "Referred to the Courtroom.",
+      addressed_by: user.id,
+      addressed_at: new Date().toISOString(),
+    })
+    .eq("id", complaintId);
+
+  // The accused gets the bad news; the filer and any helper get the verdict on
+  // their complaint.
+  await sendToPlayers([cx.against_id], "board", {
+    title: "The board are taking you to court",
+    body: `${cx.reason} — tap to enter your defence.`,
+    url: `/trial/${trialId}`,
+    tag: "board",
+  });
+  const supporters = [cx.filed_by, cx.second_opinion_by].filter(
+    (id): id is string => Boolean(id) && id !== user.id && id !== cx.against_id,
+  );
+  if (supporters.length > 0) {
+    await sendToPlayers(supporters, "board", {
+      title: "Your complaint is going to court",
+      body: "The president and board agree — it's headed to the Courtroom.",
+      url: `/trial/${trialId}`,
+      tag: "board",
+    });
+  }
+
+  revalidatePath("/board");
+  revalidatePath("/trial");
+  return { ok: true, trialId };
+}
+
 // The admin names the President (one at a time). Admin keeps all powers.
 export async function setPresident(
   playerId: string,

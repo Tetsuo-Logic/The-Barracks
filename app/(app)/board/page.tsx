@@ -35,6 +35,7 @@ export default async function BoardPage() {
         profiles={allProfiles}
         currentUserId={profile.id}
         canRule={profile.is_president || profile.is_admin}
+        isAdmin={profile.is_admin}
       />
     </div>
   );
