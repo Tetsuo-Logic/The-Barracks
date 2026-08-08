@@ -7,7 +7,6 @@ import type { RsvpStatus } from "@/lib/types";
 
 const OPTIONS: { value: RsvpStatus; label: string; fill: string }[] = [
   { value: "in", label: "In", fill: "var(--color-moss)" },
-  { value: "maybe", label: "Maybe", fill: "var(--color-sand)" },
   { value: "out", label: "Out", fill: "var(--color-flag)" },
 ];
 
@@ -142,7 +141,7 @@ export function RsvpButtons({
   // Not yet in — show the choices.
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {OPTIONS.map((o) => {
           const active = status === o.value;
           return (
@@ -164,10 +163,8 @@ export function RsvpButtons({
       </div>
       {error ? (
         <p className="mt-2 text-sm text-flag">{error}</p>
-      ) : status ? (
-        <p className="mt-2 text-sm text-ink-soft">
-          {status === "out" ? "You're out. Saved." : "Maybe it is. Saved."}
-        </p>
+      ) : status === "out" ? (
+        <p className="mt-2 text-sm text-ink-soft">You&apos;re out. Saved.</p>
       ) : (
         <p className="mt-2 text-sm text-ink-soft">
           Say you&apos;re in and you&apos;re committed.
