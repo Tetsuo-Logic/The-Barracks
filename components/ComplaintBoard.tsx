@@ -193,7 +193,7 @@ function ComplaintCard({
   }
 
   async function toCourtHandler() {
-    if (!confirm("Send this to the Courtroom? It opens a trial with them as the defendant.")) return;
+    if (!confirm("Send this to the Tribunal? It opens a trial with them as the defendant.")) return;
     setBusy(true);
     const res = await sendComplaintToCourt(c.id);
     setBusy(false);

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   shortTime,
-  formatLabel,
   FORMAT_COLOUR,
   parseDate,
   todayISO,
 } from "@/lib/dates";
+import { gameById, compHeading, compMetaChip } from "@/lib/games";
 import type { Competition } from "@/lib/types";
 
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
@@ -100,7 +100,7 @@ export function CalendarView({
               <span className="font-narrow text-sm tabular-nums text-ink">{day}</span>
               <span className="mt-0.5 flex h-1.5 gap-0.5">
                 {comps?.slice(0, 3).map((c) => (
-                  <span key={c.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: FORMAT_COLOUR[c.format] }} />
+                  <span key={c.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: gameById(c.game).hasScorecard ? FORMAT_COLOUR[c.format] : gameById(c.game).colour }} />
                 ))}
               </span>
             </button>
@@ -135,15 +135,17 @@ export function CalendarView({
 
 function DayRow({ comp }: { comp: Competition }) {
   const tee = shortTime(comp.tee_time);
+  const game = gameById(comp.game);
+  const dotColour = game.hasScorecard ? FORMAT_COLOUR[comp.format] : game.colour;
   return (
     <Link href={`/comp/${comp.id}`} className="flex items-center gap-3 border-b border-rule py-3">
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: FORMAT_COLOUR[comp.format] }} />
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColour }} />
       <span className="w-10 shrink-0 font-narrow text-sm font-semibold tabular-nums text-ink">
         {parseDate(comp.date).getDate()}
       </span>
-      <span className="flex-1 truncate text-ink">{comp.course}</span>
+      <span className="flex-1 truncate text-ink">{compHeading(comp)}</span>
       <span className="shrink-0 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
-        {comp.holes} · {formatLabel(comp.format)}
+        {compMetaChip(comp)}
         {tee && ` · ${tee}`}
       </span>
     </Link>

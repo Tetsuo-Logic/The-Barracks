@@ -7,6 +7,7 @@ import { BroadcastRow } from "@/components/BroadcastRow";
 import { Avatar } from "@/components/Avatar";
 import { deleteActivity, type DeletableKind } from "@/app/actions/activity";
 import { relativeTime, shortDate } from "@/lib/dates";
+import { compHeading } from "@/lib/games";
 import type { Activity, ActivityItem } from "@/lib/queries";
 import type { Profile, Trial } from "@/lib/types";
 
@@ -236,12 +237,12 @@ function renderItem(
         >
           <div className="flex items-center justify-between">
             <span className="label" style={{ color: "var(--color-moss)" }}>
-              Round added
+              Game added
             </span>
             <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
           </div>
           <p className="mt-1 text-ink">
-            <span className="font-semibold">{item.comp.title || item.comp.course}</span>
+            <span className="font-semibold">{compHeading(item.comp)}</span>
             <span className="text-ink-soft"> · {shortDate(item.comp.date)}</span>
           </p>
         </Link>
@@ -260,7 +261,7 @@ function renderItem(
             <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
           </div>
           <p className="mt-1 text-ink">
-            <span className="font-semibold">{item.comp.title || item.comp.course}</span>
+            <span className="font-semibold">{compHeading(item.comp)}</span>
             <span className="text-ink-soft"> · {shortDate(item.comp.date)}</span>
           </p>
         </Link>
@@ -288,7 +289,7 @@ function renderItem(
               <span className="font-semibold">
                 {item.comment.author_id === currentUserId ? "You" : item.authorName}
               </span>{" "}
-              on {item.comp.course} — “{item.comment.body}”
+              on {compHeading(item.comp)} — “{item.comment.body}”
             </p>
           </div>
         </Link>
@@ -308,7 +309,7 @@ function TrialRow({ trial, byId }: { trial: Trial; byId: Map<string, Profile> })
     <Link href={`/trial/${trial.id}`} className="block border-b border-rule py-3">
       <div className="flex items-center justify-between">
         <span className="label" style={{ color: "var(--color-flag)" }}>
-          The Courtroom
+          The Tribunal
         </span>
         <span className="flex items-center gap-2 text-xs text-ink-soft">
           <span

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ComplaintBoard } from "@/components/ComplaintBoard";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import type { Complaint, Profile } from "@/lib/types";
 
 export default async function BoardPage() {
@@ -18,10 +19,11 @@ export default async function BoardPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label">The board</p>
-        <Link href="/" className="label text-ink-soft">← Fixtures</Link>
-      </div>
+      <ConsoleHeader
+        title="The Board"
+        tag="Grievances"
+        right={<Link href="/" className="label text-ink-soft">← Games</Link>}
+      />
 
       {president && (
         <p className="mb-5 rounded-[3px] border border-rule bg-card px-4 py-2 text-sm text-ink">

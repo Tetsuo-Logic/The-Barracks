@@ -5,6 +5,7 @@ import type {
   BroadcastResponse,
   Comment,
   Competition,
+  GameRequest,
   Photo,
   Profile,
   Rsvp,
@@ -67,6 +68,26 @@ export async function getFixturesData(): Promise<FixturesData> {
     .slice(0, 8);
 
   return { profiles: allProfiles, next, upcoming, recent, rsvpsByComp };
+}
+
+export type GameRequestWithPlayer = GameRequest & { requester: Profile | null };
+
+/** Open game requests (newest first), each with the player who floated it. */
+export async function getOpenGameRequests(): Promise<GameRequestWithPlayer[]> {
+  const supabase = await createClient();
+  const [{ data: reqs }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("game_requests")
+      .select("*")
+      .eq("status", "open")
+      .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("*"),
+  ]);
+  const byId = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
+  return ((reqs ?? []) as GameRequest[]).map((r) => ({
+    ...r,
+    requester: r.requested_by ? byId.get(r.requested_by) ?? null : null,
+  }));
 }
 
 export type NewComment = { comment: Comment; comp: Competition };
@@ -366,7 +387,7 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     const par = c.par ?? Array(c.holes).fill(4);
     lastRounds.push({
       compId: c.id,
-      course: c.course,
+      course: c.course ?? "",
       date: c.date,
       toPar: toPar(s.strokes, par),
     });

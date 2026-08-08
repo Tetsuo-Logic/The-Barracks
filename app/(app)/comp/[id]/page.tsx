@@ -22,7 +22,7 @@ export default async function CompPage({
         href="/"
         className="label mb-4 inline-block text-ink-soft"
       >
-        ← Fixtures
+        ← Games
       </Link>
       <CompDetail
         detail={detail}

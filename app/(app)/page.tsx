@@ -1,11 +1,17 @@
 import { requireProfile } from "@/lib/auth";
-import { getFixturesData, getCompetition, getInbox } from "@/lib/queries";
+import {
+  getFixturesData,
+  getCompetition,
+  getInbox,
+  getOpenGameRequests,
+} from "@/lib/queries";
 import { EmptyState } from "@/components/EmptyState";
 import { NextUpCard } from "@/components/NextUpCard";
 import { CompListRow } from "@/components/CompListRow";
 import { AddDateButton } from "@/components/AddDateButton";
 import { CompSheet } from "@/components/CompSheet";
-import { GolfBanner } from "@/components/GolfScene";
+import { GameRequests } from "@/components/GameRequests";
+import { CommandBanner } from "@/components/CommandBanner";
 import { Inbox } from "@/components/Inbox";
 
 // / — Fixtures (home). Next-up hero, upcoming + recent lists, add/edit sheet.
@@ -20,7 +26,10 @@ export default async function FixturesPage({
     searchParams,
   ]);
   const { profiles, next, upcoming, recent, rsvpsByComp } = data;
-  const inbox = await getInbox(profile);
+  const [inbox, gameRequests] = await Promise.all([
+    getInbox(profile),
+    getOpenGameRequests(),
+  ]);
 
   const isAdmin = profile.is_admin;
   // Only the organiser gets the create/edit sheet.
@@ -33,16 +42,14 @@ export default async function FixturesPage({
     new Set(
       [next, ...upcoming, ...recent]
         .filter(Boolean)
-        .map((c) => (c as { course: string }).course),
+        .map((c) => (c as { course: string | null }).course)
+        .filter((c): c is string => Boolean(c)),
     ),
   ).slice(0, 6);
 
   return (
     <div>
-      {/* course-horizon banner — the illustration you meet every visit */}
-      <div className="mb-6 overflow-hidden rounded-[3px] border border-rule">
-        <GolfBanner className="block h-24 w-full" />
-      </div>
+      <CommandBanner operators={profiles.length} callsign={profile.nickname} />
 
       <Inbox inbox={inbox} />
 
@@ -56,11 +63,11 @@ export default async function FixturesPage({
         />
       ) : (
         <>
-          <p className="label mb-2">Next up</p>
+          <p className="label mb-2" style={{ color: "var(--color-sand)" }}>▸ Next up</p>
           <EmptyState action={isAdmin ? <AddDateButton /> : undefined}>
             {isAdmin
-              ? "No dates in the diary. Someone has to go first."
-              : "No dates in the diary yet."}
+              ? "No games on the board. Someone call the first one."
+              : "No games on the board yet — request one below. 🎮"}
           </EmptyState>
         </>
       )}
@@ -76,6 +83,13 @@ export default async function FixturesPage({
           </div>
         </section>
       )}
+
+      {/* Player-initiated game requests — anyone can float a game */}
+      <GameRequests
+        requests={gameRequests}
+        isAdmin={isAdmin}
+        currentUserId={profile.id}
+      />
 
       {recent.length > 0 && (
         <section className="mt-8">

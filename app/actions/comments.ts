@@ -39,7 +39,7 @@ export async function postComment(
     ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
     "comments",
     {
-      title: (me as { name?: string })?.name ?? "The Threeball",
+      title: (me as { name?: string })?.name ?? "The Barracks",
       body: text.length > 80 ? text.slice(0, 79) + "…" : text,
       url: `/comp/${competitionId}`,
       tag: `chat-${competitionId}`,

@@ -75,7 +75,7 @@ export function RsvpButtons({
               </p>
               <p className="mb-3 text-sm text-ink">
                 You said you were in. Backing out now goes straight to the
-                Courtroom for a strike hearing. Put your reasons down — they
+                Tribunal for a strike hearing. Put your reasons down — they
                 become your defence.
               </p>
               <textarea

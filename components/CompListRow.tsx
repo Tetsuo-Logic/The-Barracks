@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { shortDate, formatLabel, FORMAT_COLOUR } from "@/lib/dates";
+import { shortDate, FORMAT_COLOUR } from "@/lib/dates";
+import { gameById, compHeading, compMetaChip } from "@/lib/games";
 import type { Competition } from "@/lib/types";
 import type { RsvpWithPlayer } from "@/lib/queries";
 
@@ -14,27 +15,29 @@ export function CompListRow({
 }) {
   const inCount = rsvps.filter((r) => r.status === "in").length;
   const cancelled = comp.status === "cancelled";
+  const game = gameById(comp.game);
+  const dotColour = game.hasScorecard ? FORMAT_COLOUR[comp.format] : game.colour;
 
   return (
     <Link href={`/comp/${comp.id}`} className="flex items-center gap-3 py-3">
       <span
         className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: FORMAT_COLOUR[comp.format] }}
+        style={{ backgroundColor: dotColour }}
         aria-hidden
       />
       <span className="w-16 shrink-0 font-narrow text-sm font-semibold uppercase tracking-[0.04em] text-ink">
         {shortDate(comp.date)}
       </span>
       <span className="flex-1 truncate text-ink">
-        {comp.title || comp.course}
+        {compHeading(comp)}
         {cancelled && (
           <span className="ml-2 font-narrow text-xs uppercase tracking-[0.08em] text-flag">
-            cancelled
+            scrubbed
           </span>
         )}
       </span>
       <span className="shrink-0 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
-        {comp.holes} · {formatLabel(comp.format)}
+        {compMetaChip(comp)}
       </span>
       <span className="w-10 shrink-0 text-right font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
         {inCount > 0 ? `${inCount} in` : "—"}

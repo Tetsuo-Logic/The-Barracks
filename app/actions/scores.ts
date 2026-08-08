@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
 import { playerScores, resultSummary } from "@/lib/scoring";
 import { shortDate } from "@/lib/dates";
+import { compHeading } from "@/lib/games";
 import type { Competition, Profile, Score } from "@/lib/types";
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -95,7 +96,7 @@ export async function finishCompetition(
         "results",
         {
           title: `${summary.player.name} takes it — ${summary.detail}`,
-          body: `${c.course}, ${shortDate(c.date)}`,
+          body: `${compHeading(c)}, ${shortDate(c.date)}`,
           url: `/comp/${competitionId}`,
           tag: `result-${competitionId}`,
         },

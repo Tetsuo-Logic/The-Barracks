@@ -1,4 +1,5 @@
 import { formatLabel } from "@/lib/dates";
+import { gameById } from "@/lib/games";
 import type { Competition } from "@/lib/types";
 
 // Build a floating-time VEVENT (no timezone) so a 09:40 tee is 09:40 at the
@@ -11,21 +12,24 @@ export function buildIcs(comp: Competition): string {
   // rough duration: ~2h for 9, ~4h for 18
   const end = addHours(comp.date, comp.tee_time ?? "09:00:00", comp.holes === 18 ? 4 : 2);
 
+  const game = gameById(comp.game);
   const title = comp.title
     ? comp.title
-    : `Golf — ${comp.course} (${formatLabel(comp.format)})`;
+    : game.hasScorecard
+      ? `Golf — ${comp.course} (${formatLabel(comp.format)})`
+      : game.name;
 
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//The Threeball//EN",
+    "PRODID:-//The Barracks//EN",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
-    `UID:${comp.id}@threeball`,
+    `UID:${comp.id}@barracks`,
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${escapeIcs(title)}`,
-    `LOCATION:${escapeIcs(comp.course)}`,
+    comp.course ? `LOCATION:${escapeIcs(comp.course)}` : "",
     comp.stake ? `DESCRIPTION:${escapeIcs(comp.stake)}` : "",
     "END:VEVENT",
     "END:VCALENDAR",

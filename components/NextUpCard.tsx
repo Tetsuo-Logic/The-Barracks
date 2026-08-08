@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { RsvpButtons } from "@/components/RsvpButtons";
 import { heroDate, isToday, shortTime, formatLabel } from "@/lib/dates";
+import { gameById, compHeading } from "@/lib/games";
 import { isLocked } from "@/lib/rsvp";
 import type { Competition, Profile, RsvpStatus } from "@/lib/types";
 import type { RsvpWithPlayer } from "@/lib/queries";
@@ -33,14 +34,17 @@ export function NextUpCard({
   const { dow, day, mon } = heroDate(comp.date);
   const today = isToday(comp.date);
   const tee = shortTime(comp.tee_time);
+  const game = gameById(comp.game);
+  const isGolf = game.hasScorecard;
+  const heading = compHeading(comp);
 
   const byPlayer = new Map(rsvps.map((r) => [r.player_id, r]));
   const mine = byPlayer.get(currentUserId)?.status ?? null;
 
   return (
-    <section className="rounded-[3px] border border-rule bg-card p-5 shadow-[var(--shadow-card)]">
+    <section className="hud p-5">
       <div className="flex items-start justify-between">
-        <p className="label">Next up</p>
+        <p className="label" style={{ color: "var(--color-sand)" }}>▸ Next up</p>
         <div className="flex items-center gap-3">
           {isAdmin && (
             <Link href={`/?sheet=${comp.id}`} scroll={false} className="label text-ink-soft">
@@ -58,7 +62,7 @@ export function NextUpCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={comp.image_url}
-          alt={comp.title ?? comp.course}
+          alt={heading}
           className="mt-3 h-32 w-full rounded-[3px] border border-rule object-cover"
         />
       )}
@@ -66,33 +70,41 @@ export function NextUpCard({
       {/* Hero: date stack + meta */}
       <div className="mt-3 flex items-start gap-5">
         <div className="text-center leading-none">
-          <div className="font-narrow text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
+          <div className="font-mono text-[12px] font-medium uppercase tracking-[0.14em] text-ink-soft">
             {dow}
           </div>
           <div
-            className="font-narrow text-[44px] font-bold leading-[0.9]"
-            style={{ color: today ? "var(--color-flag)" : "var(--color-ink)" }}
+            className="font-mono text-[46px] font-bold leading-[0.9]"
+            style={{ color: today ? "var(--color-flag)" : "var(--color-sand)" }}
           >
             {day}
           </div>
-          <div className="font-narrow text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
+          <div className="font-mono text-[12px] font-medium uppercase tracking-[0.14em] text-ink-soft">
             {mon}
           </div>
         </div>
 
         <div className="flex-1 pt-1">
-          <h2 className="text-[20px] font-bold leading-tight text-ink">
-            {comp.title || comp.course}
+          <h2 className="display text-[21px] font-semibold leading-tight text-ink">
+            {heading}
           </h2>
-          {comp.title && (
+          {isGolf && comp.title && comp.course && (
             <p className="mt-0.5 text-sm text-ink-soft">{comp.course}</p>
           )}
           <p className="mt-1 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-ink-soft">
-            {comp.holes} holes · {formatLabel(comp.format)}
+            {isGolf ? (
+              <>
+                {comp.holes} holes · {formatLabel(comp.format)}
+              </>
+            ) : (
+              <>
+                {game.emoji} {game.name}
+              </>
+            )}
           </p>
           {tee && (
             <p className="mt-0.5 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-ink-soft">
-              Tee {tee}
+              {isGolf ? `Tee ${tee}` : tee}
             </p>
           )}
         </div>
@@ -102,8 +114,8 @@ export function NextUpCard({
 
       <hr className="rule my-4" />
 
-      {/* Your answer */}
-      <p className="label mb-2">Are you in?</p>
+      {/* Roll call */}
+      <p className="label mb-2">Roll call ✋</p>
       <RsvpButtons competitionId={comp.id} current={mine} locked={isLocked(comp)} />
 
       <hr className="rule my-4" />

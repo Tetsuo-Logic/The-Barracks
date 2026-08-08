@@ -4,6 +4,7 @@ import { getActivityFeed, getInbox } from "@/lib/queries";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { Inbox } from "@/components/Inbox";
 import { ClearHistory } from "@/components/ClearHistory";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 
 // The bell's destination — everyone's notifications and history. Outstanding
 // items pinned at the top, the full read-only timeline below. No compose here;
@@ -18,10 +19,11 @@ export default async function ActivityPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label">Notifications</p>
-        <Link href="/" className="label text-ink-soft">← Fixtures</Link>
-      </div>
+      <ConsoleHeader
+        title="Comms Log"
+        tag="Archive"
+        right={<Link href="/" className="label text-ink-soft">← Games</Link>}
+      />
 
       <Inbox inbox={inbox} />
 

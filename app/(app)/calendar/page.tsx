@@ -2,6 +2,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CalendarView } from "@/components/CalendarView";
 import { AddDateButton } from "@/components/AddDateButton";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import type { Competition } from "@/lib/types";
 
 export default async function CalendarPage() {
@@ -13,10 +14,11 @@ export default async function CalendarPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label">Calendar</p>
-        {profile.is_admin && <AddDateButton />}
-      </div>
+      <ConsoleHeader
+        title="Calendar"
+        tag="Schedule"
+        right={profile.is_admin ? <AddDateButton /> : undefined}
+      />
       <CalendarView
         competitions={(data ?? []) as Competition[]}
         initialYear={now.getFullYear()}

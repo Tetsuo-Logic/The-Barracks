@@ -12,10 +12,10 @@ type Mode = BroadcastKind | "court";
 
 const KINDS: { value: Mode; label: string; hint: string }[] = [
   { value: "yesno", label: "Yes / No", hint: "They answer yes or no." },
-  { value: "dates", label: "Dates", hint: "Offer dates; they tick what they can do." },
+  { value: "dates", label: "Deploy", hint: "Deployment check — offer nights; they tick what they can do." },
   { value: "ask", label: "Ask", hint: "They reply in words." },
-  { value: "announce", label: "Tell", hint: "Just say something." },
-  { value: "court", label: "Court", hint: "Put someone on trial for flaking." },
+  { value: "announce", label: "Tell", hint: "Just put out a dispatch." },
+  { value: "court", label: "Court", hint: "Court-martial someone for flaking." },
 ];
 
 export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
@@ -83,7 +83,7 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
 
   return (
     <div className="rounded-[3px] border border-rule bg-card p-4">
-      <p className="label mb-2">Ping the lads</p>
+      <p className="label mb-2">Comms 📡</p>
 
       <div className="mb-3 flex overflow-hidden rounded-[3px] border border-rule">
         {KINDS.map((k, i) => {
@@ -161,7 +161,7 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
               Add
             </button>
           </div>
-          <p className="mt-1 text-xs text-ink-soft">The lads pick a tee time that suits them on each day they can do.</p>
+          <p className="mt-1 text-xs text-ink-soft">The squad pick a time that suits them on each night they can do.</p>
           {dateOptions.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {dateOptions.map((d) => (
@@ -191,13 +191,13 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
         rows={2}
         placeholder={
           isCourt
-            ? "Said in, no-showed at Pebble with no word"
+            ? "Said in, then ghosted us on the night"
             : mode === "yesno"
-              ? "Anyone fancy nine holes Sunday?"
+              ? "Anyone about for a game Sunday?"
               : mode === "dates"
-                ? "Which of these can you do? (optional note)"
+                ? "Which nights can you do? (optional note)"
                 : mode === "ask"
-                  ? "What day suits everyone next week?"
+                  ? "What night suits everyone next week?"
                   : "Servers are down tonight, heads up."
         }
         className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"

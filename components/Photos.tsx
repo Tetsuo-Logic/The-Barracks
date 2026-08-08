@@ -139,7 +139,7 @@ function Viewer({
   const uploader = p.uploader_id ? profileById.get(p.uploader_id) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/95">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
       <button onClick={onClose} className="p-4 text-right font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper">
         Close
       </button>

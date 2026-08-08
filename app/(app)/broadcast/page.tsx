@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { BroadcastCompose } from "@/components/BroadcastCompose";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { ClearHistory } from "@/components/ClearHistory";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import type { Profile } from "@/lib/types";
 
-// "Ping the lads" — the organiser's compose screen, with the activity history
+// "Comms 📡" — the organiser's compose screen, with the activity history
 // below it. Organiser only; everyone else reaches the history via the bell
 // (/activity).
 export default async function BroadcastPage() {
@@ -28,10 +29,11 @@ export default async function BroadcastPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label">Ping the lads</p>
-        <Link href="/" className="label text-ink-soft">← Fixtures</Link>
-      </div>
+      <ConsoleHeader
+        title="Comms"
+        tag="📡 Transmit"
+        right={<Link href="/" className="label text-ink-soft">← Games</Link>}
+      />
 
       <div className="mb-8">
         <BroadcastCompose candidates={candidates} />

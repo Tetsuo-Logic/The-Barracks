@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MarkInboxSeen } from "@/components/MarkInboxSeen";
 import { shortDate } from "@/lib/dates";
+import { compHeading } from "@/lib/games";
 import type { Inbox as InboxData } from "@/lib/queries";
 
 // A home-screen strip of everything waiting for you — questions to answer,
@@ -45,11 +46,11 @@ export function Inbox({ inbox }: { inbox: InboxData }) {
               className="flex items-center justify-between gap-3 py-2.5"
             >
               <span className="min-w-0 flex-1 truncate text-ink">
-                {c.course}
+                {compHeading(c)}
                 <span className="text-ink-soft"> · {shortDate(c.date)}</span>
               </span>
               <span className="shrink-0 rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper">
-                RSVP
+                Roll call
               </span>
             </Link>
           </li>
@@ -81,7 +82,7 @@ export function Inbox({ inbox }: { inbox: InboxData }) {
               className="flex items-center justify-between gap-3 py-2.5"
             >
               <span className="min-w-0 flex-1 truncate text-ink-soft">
-                <span className="text-ink">{comp.course}</span> — “{comment.body}”
+                <span className="text-ink">{compHeading(comp)}</span> — “{comment.body}”
               </span>
               <span className="shrink-0 rounded-[3px] border border-rule px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
                 New

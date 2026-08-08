@@ -12,12 +12,18 @@ export function Header({
   pendingCount?: number;
 }) {
   return (
-    <header className="sticky top-0 z-20 mx-auto flex w-full max-w-[520px] items-center justify-between border-b border-rule bg-paper/95 px-4 py-3 backdrop-blur-sm">
-      <Link
-        href="/"
-        className="font-narrow text-[15px] font-bold uppercase tracking-[0.08em] text-ink"
-      >
-        The Threeball
+    <header className="sticky top-0 z-20 mx-auto flex w-full max-w-[520px] items-center justify-between border-b border-rule bg-paper/80 px-4 py-3 backdrop-blur-md [box-shadow:0_1px_0_rgba(245,182,61,0.12)]">
+      <Link href="/" className="group flex items-center gap-2">
+        <span
+          className="h-1.5 w-1.5 rounded-full bg-moss [box-shadow:0_0_8px_1px_var(--color-moss)]"
+          aria-hidden
+        />
+        <span className="font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-ink">
+          BARRACKS
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+          🪖
+        </span>
       </Link>
       <div className="flex items-center gap-3">
         {/* Notifications — outstanding items plus the full activity history.
@@ -48,7 +54,7 @@ export function Header({
         {profile.is_admin && (
           <Link
             href="/broadcast"
-            aria-label="Ping the lads"
+            aria-label="Comms — ping the squad"
             className="text-ink-soft transition-colors hover:text-ink"
           >
             <MegaphoneIcon width={26} height={26} />

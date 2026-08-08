@@ -44,9 +44,10 @@ export interface Complaint {
 export interface Competition {
   id: string;
   created_by: string | null;
+  game: string; // which game — see lib/games.ts; 'threeball' is golf
   title: string | null;
   image_url: string | null; // optional banner for named one-off events
-  course: string;
+  course: string | null; // golf course; null for non-golf ops
   date: string; // bare 'YYYY-MM-DD'
   tee_time: string | null; // bare 'HH:MM:SS'
   holes: 9 | 18;
@@ -136,6 +137,17 @@ export interface Warning {
   reason: string | null;
   trial_id: string | null;
   created_by: string | null;
+  created_at: string;
+}
+
+export type GameRequestStatus = "open" | "planning" | "done" | "declined";
+
+export interface GameRequest {
+  id: string;
+  requested_by: string | null;
+  game: string; // a game id from lib/games.ts
+  note: string | null;
+  status: GameRequestStatus;
   created_at: string;
 }
 

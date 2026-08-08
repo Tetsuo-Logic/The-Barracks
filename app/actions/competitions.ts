@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
-import { heroDate, formatLabel } from "@/lib/dates";
+import { heroDate, shortTime } from "@/lib/dates";
+import { gameById, gameHasScorecard, DEFAULT_GAME } from "@/lib/games";
 import type { CompetitionFormat, Profile } from "@/lib/types";
 
 export type CompetitionInput = {
   id?: string;
-  course: string;
+  game?: string; // a game id from lib/games.ts; defaults to golf
+  course?: string;
   title?: string;
   image_url?: string | null;
   date: string; // 'YYYY-MM-DD'
@@ -43,10 +45,13 @@ export async function saveCompetition(
 ): Promise<Result> {
   const { supabase, user, isAdmin } = await requireAdmin();
   if (!user) return { ok: false, error: "Not signed in." };
-  if (!isAdmin) return { ok: false, error: "Only the organiser can do that." };
+  if (!isAdmin) return { ok: false, error: "Only the CO can do that." };
 
-  const course = input.course.trim();
-  if (!course) return { ok: false, error: "A course is needed." };
+  const game = gameById(input.game).id ?? DEFAULT_GAME;
+  const isGolf = gameHasScorecard(game);
+
+  const course = input.course?.trim() || null;
+  if (isGolf && !course) return { ok: false, error: "A course is needed." };
   if (!input.date) return { ok: false, error: "A date is needed." };
 
   // Par defaults to all 4s — nobody enters 18 numbers before playing (§5).
@@ -56,7 +61,9 @@ export async function saveCompetition(
       : Array<number>(input.holes).fill(4);
 
   const row = {
-    course,
+    game,
+    // Non-golf ops have no course; a custom title/name stands in for it.
+    course: isGolf ? course : null,
     title: input.title?.trim() || null,
     image_url: input.image_url?.trim() || null,
     date: input.date,
@@ -67,10 +74,11 @@ export async function saveCompetition(
     notes: input.notes?.trim() || null,
     par,
     stroke_index:
-      input.stroke_index && input.stroke_index.length === input.holes
+      isGolf && input.stroke_index && input.stroke_index.length === input.holes
         ? input.stroke_index
         : null,
-    for_cup: input.for_cup ?? true,
+    // Only golf ops can count for the cup.
+    for_cup: isGolf ? (input.for_cup ?? true) : false,
   };
 
   if (input.id) {
@@ -97,12 +105,17 @@ export async function saveCompetition(
     .select("id")
     .neq("id", user.id);
   const { day, mon } = heroDate(row.date);
+  const g = gameById(game);
+  const tee = shortTime(row.tee_time);
+  const body = isGolf
+    ? `${course}, ${row.holes} holes${tee ? ` · ${tee}` : ""}. Roll call?`
+    : `${row.title || g.name} · ${day} ${mon}${tee ? ` · ${tee}` : ""}. Roll call?`;
   await sendToPlayers(
     ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
     "new_comp",
     {
-      title: `New date: ${day} ${mon}`,
-      body: `${course}, ${row.holes} holes, ${formatLabel(row.format).toLowerCase()}. Are you in?`,
+      title: `${g.emoji} New game: ${g.name}`,
+      body,
       url: `/comp/${data.id}`,
       tag: `comp-${data.id}`,
     },

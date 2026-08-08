@@ -5,6 +5,7 @@ import { ConveneTrial } from "@/components/ConveneTrial";
 import { EmptyState } from "@/components/EmptyState";
 import { Avatar } from "@/components/Avatar";
 import { relativeTime } from "@/lib/dates";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import type { Profile, Trial } from "@/lib/types";
 
 export default async function TrialsPage() {
@@ -22,10 +23,11 @@ export default async function TrialsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label" style={{ color: "var(--color-flag)" }}>⚖️ The Courtroom</p>
-        <Link href="/" className="label text-ink-soft">← Fixtures</Link>
-      </div>
+      <ConsoleHeader
+        title="The Tribunal"
+        tag="⚖️ Judicial"
+        right={<Link href="/" className="label text-ink-soft">← Games</Link>}
+      />
 
       {profile.is_admin && (
         <div className="mb-8">

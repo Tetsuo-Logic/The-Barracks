@@ -1,10 +1,10 @@
 {
-  "name": "The Threeball",
-  "short_name": "Threeball",
+  "name": "The Barracks",
+  "short_name": "Barracks",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#EAE6DB",
-  "theme_color": "#16241B",
+  "background_color": "#0B100E",
+  "theme_color": "#0B100E",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

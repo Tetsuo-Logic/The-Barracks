@@ -54,7 +54,7 @@ export async function createTrial(input: {
     tag: `trial-${data.id}`,
   });
   await sendToPlayers(jurors, "new_comp", {
-    title: "The Courtroom is in session",
+    title: "The Tribunal is in session",
     body: `${charge}. Your verdict is needed.`,
     url: `/trial/${data.id}`,
     tag: `trial-${data.id}`,

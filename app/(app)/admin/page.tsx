@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { StrikesManager } from "@/components/StrikesManager";
 import { PresidentPicker } from "@/components/PresidentPicker";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { MegaphoneIcon } from "@/components/Icons";
 import type { Profile, Strike, Warning } from "@/lib/types";
 
@@ -21,7 +22,7 @@ export default async function AdminPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <p className="label">Organiser</p>
+      <ConsoleHeader title="Control Room" tag="Command" className="" />
 
       <Link
         href="/broadcast"
@@ -29,7 +30,7 @@ export default async function AdminPage() {
       >
         <span className="flex items-center gap-3">
           <MegaphoneIcon />
-          <span className="text-ink">Ping the lads</span>
+          <span className="text-ink">Comms 📡</span>
         </span>
         <span className="label text-ink-soft">Open →</span>
       </Link>
@@ -38,7 +39,7 @@ export default async function AdminPage() {
         href="/trial"
         className="flex items-center justify-between rounded-[3px] border border-rule bg-card px-4 py-3"
       >
-        <span className="text-ink">The Courtroom</span>
+        <span className="text-ink">The Tribunal</span>
         <span className="label text-ink-soft">Convene →</span>
       </Link>
 

@@ -4,6 +4,7 @@ import { getPrefs } from "@/app/actions/prefs";
 import { signOut } from "@/app/actions/auth";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { InstallCard } from "@/components/InstallCard";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 
 export default async function SettingsPage() {
   const profile = await requireProfile();
@@ -12,7 +13,7 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <p className="label mb-2">Settings</p>
+        <ConsoleHeader title="Settings" tag="Config" className="mb-3" />
         <p className="text-ink-soft">Signed in as {profile.name}.</p>
       </div>
 

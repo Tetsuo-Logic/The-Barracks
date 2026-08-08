@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeStandings } from "@/lib/standings";
+import { gameHasScorecard } from "@/lib/games";
 import { StandingsTabs } from "@/components/StandingsTabs";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import type { Competition, Profile, Score, Strike } from "@/lib/types";
 
 export default async function StandingsPage() {
@@ -17,17 +19,20 @@ export default async function StandingsPage() {
       supabase.from("strikes").select("*"),
     ]);
 
-  const allComps = (comps ?? []) as Competition[];
+  // Standings are golf-only — non-golf ops keep no scorecard.
+  const golfComps = ((comps ?? []) as Competition[]).filter((c) =>
+    gameHasScorecard(c.game),
+  );
   const allProfiles = (profiles ?? []) as Profile[];
   const allScores = (scores ?? []) as Score[];
 
   const cup = computeStandings(
-    allComps.filter((c) => c.for_cup),
+    golfComps.filter((c) => c.for_cup),
     allProfiles,
     allScores,
   );
   const casual = computeStandings(
-    allComps.filter((c) => !c.for_cup),
+    golfComps.filter((c) => !c.for_cup),
     allProfiles,
     allScores,
   );
@@ -39,10 +44,11 @@ export default async function StandingsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="label">Standings</p>
-        <Link href="/trial" className="label text-ink-soft">The Courtroom →</Link>
-      </div>
+      <ConsoleHeader
+        title="Ranks"
+        tag="Leaderboard"
+        right={<Link href="/trial" className="label text-ink-soft">Tribunal →</Link>}
+      />
 
       <StandingsTabs cup={cup} casual={casual} strikeCount={strikeCount} />
     </div>

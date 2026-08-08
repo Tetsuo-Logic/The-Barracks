@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendToPlayers } from "@/lib/push";
-import { heroDate, shortTime, formatLabel } from "@/lib/dates";
+import { heroDate, shortTime } from "@/lib/dates";
+import { compHeading, compMetaChip } from "@/lib/games";
 import type { Competition, Profile, Rsvp } from "@/lib/types";
 
 // Daily sweep (§6.4), run by Vercel Cron, guarded by CRON_SECRET.
@@ -69,8 +70,8 @@ export async function GET(request: NextRequest) {
       const fresh = await notYetSent(admin, comp.id, "dayof", ins);
       if (fresh.length > 0) {
         await sendToPlayers(fresh, "day_of", {
-          title: `Today: ${tee ? tee + " at " : ""}${comp.course}`,
-          body: `${comp.holes} holes · ${formatLabel(comp.format)}`,
+          title: `Today: ${tee ? tee + " · " : ""}${compHeading(comp)}`,
+          body: compMetaChip(comp),
           url: `/comp/${comp.id}`,
           tag: `dayof-${comp.id}`,
         });

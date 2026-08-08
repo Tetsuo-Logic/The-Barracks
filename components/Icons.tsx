@@ -22,6 +22,19 @@ export function FlagIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function GamepadIcon(props: SVGProps<SVGSVGElement>) {
+  // Games — a two-grip controller with d-pad + buttons.
+  return (
+    <svg {...base} {...props}>
+      <line x1="6" y1="11" x2="10" y2="11" />
+      <line x1="8" y1="9" x2="8" y2="13" />
+      <line x1="15" y1="12" x2="15.01" y2="12" />
+      <line x1="18" y1="10" x2="18.01" y2="10" />
+      <path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59c-.006.05-.01.1-.017.15C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.42.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.54-.6-6.58-.68-7.26l-.02-.15A4 4 0 0 0 17.32 5Z" />
+    </svg>
+  );
+}
+
 export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

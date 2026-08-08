@@ -8,27 +8,27 @@ import { dirname, join } from "node:path";
 const outDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "icons");
 mkdirSync(outDir, { recursive: true });
 
-// A flag on a green — ink card stock, flag-red pennant.
-function mark({ bg = "#16241b", pad = 0 } = {}) {
+// The Barracks mark: sergeant's chevrons + a rank star, brass on gunmetal.
+function mark({ bg = "#20261f", pad = 0 } = {}) {
   const s = 512;
   const g = pad; // inset for maskable safe zone
+  const gold = "#C99A2C";
+  const chevron = (cy) =>
+    `<polyline points="150,${cy} 256,${cy - 66} 362,${cy}" fill="none" stroke="${gold}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}">
     <rect width="${s}" height="${s}" fill="${bg}"/>
     <g transform="translate(${g},${g}) scale(${(s - 2 * g) / s})">
-      <ellipse cx="256" cy="384" rx="150" ry="28" fill="#2F6B4C"/>
-      <rect x="250" y="150" width="8" height="212" rx="2" fill="#EAE6DB"/>
-      <path d="M258 158 L366 188 L258 218 Z" fill="#B4372A"/>
-      <ellipse cx="254" cy="360" rx="17" ry="6" fill="${bg}" stroke="#EAE6DB" stroke-width="3"/>
+      <path d="M256 96 l26 54 59 8 -43 42 10 59 -52 -28 -52 28 10 -59 -43 -42 59 -8 Z" fill="${gold}"/>
+      ${chevron(300)}
+      ${chevron(370)}
+      ${chevron(440)}
     </g>
   </svg>`;
 }
 
-// Monochrome flag silhouette on transparent, for the Android notification badge.
+// Monochrome chevron on transparent, for the Android notification badge.
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">
-  <g fill="#ffffff">
-    <rect x="34" y="14" width="4" height="46" rx="1"/>
-    <path d="M38 16 L60 22 L38 28 Z"/>
-  </g>
+  <polyline points="16,46 36,28 56,46" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const jobs = [

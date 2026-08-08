@@ -554,3 +554,38 @@ begin
 end $$;
 
 grant execute on function public.finalize_trial(uuid) to authenticated;
+
+-- ============================================================
+-- 0020_games.sql — multiple games + game requests. Idempotent.
+-- ============================================================
+
+alter table competitions add column if not exists game text not null default 'threeball';
+alter table competitions alter column course drop not null;
+
+create table if not exists game_requests (
+  id           uuid primary key default gen_random_uuid(),
+  requested_by uuid references profiles(id) on delete set null,
+  game         text not null,
+  note         text,
+  status       text not null default 'open' check (status in ('open','planning','done','declined')),
+  created_at   timestamptz default now()
+);
+
+alter table game_requests enable row level security;
+
+drop policy if exists game_requests_read on game_requests;
+create policy game_requests_read on game_requests
+  for select using (auth.uid() is not null);
+
+drop policy if exists game_requests_insert on game_requests;
+create policy game_requests_insert on game_requests
+  for insert with check (requested_by = auth.uid());
+
+drop policy if exists game_requests_update on game_requests;
+create policy game_requests_update on game_requests
+  for update using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists game_requests_delete on game_requests;
+create policy game_requests_delete on game_requests
+  for delete using (requested_by = auth.uid() or public.is_admin());

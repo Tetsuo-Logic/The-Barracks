@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Archivo_Narrow } from "next/font/google";
+import { Archivo, Archivo_Narrow, JetBrains_Mono, Chakra_Petch } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
-// Two weights of one superfamily, used with discipline (§4.3).
+// Archivo for body, JetBrains Mono for the HUD readouts (labels + numerals).
 const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
@@ -18,14 +18,29 @@ const archivoNarrow = Archivo_Narrow({
   display: "swap",
 });
 
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono-jb",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+// Angular, tactical display face for the wordmark + big headings.
+const chakraPetch = Chakra_Petch({
+  variable: "--font-chakra",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
 // Run the server functions next to the Supabase database (eu-west-1, Ireland)
 // so page data doesn't round-trip across the Atlantic on every navigation.
 export const preferredRegion = "dub1";
 
 export const metadata: Metadata = {
-  title: "The Threeball",
-  description: "A private league. Three players. One president. No appeals.",
-  applicationName: "The Threeball",
+  title: "The Barracks",
+  description: "Games-night ops for the squad. Roll call, deployment checks, and the tribunal. 🪖",
+  applicationName: "The Barracks",
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
@@ -34,13 +49,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "The Threeball",
+    title: "The Barracks",
   },
 };
 
-// theme_color matches the ink token (§6.5); paper background behind it.
+// theme_color matches the command-black background.
 export const viewport: Viewport = {
-  themeColor: "#16241b",
+  themeColor: "#0b100e",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // let content extend into the safe-area insets (§10)
@@ -54,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${archivoNarrow.variable} h-full`}
+      className={`${archivo.variable} ${archivoNarrow.variable} ${jetbrainsMono.variable} ${chakraPetch.variable} h-full`}
     >
       <body className="min-h-[100dvh] flex flex-col">
         <ServiceWorkerRegister />

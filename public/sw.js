@@ -14,10 +14,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "The Threeball", body: event.data ? event.data.text() : "" };
+    data = { title: "The Barracks", body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "The Threeball", {
+    self.registration.showNotification(data.title || "The Barracks", {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/badge-72.png", // monochrome + transparent

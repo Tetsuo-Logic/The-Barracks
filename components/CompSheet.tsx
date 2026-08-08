@@ -11,6 +11,7 @@ import { todayISO } from "@/lib/dates";
 import { CoursePicker } from "@/components/CoursePicker";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/image";
+import { GAMES, gameHasScorecard, DEFAULT_GAME } from "@/lib/games";
 import type { Competition, CompetitionFormat } from "@/lib/types";
 
 const FORMATS: { value: CompetitionFormat; label: string }[] = [
@@ -34,6 +35,7 @@ export function CompSheet({
   const editing = Boolean(initial);
 
   const [shown, setShown] = useState(false);
+  const [game, setGame] = useState<string>(DEFAULT_GAME);
   const [course, setCourse] = useState("");
   const [date, setDate] = useState(todayISO());
   const [teeTime, setTeeTime] = useState("");
@@ -44,8 +46,6 @@ export function CompSheet({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [stake, setStake] = useState("");
   const [notes, setNotes] = useState("");
-  const [par, setPar] = useState<number[]>(Array(9).fill(4));
-  const [showPars, setShowPars] = useState(false);
   const [strokeIndex, setStrokeIndex] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -64,7 +64,8 @@ export function CompSheet({
     initialisedFor.current = key;
 
     if (initial) {
-      setCourse(initial.course);
+      setGame(initial.game || DEFAULT_GAME);
+      setCourse(initial.course ?? "");
       setDate(initial.date);
       setTeeTime(initial.tee_time?.slice(0, 5) ?? "");
       setHoles(initial.holes);
@@ -77,9 +78,9 @@ export function CompSheet({
       setImageUrl(initial.image_url ?? null);
       setStake(initial.stake ?? "");
       setNotes(initial.notes ?? "");
-      setPar(initial.par ?? Array(initial.holes).fill(4));
       setStrokeIndex(initial.stroke_index ?? []);
     } else {
+      setGame(DEFAULT_GAME);
       setCourse("");
       setDate(todayISO());
       setTeeTime("");
@@ -90,19 +91,16 @@ export function CompSheet({
       setImageUrl(null);
       setStake("");
       setNotes("");
-      setPar(Array(9).fill(4));
       setStrokeIndex([]);
     }
-    setShowPars(false);
     setConfirmingCancel(false);
     setError(null);
     // trigger slide-up next frame
     requestAnimationFrame(() => setShown(true));
   }, [open, initial]);
 
-  // Keep par/stroke-index arrays the right length when holes change.
+  // Keep the stroke-index array the right length when holes change.
   useEffect(() => {
-    setPar((p) => resize(p, holes, 4));
     setStrokeIndex((s) => (s.length ? resize(s, holes, 0) : s));
   }, [holes]);
 
@@ -114,25 +112,37 @@ export function CompSheet({
   async function submit() {
     setSaving(true);
     setError(null);
+    const isGolf = gameHasScorecard(game);
     const oneoff = kind === "oneoff";
-    const input: CompetitionInput = {
-      id: initial?.id,
-      course,
-      title: oneoff ? title : "",
-      image_url: oneoff ? imageUrl : null,
-      date,
-      tee_time: teeTime || undefined,
-      holes,
-      format,
-      for_cup: kind === "cup",
-      stake: stake || undefined,
-      notes: notes || undefined,
-      par: showPars ? par : undefined,
-      stroke_index:
-        format === "stableford" && strokeIndex.some((n) => n > 0)
-          ? strokeIndex
-          : undefined,
-    };
+    const input: CompetitionInput = isGolf
+      ? {
+          id: initial?.id,
+          game,
+          course,
+          title: oneoff ? title : "",
+          image_url: oneoff ? imageUrl : null,
+          date,
+          tee_time: teeTime || undefined,
+          holes,
+          format,
+          for_cup: kind === "cup",
+          stake: stake || undefined,
+          notes: notes || undefined,
+          stroke_index:
+            format === "stableford" && strokeIndex.some((n) => n > 0)
+              ? strokeIndex
+              : undefined,
+        }
+      : {
+          // Non-golf op: just a name, a night and a start time.
+          id: initial?.id,
+          game,
+          title: title || undefined,
+          date,
+          tee_time: teeTime || undefined,
+          holes,
+          format,
+        };
     const res = await saveCompetition(input);
     if (!res.ok) {
       setError(res.error);
@@ -154,6 +164,8 @@ export function CompSheet({
     close();
   }
 
+  const isGolf = gameHasScorecard(game);
+
   if (!open) return null;
 
   return (
@@ -161,7 +173,7 @@ export function CompSheet({
       <button
         aria-label="Close"
         onClick={close}
-        className="absolute inset-0 bg-ink/25 transition-opacity duration-200"
+        className="absolute inset-0 bg-black/70 backdrop-blur-[2px] transition-opacity duration-200"
         style={{ opacity: shown ? 1 : 0 }}
       />
       <div
@@ -170,13 +182,49 @@ export function CompSheet({
       >
         <div className="px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4">
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-rule" />
-          <p className="label mb-4">
-            {editing ? "Edit the date" : "New date"}
+          <p className="label mb-4" style={{ color: "var(--color-sand)" }}>
+            {editing ? "▸ Edit game" : "▸ New game"}
           </p>
 
-          {/* Course — searchable dropdown of the PGA Tour 2K25 courses */}
-          <label className="label mb-1 block">Course</label>
-          <CoursePicker value={course} onChange={setCourse} recent={recentCourses} />
+          {/* Game — the whole form pivots on this */}
+          <label className="label mb-1 block">Game</label>
+          <div className="relative">
+            <select
+              value={game}
+              onChange={(e) => setGame(e.target.value)}
+              className="w-full appearance-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+            >
+              {GAMES.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.emoji} {g.name}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-soft">
+              ▼
+            </span>
+          </div>
+
+          {/* Course — golf only (searchable dropdown of the PGA Tour 2K25 courses) */}
+          {isGolf && (
+            <div className="mt-4">
+              <label className="label mb-1 block">Course</label>
+              <CoursePicker value={course} onChange={setCourse} recent={recentCourses} />
+            </div>
+          )}
+
+          {/* Name — non-golf ops get an optional label (defaults to the game name) */}
+          {!isGolf && (
+            <div className="mt-4">
+              <label className="label mb-1 block">Name (optional)</label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="General play, tournament, grand final…"
+                className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+              />
+            </div>
+          )}
 
           {/* Date and tee stacked, each full width — native date/time inputs
               are unreliable side-by-side on mobile, so we don't risk it. */}
@@ -190,7 +238,7 @@ export function CompSheet({
             />
           </div>
           <div className="mt-4">
-            <label className="label mb-1 block">Tee time</label>
+            <label className="label mb-1 block">{isGolf ? "Tee time" : "Start time"}</label>
             <input
               type="time"
               value={teeTime}
@@ -199,115 +247,106 @@ export function CompSheet({
             />
           </div>
 
-          {/* Holes */}
-          <div className="mt-4">
-            <label className="label mb-1 block">Holes</label>
-            <Segmented
-              options={[
-                { value: 9, label: "9" },
-                { value: 18, label: "18" },
-              ]}
-              value={holes}
-              onChange={(v) => setHoles(v)}
-            />
-          </div>
-
-          {/* Format */}
-          <div className="mt-4">
-            <label className="label mb-1 block">Format</label>
-            <Segmented
-              options={FORMATS}
-              value={format}
-              onChange={(v) => setFormat(v)}
-            />
-          </div>
-
-          {/* Type — cup, casual, or a named one-off (testimonial, random cup) */}
-          <div className="mt-4">
-            <label className="label mb-1 block">Type</label>
-            <Segmented
-              options={[
-                { value: "cup", label: "Threeball" },
-                { value: "casual", label: "Casual" },
-                { value: "oneoff", label: "One-off" },
-              ]}
-              value={kind}
-              onChange={(v) => setKind(v)}
-            />
-          </div>
-
-          {/* One-off events get a name and an optional picture */}
-          {kind === "oneoff" && (
+          {/* ── Golf-only kit — holes, format, cup, pars, stroke index ── */}
+          {isGolf && (
             <>
+              {/* Holes */}
               <div className="mt-4">
-                <label className="label mb-1 block">Event name</label>
+                <label className="label mb-1 block">Holes</label>
+                <Segmented
+                  options={[
+                    { value: 9, label: "9" },
+                    { value: 18, label: "18" },
+                  ]}
+                  value={holes}
+                  onChange={(v) => setHoles(v)}
+                />
+              </div>
+
+              {/* Format */}
+              <div className="mt-4">
+                <label className="label mb-1 block">Format</label>
+                <Segmented
+                  options={FORMATS}
+                  value={format}
+                  onChange={(v) => setFormat(v)}
+                />
+              </div>
+
+              {/* Type — cup, casual, or a named one-off (testimonial, random cup) */}
+              <div className="mt-4">
+                <label className="label mb-1 block">Type</label>
+                <Segmented
+                  options={[
+                    { value: "cup", label: "Threeball" },
+                    { value: "casual", label: "Casual" },
+                    { value: "oneoff", label: "One-off" },
+                  ]}
+                  value={kind}
+                  onChange={(v) => setKind(v)}
+                />
+              </div>
+
+              {/* One-off events get a name and an optional picture */}
+              {kind === "oneoff" && (
+                <>
+                  <div className="mt-4">
+                    <label className="label mb-1 block">Event name</label>
+                    <input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Dave's Testimonial, Winter Cup…"
+                      className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <label className="label mb-1 block">Picture</label>
+                    <CompImagePicker value={imageUrl} onChange={setImageUrl} />
+                  </div>
+                </>
+              )}
+
+              {/* Stake */}
+              <div className="mt-4">
+                <label className="label mb-1 block">Stake</label>
                 <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Dave's Testimonial, Winter Cup…"
+                  value={stake}
+                  onChange={(e) => setStake(e.target.value)}
+                  placeholder="£5 a skin, loser buys lunch"
                   className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
                 />
               </div>
+
+              {/* Notes */}
               <div className="mt-4">
-                <label className="label mb-1 block">Picture</label>
-                <CompImagePicker value={imageUrl} onChange={setImageUrl} />
+                <label className="label mb-1 block">Notes</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="w-full resize-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+                />
               </div>
+
+              {/* Stroke index — only for stableford (§9) */}
+              {format === "stableford" && (
+                <div className="mt-4">
+                  <p className="label mb-1">
+                    Stroke index — needed for stableford
+                  </p>
+                  <NumberGrid
+                    values={
+                      strokeIndex.length === holes
+                        ? strokeIndex
+                        : Array(holes).fill(0)
+                    }
+                    onChange={setStrokeIndex}
+                    min={0}
+                    max={18}
+                  />
+                </div>
+              )}
             </>
-          )}
-
-          {/* Stake */}
-          <div className="mt-4">
-            <label className="label mb-1 block">Stake</label>
-            <input
-              value={stake}
-              onChange={(e) => setStake(e.target.value)}
-              placeholder="£5 a skin, loser buys lunch"
-              className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
-            />
-          </div>
-
-          {/* Notes */}
-          <div className="mt-4">
-            <label className="label mb-1 block">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="w-full resize-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
-            />
-          </div>
-
-          {/* Pars — collapsed, defaults to all 4s (§5) */}
-          <div className="mt-4">
-            <button
-              onClick={() => setShowPars((s) => !s)}
-              className="label flex items-center gap-1"
-            >
-              {showPars ? "Hide pars" : "Set the pars"}
-              <span className="text-ink-soft">{showPars ? "▲" : "▼"}</span>
-            </button>
-            {showPars && (
-              <NumberGrid values={par} onChange={setPar} min={2} max={7} />
-            )}
-          </div>
-
-          {/* Stroke index — only for stableford (§9) */}
-          {format === "stableford" && (
-            <div className="mt-4">
-              <p className="label mb-1">
-                Stroke index — needed for stableford
-              </p>
-              <NumberGrid
-                values={
-                  strokeIndex.length === holes
-                    ? strokeIndex
-                    : Array(holes).fill(0)
-                }
-                onChange={setStrokeIndex}
-                min={0}
-                max={18}
-              />
-            </div>
           )}
 
           {error && <p className="mt-4 text-sm text-flag">{error}</p>}
@@ -315,10 +354,10 @@ export function CompSheet({
           {/* Primary action */}
           <button
             onClick={submit}
-            disabled={saving || !course.trim() || (kind === "oneoff" && !title.trim())}
-            className="mt-6 w-full rounded-[3px] bg-ink px-4 py-3.5 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+            disabled={saving || (isGolf && !course.trim())}
+            className="mt-6 w-full rounded-[4px] bg-sand px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-[0.12em] text-paper transition-shadow hover:[box-shadow:0_0_20px_-4px_var(--color-sand)] disabled:opacity-50"
           >
-            {saving ? "Saving" : editing ? "Save changes" : "Add the date"}
+            {saving ? "Deploying…" : editing ? "Save changes" : "Deploy request"}
           </button>
 
           {/* Cancel the competition (edit only) */}
@@ -329,12 +368,12 @@ export function CompSheet({
                   onClick={() => setConfirmingCancel(true)}
                   className="text-sm font-medium text-flag"
                 >
-                  Cancel this date
+                  Scrub this game
                 </button>
               ) : (
                 <div>
                   <p className="mb-2 text-sm text-ink">
-                    Cancel it for everyone? This can&apos;t be undone.
+                    Scrub it for everyone? This can&apos;t be undone.
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -348,7 +387,7 @@ export function CompSheet({
                       disabled={saving}
                       className="rounded-[3px] bg-flag px-4 py-2 text-sm font-semibold text-paper disabled:opacity-60"
                     >
-                      Cancel the date
+                      Scrub the game
                     </button>
                   </div>
                 </div>

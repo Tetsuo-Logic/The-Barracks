@@ -58,7 +58,7 @@ export async function createBroadcast(input: {
     ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
     "new_comp",
     {
-      title: input.title?.trim() || (me as { name?: string }).name || "The Threeball",
+      title: input.title?.trim() || (me as { name?: string }).name || "The Barracks",
       body: prompt ? `${body} — ${prompt}` : body,
       url: `/broadcast/${data.id}`,
       tag: `broadcast-${data.id}`,

@@ -10,6 +10,7 @@ import { Chat } from "@/components/Chat";
 import { Photos } from "@/components/Photos";
 import { ConveneTrial } from "@/components/ConveneTrial";
 import { heroDate, isToday, shortTime, formatLabel } from "@/lib/dates";
+import { gameById, compHeading } from "@/lib/games";
 import { playerScores } from "@/lib/scoring";
 import { isLocked } from "@/lib/rsvp";
 import type { CompetitionDetail } from "@/lib/queries";
@@ -34,6 +35,13 @@ export function CompDetail({
   isAdmin: boolean;
 }) {
   const { comp, profiles, rsvps, scores, comments, photos } = detail;
+  const game = gameById(comp.game);
+  const isGolf = game.hasScorecard;
+  const heading = compHeading(comp);
+  // Non-golf ops skip the scorecard tab entirely.
+  const tabs: Tab[] = isGolf
+    ? ["details", "card", "photos", "chat"]
+    : ["details", "photos", "chat"];
   const [tab, setTab] = useState<Tab>("details");
   const [entering, setEntering] = useState(false);
 
@@ -60,7 +68,7 @@ export function CompDetail({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={comp.image_url}
-          alt={comp.title ?? comp.course}
+          alt={heading}
           className="mb-4 h-40 w-full rounded-[3px] border border-rule object-cover"
         />
       )}
@@ -78,23 +86,34 @@ export function CompDetail({
           <div className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">{mon}</div>
         </div>
         <div className="flex-1">
-          <h1 className="text-[20px] font-bold leading-tight text-ink">
-            {comp.title || comp.course}
+          <h1 className="display text-[21px] font-semibold leading-tight text-ink">
+            {heading}
           </h1>
-          {comp.title && <p className="mt-0.5 text-sm text-ink-soft">{comp.course}</p>}
+          {isGolf && comp.title && comp.course && (
+            <p className="mt-0.5 text-sm text-ink-soft">{comp.course}</p>
+          )}
           <p className="mt-1 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-ink-soft">
-            {comp.holes} holes · {formatLabel(comp.format)}
-            {tee && ` · Tee ${tee}`}
+            {isGolf ? (
+              <>
+                {comp.holes} holes · {formatLabel(comp.format)}
+                {tee && ` · Tee ${tee}`}
+              </>
+            ) : (
+              <>
+                {game.emoji} {game.name}
+                {tee && ` · ${tee}`}
+              </>
+            )}
           </p>
           {comp.status === "cancelled" && (
-            <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">Cancelled</p>
+            <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">Scrubbed</p>
           )}
         </div>
       </div>
 
       {/* tabs */}
       <div className="mt-5 flex border-b border-rule">
-        {(["details", "card", "photos", "chat"] as Tab[]).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -117,13 +136,13 @@ export function CompDetail({
 
             {comp.status !== "cancelled" && (
               <>
-                <p className="label mb-2">Your answer</p>
+                <p className="label mb-2">Roll call ✋</p>
                 <RsvpButtons competitionId={comp.id} current={mine} locked={isLocked(comp)} />
                 <hr className="rule my-5" />
               </>
             )}
 
-            <p className="label mb-2">Who&apos;s in</p>
+            <p className="label mb-2">On the roster</p>
             <ul className="flex flex-col gap-2">
               {profiles.map((p) => {
                 const r = byPlayer.get(p.id);
@@ -156,7 +175,7 @@ export function CompDetail({
                     href={`/?sheet=${comp.id}`}
                     className="rounded-[3px] border border-rule px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink"
                   >
-                    Edit date
+                    Edit game
                   </Link>
                 )}
               </div>

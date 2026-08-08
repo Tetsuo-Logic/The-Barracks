@@ -6,7 +6,7 @@ import { createTrial } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
 import type { Profile } from "@/lib/types";
 
-// Organiser convenes the Courtroom: pick who flaked, name the charge.
+// Organiser convenes the Tribunal: pick who flaked, name the charge.
 export function ConveneTrial({
   candidates,
   competitionId,
@@ -29,7 +29,7 @@ export function ConveneTrial({
         onClick={() => setOpen(true)}
         className="rounded-[3px] border border-flag px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-flag"
       >
-        Take to the Courtroom
+        Take to the Tribunal
       </button>
     );
   }
@@ -54,7 +54,7 @@ export function ConveneTrial({
   return (
     <div className="rounded-[3px] border border-flag/50 bg-card p-4">
       <p className="label mb-3" style={{ color: "var(--color-flag)" }}>
-        Convene the Courtroom
+        Convene the Tribunal
       </p>
 
       <p className="label mb-2">The accused</p>
