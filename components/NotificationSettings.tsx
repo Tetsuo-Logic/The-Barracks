@@ -20,7 +20,7 @@ type Perm = "unsupported" | "default" | "granted" | "denied" | "working";
 type Key = keyof Omit<NotificationPrefs, "player_id">;
 const ROWS: { key: Key; label: string }[] = [
   { key: "new_comp", label: "New dates" },
-  { key: "rsvp_changes", label: "RSVP changes" },
+  { key: "rsvp_changes", label: "RSVPs & answers" },
   { key: "comments", label: "Comments" },
   { key: "results", label: "Results" },
   { key: "day_of", label: "Day-of reminder" },
@@ -31,7 +31,7 @@ export function NotificationSettings({ prefs }: { prefs: NotificationPrefs | nul
   const [perm, setPerm] = useState<Perm>("default");
   const [state, setState] = useState<Record<string, boolean>>(() => ({
     new_comp: prefs?.new_comp ?? true,
-    rsvp_changes: prefs?.rsvp_changes ?? false,
+    rsvp_changes: prefs?.rsvp_changes ?? true,
     comments: prefs?.comments ?? true,
     results: prefs?.results ?? true,
     day_of: prefs?.day_of ?? true,

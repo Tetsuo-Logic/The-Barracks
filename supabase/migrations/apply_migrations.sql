@@ -416,3 +416,15 @@ create policy app_settings_read on app_settings
 drop policy if exists app_settings_update on app_settings;
 create policy app_settings_update on app_settings
   for update using (public.is_admin()) with check (public.is_admin());
+
+-- ==================== 0016_activity_notifs.sql ====================
+-- Activity notifications: the organiser wants a push whenever the others do
+-- something — accept a date, answer a poll. Those events now send a push gated
+-- by the rsvp_changes preference. Default it on for new players, and switch it
+-- on for the organiser without touching anyone else's choice. Run after 0015.
+
+alter table notification_prefs alter column rsvp_changes set default true;
+
+update notification_prefs
+set rsvp_changes = true
+where player_id in (select id from profiles where is_admin);

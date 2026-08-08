@@ -96,6 +96,29 @@ export async function respondBroadcast(
   );
   if (error) return { ok: false, error: "Couldn't save your answer." };
 
+  // Ping whoever asked (the organiser) that an answer came in.
+  const { data: b } = await supabase
+    .from("broadcasts")
+    .select("created_by, title, body, kind")
+    .eq("id", broadcastId)
+    .single();
+  const bx = b as { created_by: string | null; title: string | null; body: string; kind: string } | null;
+  if (bx?.created_by && bx.created_by !== user.id) {
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", user.id)
+      .single();
+    const who = (me as { name?: string })?.name ?? "Someone";
+    const verb = answer ? `said ${answer}` : bx.kind === "dates" ? "picked their dates" : "replied";
+    await sendToPlayers([bx.created_by], "rsvp_changes", {
+      title: `${who} ${verb}`,
+      body: `“${bx.title || bx.body}”`,
+      url: `/broadcast/${broadcastId}`,
+      tag: `answer-${broadcastId}-${user.id}`,
+    });
+  }
+
   revalidatePath(`/broadcast/${broadcastId}`);
   revalidatePath("/broadcast");
   return { ok: true };

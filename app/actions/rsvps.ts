@@ -30,6 +30,28 @@ export async function setRsvp(
   );
   if (error) return { ok: false, error: "Couldn't save your answer." };
 
+  // Ping the others so an RSVP reaches them without opening the app.
+  const [{ data: comp }, { data: me }, { data: others }] = await Promise.all([
+    supabase.from("competitions").select("course, title, date").eq("id", competitionId).single(),
+    supabase.from("profiles").select("name").eq("id", user.id).single(),
+    supabase.from("profiles").select("id").neq("id", user.id),
+  ]);
+  if (comp) {
+    const who = (me as { name?: string })?.name ?? "Someone";
+    const label = status === "in" ? "is in" : status === "out" ? "is out" : "might make it";
+    const c = comp as { course: string; title: string | null; date: string };
+    await sendToPlayers(
+      ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
+      "rsvp_changes",
+      {
+        title: `${who} ${label}`,
+        body: `${c.title || c.course} · ${shortDate(c.date)}`,
+        url: `/comp/${competitionId}`,
+        tag: `rsvp-${competitionId}-${user.id}`,
+      },
+    );
+  }
+
   revalidatePath("/");
   revalidatePath(`/comp/${competitionId}`);
   return { ok: true };
