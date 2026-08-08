@@ -3,8 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { respondBroadcast } from "@/app/actions/broadcasts";
-import { heroDate } from "@/lib/dates";
+import { heroDate, shortDate } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse } from "@/lib/types";
+
+// Seed a date→time map from the index-aligned available_dates / date_times.
+function seedTimes(mine: BroadcastResponse | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  const dates = mine?.available_dates ?? [];
+  const times = mine?.date_times ?? [];
+  dates.forEach((d, i) => {
+    out[d] = times[i] ?? "";
+  });
+  return out;
+}
 
 // The recipient's answer surface. Yes/No poll, tick-the-dates poll, a reply
 // box for a question, or a simple acknowledge for a plain notice.
@@ -19,6 +30,7 @@ export function BroadcastRespond({
   const [answer, setAnswer] = useState<"yes" | "no" | null>(mine?.answer ?? null);
   const [comment, setComment] = useState(mine?.comment ?? "");
   const [dates, setDates] = useState<string[]>(mine?.available_dates ?? []);
+  const [times, setTimes] = useState<Record<string, string>>(seedTimes(mine));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(Boolean(mine));
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +44,7 @@ export function BroadcastRespond({
       nextAnswer,
       comment,
       broadcast.kind === "dates" ? dates : undefined,
+      broadcast.kind === "dates" ? dates.map((d) => times[d] ?? "") : undefined,
     );
     if (!res.ok) {
       setError(res.error);
@@ -74,6 +87,34 @@ export function BroadcastRespond({
               );
             })}
           </div>
+
+          {/* For each day you can do, say what tee time suits you. */}
+          {dates.length > 0 && (
+            <div className="mt-3 rounded-[3px] border border-rule">
+              <p className="border-b border-rule px-3 py-2 text-xs text-ink-soft">
+                What time suits you?
+              </p>
+              {(broadcast.option_dates ?? [])
+                .filter((d) => dates.includes(d))
+                .map((d) => (
+                  <div
+                    key={d}
+                    className="flex items-center justify-between gap-3 border-b border-rule px-3 py-2 last:border-b-0"
+                  >
+                    <span className="text-sm text-ink">{shortDate(d)}</span>
+                    <input
+                      type="time"
+                      value={times[d] ?? ""}
+                      onChange={(e) =>
+                        setTimes((t) => ({ ...t, [d]: e.target.value }))
+                      }
+                      aria-label={`Tee time for ${shortDate(d)}`}
+                      className="w-[7.5rem] rounded-[3px] border border-rule bg-paper px-2.5 py-1.5 text-ink outline-none focus:border-ink"
+                    />
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 

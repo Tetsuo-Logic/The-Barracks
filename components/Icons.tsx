@@ -76,6 +76,16 @@ export function BoardIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function BellIcon(props: SVGProps<SVGSVGElement>) {
+  // Notifications — outstanding things put to you.
+  return (
+    <svg {...base} width={20} height={20} {...props}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 1.5 6.5 2 7H4c.5-.5 2-2 2-7Z" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
 export function MenuIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} width={22} height={22} {...props}>

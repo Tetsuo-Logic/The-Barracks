@@ -161,6 +161,7 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
               Add
             </button>
           </div>
+          <p className="mt-1 text-xs text-ink-soft">The lads pick a tee time that suits them on each day they can do.</p>
           {dateOptions.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {dateOptions.map((d) => (

@@ -4,8 +4,14 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastRespond } from "@/components/BroadcastRespond";
 import { Avatar } from "@/components/Avatar";
-import { shortDate } from "@/lib/dates";
+import { shortDate, shortTime } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse, Profile } from "@/lib/types";
+
+// The tee time a player gave for a specific date ('' / undefined if none).
+function timeFor(r: BroadcastResponse, date: string): string {
+  const i = r.available_dates?.indexOf(date) ?? -1;
+  return i >= 0 ? shortTime(r.date_times?.[i] ?? "") : "";
+}
 
 export default async function BroadcastDetailPage({
   params,
@@ -55,27 +61,38 @@ export default async function BroadcastDetailPage({
               .map((d) => ({
                 date: d,
                 count: rs.filter((r) => r.available_dates?.includes(d)).length,
+                times: rs
+                  .map((r) => timeFor(r, d))
+                  .filter((t): t is string => Boolean(t))
+                  .sort(),
               }))
               .sort((a, z) => z.count - a.count)
-              .map(({ date, count }, i) => {
+              .map(({ date, count, times }, i) => {
                 const best = i === 0 && count > 0;
                 return (
                   <div
                     key={date}
-                    className="flex items-center justify-between border-t border-rule px-4 py-3 first:border-t-0"
+                    className="border-t border-rule px-4 py-3 first:border-t-0"
                     style={{ backgroundColor: best ? "rgba(47,107,76,0.08)" : undefined }}
                   >
-                    <span className="text-ink">{shortDate(date)}</span>
-                    <span className="flex items-center gap-2">
-                      <span className="font-narrow text-sm font-semibold text-ink">
-                        {count} can do
-                      </span>
-                      {best && (
-                        <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-moss">
-                          Best
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink">{shortDate(date)}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-narrow text-sm font-semibold text-ink">
+                          {count} can do
                         </span>
-                      )}
-                    </span>
+                        {best && (
+                          <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-moss">
+                            Best
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    {times.length > 0 && (
+                      <p className="mt-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+                        Times that suit: {times.join(", ")}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -112,7 +129,12 @@ export default async function BroadcastDetailPage({
                   {b.kind === "dates" && r?.available_dates && (
                     <p className="text-sm text-ink-soft">
                       {r.available_dates.length
-                        ? r.available_dates.map((d) => shortDate(d)).join(", ")
+                        ? r.available_dates
+                            .map((d) => {
+                              const t = timeFor(r, d);
+                              return t ? `${shortDate(d)} at ${t}` : shortDate(d);
+                            })
+                            .join(", ")
                         : "none of them"}
                     </p>
                   )}

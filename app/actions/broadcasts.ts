@@ -74,6 +74,7 @@ export async function respondBroadcast(
   answer: "yes" | "no" | null,
   comment?: string,
   availableDates?: string[],
+  dateTimes?: string[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
@@ -88,6 +89,7 @@ export async function respondBroadcast(
       answer,
       comment: comment?.trim() || null,
       available_dates: availableDates ?? null,
+      date_times: dateTimes ?? null,
       created_at: new Date().toISOString(),
     },
     { onConflict: "broadcast_id,player_id" },

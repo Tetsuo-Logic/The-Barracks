@@ -365,3 +365,22 @@ alter table broadcasts add constraint broadcasts_kind_check
 
 alter table broadcasts add column if not exists option_dates date[];
 alter table broadcast_responses add column if not exists available_dates date[];
+
+-- ==================== 0012_date_poll_times.sql ====================
+-- Tee time per available date, chosen by each player. When a player ticks a
+-- date they can make, they also say what tee-off time suits them that day.
+-- Stored as a text[] of bare 'HH:MM' strings, index-aligned with
+-- broadcast_responses.available_dates ('' = no time given). Run after 0011.
+
+alter table broadcast_responses add column if not exists date_times text[];
+
+-- ==================== 0013_inbox_seen.sql ====================
+-- Notification bell / inbox: one "last looked" timestamp per player so we can
+-- show a count of new comments since they last opened the inbox. Answered
+-- questions and outstanding RSVPs are task-based (no timestamp needed); this is
+-- only for informational activity that clears once seen. Run after 0012.
+-- Defaults to now() so a new player has a baseline and never sees pre-existing
+-- chatter as unread; existing players are backfilled the same way.
+
+alter table profiles add column if not exists inbox_seen_at timestamptz default now();
+update profiles set inbox_seen_at = now() where inbox_seen_at is null;

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
 import type {
+  Broadcast,
   Comment,
   Competition,
   Photo,
@@ -64,6 +65,81 @@ export async function getFixturesData(): Promise<FixturesData> {
     .slice(0, 8);
 
   return { profiles: allProfiles, next, upcoming, recent, rsvpsByComp };
+}
+
+export type NewComment = { comment: Comment; comp: Competition };
+
+export type Inbox = {
+  asks: Broadcast[]; // questions put to you that you haven't answered
+  rsvpNeeded: Competition[]; // upcoming rounds you haven't said in/out/maybe to
+  newComments: NewComment[]; // comments by others since you last opened the inbox
+  total: number; // badge count
+};
+
+/**
+ * Everything waiting for a player: unanswered questions, rounds that still need
+ * an RSVP, and new comments since they last looked. Drives the header bell
+ * badge and the home "inbox" strip, so a missed push never means a missed thing.
+ */
+export async function getInbox(player: Profile): Promise<Inbox> {
+  const supabase = await createClient();
+  const today = todayISO();
+  const seenAt = player.inbox_seen_at;
+
+  const [
+    { data: bx },
+    { data: myResp },
+    { data: comps },
+    { data: myRsvps },
+    { data: comments },
+  ] = await Promise.all([
+    supabase
+      .from("broadcasts")
+      .select("*")
+      .in("kind", ["yesno", "ask", "dates"])
+      .neq("created_by", player.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("broadcast_responses")
+      .select("broadcast_id")
+      .eq("player_id", player.id),
+    supabase
+      .from("competitions")
+      .select("*")
+      .order("date", { ascending: true }),
+    supabase.from("rsvps").select("competition_id").eq("player_id", player.id),
+    supabase
+      .from("comments")
+      .select("*")
+      .neq("author_id", player.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
+  const asks = ((bx ?? []) as Broadcast[]).filter((b) => !answered.has(b.id));
+
+  const allComps = (comps ?? []) as Competition[];
+  const compById = new Map(allComps.map((c) => [c.id, c]));
+  const rsvped = new Set((myRsvps ?? []).map((r) => r.competition_id));
+  const rsvpNeeded = allComps.filter(
+    (c) => c.status === "upcoming" && c.date >= today && !rsvped.has(c.id),
+  );
+
+  // New comments = posted since the player last opened the inbox. Compare as
+  // epoch millis, not strings — the two ISO values can differ in format.
+  const seenMs = seenAt ? new Date(seenAt).getTime() : Infinity;
+  const newComments: NewComment[] = ((comments ?? []) as Comment[])
+    .filter((c) => new Date(c.created_at).getTime() > seenMs)
+    .map((c) => ({ comment: c, comp: compById.get(c.competition_id)! }))
+    .filter((x) => Boolean(x.comp));
+
+  return {
+    asks,
+    rsvpNeeded,
+    newComments,
+    total: asks.length + rsvpNeeded.length + newComments.length,
+  };
 }
 
 export async function getCompetition(id: string): Promise<Competition | null> {

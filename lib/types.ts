@@ -15,6 +15,7 @@ export interface Profile {
   colour: string; // their ink colour across the app
   is_admin: boolean; // the organiser can add/edit/cancel dates
   is_president: boolean; // a nameable title; rules on board complaints
+  inbox_seen_at: string | null; // last time they opened the notification inbox
   created_at: string;
 }
 
@@ -136,6 +137,7 @@ export interface BroadcastResponse {
   answer: "yes" | "no" | null;
   comment: string | null;
   available_dates: string[] | null; // which candidate dates this player can do
+  date_times: string[] | null; // tee time that suits them per date, index-aligned with available_dates ('' = none)
   created_at: string;
 }
 
