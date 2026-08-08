@@ -26,7 +26,7 @@ export function CompListRow({
         {shortDate(comp.date)}
       </span>
       <span className="flex-1 truncate text-ink">
-        {comp.course}
+        {comp.title || comp.course}
         {cancelled && (
           <span className="ml-2 font-narrow text-xs uppercase tracking-[0.08em] text-flag">
             cancelled

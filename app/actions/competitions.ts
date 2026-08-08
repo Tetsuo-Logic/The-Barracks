@@ -10,6 +10,7 @@ export type CompetitionInput = {
   id?: string;
   course: string;
   title?: string;
+  image_url?: string | null;
   date: string; // 'YYYY-MM-DD'
   tee_time?: string; // 'HH:MM'
   holes: 9 | 18;
@@ -57,6 +58,7 @@ export async function saveCompetition(
   const row = {
     course,
     title: input.title?.trim() || null,
+    image_url: input.image_url?.trim() || null,
     date: input.date,
     tee_time: input.tee_time || null,
     holes: input.holes,

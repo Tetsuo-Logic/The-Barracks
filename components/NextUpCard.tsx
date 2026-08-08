@@ -53,6 +53,16 @@ export function NextUpCard({
         </div>
       </div>
 
+      {/* Optional event banner (named one-offs) */}
+      {comp.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={comp.image_url}
+          alt={comp.title ?? comp.course}
+          className="mt-3 h-32 w-full rounded-[3px] border border-rule object-cover"
+        />
+      )}
+
       {/* Hero: date stack + meta */}
       <div className="mt-3 flex items-start gap-5">
         <div className="text-center leading-none">
@@ -72,8 +82,11 @@ export function NextUpCard({
 
         <div className="flex-1 pt-1">
           <h2 className="text-[20px] font-bold leading-tight text-ink">
-            {comp.course}
+            {comp.title || comp.course}
           </h2>
+          {comp.title && (
+            <p className="mt-0.5 text-sm text-ink-soft">{comp.course}</p>
+          )}
           <p className="mt-1 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-ink-soft">
             {comp.holes} holes · {formatLabel(comp.format)}
           </p>

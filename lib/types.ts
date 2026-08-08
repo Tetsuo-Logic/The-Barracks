@@ -38,6 +38,7 @@ export interface Competition {
   id: string;
   created_by: string | null;
   title: string | null;
+  image_url: string | null; // optional banner for named one-off events
   course: string;
   date: string; // bare 'YYYY-MM-DD'
   tee_time: string | null; // bare 'HH:MM:SS'

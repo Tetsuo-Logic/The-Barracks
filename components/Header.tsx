@@ -31,7 +31,7 @@ export function Header({
           }
           className="relative text-ink-soft transition-colors hover:text-ink"
         >
-          <BellIcon />
+          <BellIcon width={26} height={26} />
           {pendingCount > 0 && (
             <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-flag px-1 font-narrow text-[10px] font-bold leading-none text-paper">
               {pendingCount}
@@ -43,7 +43,7 @@ export function Header({
           aria-label="The board"
           className="text-ink-soft transition-colors hover:text-ink"
         >
-          <BoardIcon />
+          <BoardIcon width={26} height={26} />
         </Link>
         {profile.is_admin && (
           <Link
@@ -51,7 +51,7 @@ export function Header({
             aria-label="Ping the lads"
             className="text-ink-soft transition-colors hover:text-ink"
           >
-            <MegaphoneIcon />
+            <MegaphoneIcon width={26} height={26} />
           </Link>
         )}
         <Link
@@ -59,14 +59,14 @@ export function Header({
           aria-label="Settings"
           className="text-ink-soft transition-colors hover:text-ink"
         >
-          <GearIcon />
+          <GearIcon width={26} height={26} />
         </Link>
         <Link href="/you" aria-label="Your profile">
           <Avatar
             name={profile.name}
             avatarUrl={profile.avatar_url}
             colour={profile.colour}
-            size={30}
+            size={34}
           />
         </Link>
       </div>

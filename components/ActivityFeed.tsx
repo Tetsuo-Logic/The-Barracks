@@ -100,7 +100,7 @@ function renderItem(
             <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
           </div>
           <p className="mt-1 text-ink">
-            <span className="font-semibold">{item.comp.course}</span>
+            <span className="font-semibold">{item.comp.title || item.comp.course}</span>
             <span className="text-ink-soft"> · {shortDate(item.comp.date)}</span>
           </p>
         </Link>
@@ -119,7 +119,7 @@ function renderItem(
             <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
           </div>
           <p className="mt-1 text-ink">
-            <span className="font-semibold">{item.comp.course}</span>
+            <span className="font-semibold">{item.comp.title || item.comp.course}</span>
             <span className="text-ink-soft"> · {shortDate(item.comp.date)}</span>
           </p>
         </Link>

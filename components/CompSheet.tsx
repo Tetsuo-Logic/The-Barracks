@@ -9,6 +9,8 @@ import {
 } from "@/app/actions/competitions";
 import { todayISO } from "@/lib/dates";
 import { CoursePicker } from "@/components/CoursePicker";
+import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/image";
 import type { Competition, CompetitionFormat } from "@/lib/types";
 
 const FORMATS: { value: CompetitionFormat; label: string }[] = [
@@ -16,6 +18,8 @@ const FORMATS: { value: CompetitionFormat; label: string }[] = [
   { value: "skins", label: "Skins" },
   { value: "stableford", label: "Stableford" },
 ];
+
+type CompKind = "cup" | "casual" | "oneoff";
 
 export function CompSheet({
   open,
@@ -35,7 +39,9 @@ export function CompSheet({
   const [teeTime, setTeeTime] = useState("");
   const [holes, setHoles] = useState<9 | 18>(9);
   const [format, setFormat] = useState<CompetitionFormat>("skins");
-  const [forCup, setForCup] = useState(true);
+  const [kind, setKind] = useState<CompKind>("cup");
+  const [title, setTitle] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [stake, setStake] = useState("");
   const [notes, setNotes] = useState("");
   const [par, setPar] = useState<number[]>(Array(9).fill(4));
@@ -63,7 +69,12 @@ export function CompSheet({
       setTeeTime(initial.tee_time?.slice(0, 5) ?? "");
       setHoles(initial.holes);
       setFormat(initial.format);
-      setForCup(initial.for_cup);
+      // A named/pictured event is a one-off; otherwise cup or casual.
+      setKind(
+        initial.title || initial.image_url ? "oneoff" : initial.for_cup ? "cup" : "casual",
+      );
+      setTitle(initial.title ?? "");
+      setImageUrl(initial.image_url ?? null);
       setStake(initial.stake ?? "");
       setNotes(initial.notes ?? "");
       setPar(initial.par ?? Array(initial.holes).fill(4));
@@ -74,7 +85,9 @@ export function CompSheet({
       setTeeTime("");
       setHoles(9);
       setFormat("skins");
-      setForCup(true);
+      setKind("cup");
+      setTitle("");
+      setImageUrl(null);
       setStake("");
       setNotes("");
       setPar(Array(9).fill(4));
@@ -101,14 +114,17 @@ export function CompSheet({
   async function submit() {
     setSaving(true);
     setError(null);
+    const oneoff = kind === "oneoff";
     const input: CompetitionInput = {
       id: initial?.id,
       course,
+      title: oneoff ? title : "",
+      image_url: oneoff ? imageUrl : null,
       date,
       tee_time: teeTime || undefined,
       holes,
       format,
-      for_cup: forCup,
+      for_cup: kind === "cup",
       stake: stake || undefined,
       notes: notes || undefined,
       par: showPars ? par : undefined,
@@ -206,18 +222,38 @@ export function CompSheet({
             />
           </div>
 
-          {/* Cup or casual */}
+          {/* Type — cup, casual, or a named one-off (testimonial, random cup) */}
           <div className="mt-4">
-            <label className="label mb-1 block">Counts for</label>
+            <label className="label mb-1 block">Type</label>
             <Segmented
               options={[
-                { value: "cup", label: "Threeball Cup" },
+                { value: "cup", label: "Threeball" },
                 { value: "casual", label: "Casual" },
+                { value: "oneoff", label: "One-off" },
               ]}
-              value={forCup ? "cup" : "casual"}
-              onChange={(v) => setForCup(v === "cup")}
+              value={kind}
+              onChange={(v) => setKind(v)}
             />
           </div>
+
+          {/* One-off events get a name and an optional picture */}
+          {kind === "oneoff" && (
+            <>
+              <div className="mt-4">
+                <label className="label mb-1 block">Event name</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Dave's Testimonial, Winter Cup…"
+                  className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="label mb-1 block">Picture</label>
+                <CompImagePicker value={imageUrl} onChange={setImageUrl} />
+              </div>
+            </>
+          )}
 
           {/* Stake */}
           <div className="mt-4">
@@ -279,7 +315,7 @@ export function CompSheet({
           {/* Primary action */}
           <button
             onClick={submit}
-            disabled={saving || !course.trim()}
+            disabled={saving || !course.trim() || (kind === "oneoff" && !title.trim())}
             className="mt-6 w-full rounded-[3px] bg-ink px-4 py-3.5 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
           >
             {saving ? "Saving" : editing ? "Save changes" : "Add the date"}
@@ -326,6 +362,90 @@ export function CompSheet({
 }
 
 // ── small helpers ───────────────────────────────────────────────────────────
+
+// Pick a photo from the library (or camera), compress it, upload to the public
+// avatars bucket under comps/, and hand back the public URL. Same idea as the
+// profile AvatarUpload, shaped for a wide event banner.
+function CompImagePicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (url: string | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("no user");
+
+      const { blob } = await compressImage(file);
+      const path = `comps/${crypto.randomUUID()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw upErr;
+
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      onChange(pub.publicUrl);
+    } catch {
+      setError("Couldn't upload that. Try again.");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      {value && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt="Event"
+          className="mb-2 h-32 w-full rounded-[3px] border border-rule object-cover"
+        />
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={onPick}
+        className="hidden"
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="rounded-[3px] border border-rule px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink disabled:opacity-60"
+        >
+          {busy ? "Uploading" : value ? "Change picture" : "Choose a picture"}
+        </button>
+        {value && !busy && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-sm text-flag"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1 text-sm text-flag">{error}</p>}
+    </div>
+  );
+}
 
 function resize<T extends number>(arr: T[], len: number, fill: T): T[] {
   if (arr.length === len) return arr;

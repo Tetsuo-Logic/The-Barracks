@@ -55,6 +55,16 @@ export function CompDetail({
 
   return (
     <div>
+      {/* Optional event banner (named one-offs) */}
+      {comp.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={comp.image_url}
+          alt={comp.title ?? comp.course}
+          className="mb-4 h-40 w-full rounded-[3px] border border-rule object-cover"
+        />
+      )}
+
       {/* header block */}
       <div className="flex items-start gap-4">
         <div className="text-center leading-none">
@@ -68,7 +78,10 @@ export function CompDetail({
           <div className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">{mon}</div>
         </div>
         <div className="flex-1">
-          <h1 className="text-[20px] font-bold leading-tight text-ink">{comp.course}</h1>
+          <h1 className="text-[20px] font-bold leading-tight text-ink">
+            {comp.title || comp.course}
+          </h1>
+          {comp.title && <p className="mt-0.5 text-sm text-ink-soft">{comp.course}</p>}
           <p className="mt-1 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-ink-soft">
             {comp.holes} holes · {formatLabel(comp.format)}
             {tee && ` · Tee ${tee}`}
