@@ -12,8 +12,8 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await sendToPlayers([user.id], "results", {
-    title: "The Threeball",
-    body: "Notifications are working. You're all set.",
+    title: "You're all set ⛳",
+    body: "Notifications are working — expect a ping for new dates, answers and comments.",
     url: "/",
     tag: "test",
   });
