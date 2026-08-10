@@ -650,3 +650,19 @@ alter table competitions add column if not exists cancel_reason text;
 -- 0024_radar_trailer.sql — optional trailer link on radar games.
 -- ============================================================
 alter table radar_games add column if not exists youtube_url text;
+
+-- ============================================================
+-- 0025_broadcast_messages.sql — reply thread on pings.
+-- ============================================================
+create table if not exists broadcast_messages (
+  id           uuid primary key default gen_random_uuid(),
+  broadcast_id uuid references broadcasts(id) on delete cascade,
+  author_id    uuid references profiles(id) on delete set null,
+  body         text not null,
+  created_at   timestamptz default now()
+);
+alter table broadcast_messages enable row level security;
+drop policy if exists broadcast_messages_read on broadcast_messages;
+create policy broadcast_messages_read on broadcast_messages for select using (auth.uid() is not null);
+drop policy if exists broadcast_messages_insert on broadcast_messages;
+create policy broadcast_messages_insert on broadcast_messages for insert with check (author_id = auth.uid());

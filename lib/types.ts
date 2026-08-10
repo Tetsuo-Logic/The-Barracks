@@ -181,6 +181,14 @@ export interface Broadcast {
   created_at: string;
 }
 
+export interface BroadcastMessage {
+  id: string;
+  broadcast_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
 export interface BroadcastResponse {
   broadcast_id: string;
   player_id: string;

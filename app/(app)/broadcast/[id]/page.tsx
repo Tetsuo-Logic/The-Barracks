@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastRespond } from "@/components/BroadcastRespond";
+import { BroadcastThread } from "@/components/BroadcastThread";
 import { Avatar } from "@/components/Avatar";
 import { shortDate, shortTime } from "@/lib/dates";
-import type { Broadcast, BroadcastResponse, Profile } from "@/lib/types";
+import type { Broadcast, BroadcastMessage, BroadcastResponse, Profile } from "@/lib/types";
 
 // The tee time a player gave for a specific date ('' / undefined if none).
 function timeFor(r: BroadcastResponse, date: string): string {
@@ -30,9 +31,14 @@ export default async function BroadcastDetailPage({
   if (!broadcast) notFound();
   const b = broadcast as Broadcast;
 
-  const [{ data: responses }, { data: profiles }] = await Promise.all([
+  const [{ data: responses }, { data: profiles }, { data: messages }] = await Promise.all([
     supabase.from("broadcast_responses").select("*").eq("broadcast_id", id),
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+    supabase
+      .from("broadcast_messages")
+      .select("*")
+      .eq("broadcast_id", id)
+      .order("created_at", { ascending: true }),
   ]);
   const rs = (responses ?? []) as BroadcastResponse[];
   const allProfiles = (profiles ?? []) as Profile[];
@@ -145,6 +151,14 @@ export default async function BroadcastDetailPage({
           })}
         </ul>
       </div>
+
+      {/* reply thread — append-only, so you see the conversation over time */}
+      <BroadcastThread
+        broadcastId={id}
+        messages={(messages ?? []) as BroadcastMessage[]}
+        profiles={allProfiles}
+        currentUserId={profile.id}
+      />
     </div>
   );
 }

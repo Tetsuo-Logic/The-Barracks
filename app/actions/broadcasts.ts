@@ -69,6 +69,48 @@ export async function createBroadcast(input: {
   return { ok: true, id: data.id as string };
 }
 
+// Add a message to a ping's reply thread (append-only). Pings the others.
+export async function postBroadcastMessage(
+  broadcastId: string,
+  body: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const text = body.trim();
+  if (!text) return { ok: false, error: "Say something first." };
+
+  const { error } = await supabase
+    .from("broadcast_messages")
+    .insert({ broadcast_id: broadcastId, author_id: user.id, body: text });
+  if (error) return { ok: false, error: "Couldn't send it." };
+
+  // Tell everyone but the sender.
+  const [{ data: me }, { data: b }, { data: others }] = await Promise.all([
+    supabase.from("profiles").select("name").eq("id", user.id).single(),
+    supabase.from("broadcasts").select("title, body").eq("id", broadcastId).single(),
+    supabase.from("profiles").select("id").neq("id", user.id),
+  ]);
+  const who = (me as { name?: string })?.name ?? "Someone";
+  const bx = b as { title: string | null; body: string } | null;
+  await sendToPlayers(
+    ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
+    "comments",
+    {
+      title: `${who} replied`,
+      body: `“${bx?.title || bx?.body || "a message"}” — ${text}`,
+      url: `/broadcast/${broadcastId}`,
+      tag: `bmsg-${broadcastId}`,
+    },
+  );
+
+  revalidatePath(`/broadcast/${broadcastId}`);
+  return { ok: true };
+}
+
 export async function respondBroadcast(
   broadcastId: string,
   answer: "yes" | "no" | null,

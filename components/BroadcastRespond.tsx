@@ -30,7 +30,6 @@ export function BroadcastRespond({
   const router = useRouter();
   const announce = useAnnounce();
   const [answer, setAnswer] = useState<"yes" | "no" | null>(mine?.answer ?? null);
-  const [comment, setComment] = useState(mine?.comment ?? "");
   const [dates, setDates] = useState<string[]>(mine?.available_dates ?? []);
   const [times, setTimes] = useState<Record<string, string>>(seedTimes(mine));
   const [saving, setSaving] = useState(false);
@@ -44,7 +43,7 @@ export function BroadcastRespond({
     const res = await respondBroadcast(
       broadcast.id,
       nextAnswer,
-      comment,
+      undefined,
       broadcast.kind === "dates" ? dates : undefined,
       broadcast.kind === "dates" ? dates.map((d) => times[d] ?? "") : undefined,
     );
@@ -58,6 +57,9 @@ export function BroadcastRespond({
     announce(broadcast.kind === "dates" ? "Deployment check logged" : "Answer transmitted");
     router.refresh();
   }
+
+  // "Ask" pings have no structured answer — you reply in the thread below.
+  if (broadcast.kind === "ask") return null;
 
   return (
     <div className="rounded-[3px] border border-rule bg-card p-4">
@@ -144,22 +146,12 @@ export function BroadcastRespond({
         </div>
       )}
 
-      {broadcast.kind !== "announce" && (
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          placeholder={broadcast.kind === "ask" ? "Your reply" : "Add a comment (optional)"}
-          className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-        />
-      )}
-
       <button
         onClick={() => submit(answer)}
-        disabled={saving || (broadcast.kind === "ask" && !comment.trim())}
+        disabled={saving}
         className="mt-3 w-full rounded-[3px] bg-ink px-4 py-2.5 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
       >
-        {saving ? "Saving" : broadcast.kind === "announce" ? "Got it" : saved ? "Update" : "Send"}
+        {saving ? "Saving" : broadcast.kind === "announce" ? "Got it" : saved ? "Update answer" : "Send"}
       </button>
 
       {error ? (
