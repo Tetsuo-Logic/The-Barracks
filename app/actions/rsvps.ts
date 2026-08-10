@@ -60,7 +60,7 @@ export async function setRsvp(
 
 /**
  * Back out of a competition you'd committed to. Sets you to "out". If it's
- * inside the 24h lock, it opens a strike hearing in the Tribunal with your
+ * inside the 24h lock, it opens a strike hearing in the Courtroom with your
  * reasons as the defence, and summons the jury (§ organiser model).
  */
 export async function backOut(
@@ -127,7 +127,7 @@ export async function backOut(
       ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
       "rsvp_changes",
       {
-        title: "⚖️ Tribunal in session",
+        title: "⚖️ Courtroom in session",
         body: `${(me as { name?: string })?.name ?? "Someone"} backed out of ${compHeading(c)}. Your verdict is needed.`,
         url: `/trial/${trial.id}`,
         tag: `trial-${trial.id}`,

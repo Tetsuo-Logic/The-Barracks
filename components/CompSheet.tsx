@@ -12,6 +12,7 @@ import { CoursePicker } from "@/components/CoursePicker";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/image";
 import { GAMES, gameHasScorecard, DEFAULT_GAME } from "@/lib/games";
+import { useAnnounce } from "@/components/Announce";
 import type { Competition, CompetitionFormat } from "@/lib/types";
 
 const FORMATS: { value: CompetitionFormat; label: string }[] = [
@@ -32,6 +33,7 @@ export function CompSheet({
   recentCourses: string[];
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const editing = Boolean(initial);
 
   const [shown, setShown] = useState(false);
@@ -149,6 +151,7 @@ export function CompSheet({
       setSaving(false);
       return;
     }
+    announce(editing ? "Game updated" : "Game deployed · squad notified");
     close();
   }
 

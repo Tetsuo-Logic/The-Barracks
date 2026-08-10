@@ -11,6 +11,7 @@ import {
   sendComplaintToCourt,
 } from "@/app/actions/board";
 import { Avatar } from "@/components/Avatar";
+import { useAnnounce } from "@/components/Announce";
 import { relativeTime } from "@/lib/dates";
 import type { Complaint, Profile } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export function ComplaintBoard({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const byId = new Map(profiles.map((p) => [p.id, p]));
 
   const [reason, setReason] = useState("");
@@ -53,6 +55,7 @@ export function ComplaintBoard({
     setComment("");
     setAgainstId("");
     setBusy(false);
+    announce("Complaint filed · before the board");
     router.refresh();
   }
 
@@ -170,6 +173,7 @@ function ComplaintCard({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const filer = c.filed_by ? byId.get(c.filed_by) : null;
   const against = c.against_id ? byId.get(c.against_id) : null;
   const opinionGiver = c.second_opinion_by ? byId.get(c.second_opinion_by) : null;
@@ -193,11 +197,14 @@ function ComplaintCard({
   }
 
   async function toCourtHandler() {
-    if (!confirm("Send this to the Tribunal? It opens a trial with them as the defendant.")) return;
+    if (!confirm("Send this to the Courtroom? It opens a trial with them as the defendant.")) return;
     setBusy(true);
     const res = await sendComplaintToCourt(c.id);
     setBusy(false);
-    if (res.ok) router.push(`/trial/${res.trialId}`);
+    if (res.ok) {
+      announce("Referred to the Courtroom · trial opened");
+      router.push(`/trial/${res.trialId}`);
+    }
   }
 
   return (

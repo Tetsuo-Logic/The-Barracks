@@ -25,7 +25,7 @@ export default async function TrialPage({
   return (
     <div>
       <Link href="/trial" className="label mb-4 inline-block text-ink-soft">
-        ← The Tribunal
+        ← The Courtroom
       </Link>
       <TrialView
         trial={trial as Trial}

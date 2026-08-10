@@ -39,7 +39,7 @@ export default async function AdminPage() {
         href="/trial"
         className="flex items-center justify-between rounded-[3px] border border-rule bg-card px-4 py-3"
       >
-        <span className="text-ink">The Tribunal</span>
+        <span className="text-ink">The Courtroom</span>
         <span className="label text-ink-soft">Convene →</span>
       </Link>
 

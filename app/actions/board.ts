@@ -147,7 +147,7 @@ export async function requestSecondOpinion(
 }
 
 // The nominated player gives their second opinion, with a steer on whether it
-// should go to the Tribunal.
+// should go to the Courtroom.
 export async function submitSecondOpinion(
   complaintId: string,
   opinion: string,
@@ -220,7 +220,7 @@ export async function ruleOnComplaint(
   return { ok: true };
 }
 
-// Refer a complaint to the Tribunal: convene a trial with the subject as the
+// Refer a complaint to the Courtroom: convene a trial with the subject as the
 // defendant, close the complaint, and ping everyone involved. Organiser only
 // (the trials insert policy requires admin).
 export async function sendComplaintToCourt(
@@ -256,12 +256,12 @@ export async function sendComplaintToCourt(
   if (error || !trial) return { ok: false, error: "Couldn't open the case." };
   const trialId = (trial as { id: string }).id;
 
-  // Close the complaint on the board — it's now in the Tribunal.
+  // Close the complaint on the board — it's now in the Courtroom.
   await supabase
     .from("complaints")
     .update({
       status: "addressed",
-      ruling: "Referred to the Tribunal.",
+      ruling: "Referred to the Courtroom.",
       addressed_by: user.id,
       addressed_at: new Date().toISOString(),
     })
@@ -281,7 +281,7 @@ export async function sendComplaintToCourt(
   if (supporters.length > 0) {
     await sendToPlayers(supporters, "board", {
       title: "Your complaint is going to court",
-      body: "The president and board agree — it's headed to the Tribunal.",
+      body: "The president and board agree — it's headed to the Courtroom.",
       url: `/trial/${trialId}`,
       tag: "board",
     });

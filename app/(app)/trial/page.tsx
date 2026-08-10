@@ -24,7 +24,7 @@ export default async function TrialsPage() {
   return (
     <div>
       <ConsoleHeader
-        title="The Tribunal"
+        title="The Courtroom"
         tag="⚖️ Judicial"
         right={<Link href="/" className="label text-ink-soft">← Games</Link>}
       />

@@ -19,7 +19,7 @@ function labelFor(v: TrialVote): { text: string; colour: string } {
   return { text: "Guilty · warning", colour: "var(--color-sand)" };
 }
 
-// The Tribunal. The accused files a defence; the jury (everyone else) votes
+// The Courtroom. The accused files a defence; the jury (everyone else) votes
 // guilty or not. Unanimous guilty adds a strike — decided server-side.
 export function TrialView({
   trial,
@@ -67,7 +67,7 @@ export function TrialView({
     <div>
       {/* charge sheet */}
       <div className="rounded-[3px] border border-ink bg-card p-4 text-center">
-        <p className="label" style={{ color: "var(--color-flag)" }}>⚖️ The Tribunal</p>
+        <p className="label" style={{ color: "var(--color-flag)" }}>⚖️ The Courtroom</p>
         <div className="my-3 flex justify-center">
           <Avatar name={defendant?.name ?? "?"} avatarUrl={defendant?.avatar_url} colour={defendant?.colour} size={56} />
         </div>

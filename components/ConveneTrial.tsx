@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createTrial } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
+import { useAnnounce } from "@/components/Announce";
 import type { Profile } from "@/lib/types";
 
-// Organiser convenes the Tribunal: pick who flaked, name the charge.
+// Organiser convenes the Courtroom: pick who flaked, name the charge.
 export function ConveneTrial({
   candidates,
   competitionId,
@@ -17,6 +18,7 @@ export function ConveneTrial({
   compact?: boolean;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const [open, setOpen] = useState(!compact);
   const [defendant, setDefendant] = useState<string | null>(null);
   const [charge, setCharge] = useState("");
@@ -29,7 +31,7 @@ export function ConveneTrial({
         onClick={() => setOpen(true)}
         className="rounded-[3px] border border-flag px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-flag"
       >
-        Take to the Tribunal
+        Take to the Courtroom
       </button>
     );
   }
@@ -48,13 +50,14 @@ export function ConveneTrial({
       setBusy(false);
       return;
     }
+    announce("Courtroom convened · summons issued");
     router.push(`/trial/${res.id}`);
   }
 
   return (
     <div className="rounded-[3px] border border-flag/50 bg-card p-4">
       <p className="label mb-3" style={{ color: "var(--color-flag)" }}>
-        Convene the Tribunal
+        Convene the Courtroom
       </p>
 
       <p className="label mb-2">The accused</p>

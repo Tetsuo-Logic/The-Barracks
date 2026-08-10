@@ -1,8 +1,13 @@
-// The home-screen command banner — the app's "boot screen" identity. A console
-// panel: system-online readout, a signal meter, the big angular wordmark
-// (powers on with a flicker + recurring signal glitch), a live sitrep line with
-// a blinking cursor, and a scrolling telemetry ticker. Pure CSS motion, all of
-// it killed under prefers-reduced-motion.
+"use client";
+
+import { useEffect, useState } from "react";
+
+// The home-screen command banner — the app's "boot screen" identity. The
+// wordmark TYPES OUT on every load (sci-fi terminal style), then keeps the
+// recon beam, signal meter, scanlines and telemetry ticker running. All motion
+// is pure CSS except the type-on, and all of it is honoured by reduced-motion.
+const WORDMARK = "THE BARRACKS";
+
 export function CommandBanner({
   operators,
   callsign,
@@ -19,6 +24,22 @@ export function CommandBanner({
     "AWAITING ORDERS",
     "NO APPEALS",
   ].join("  ·  ");
+
+  // Type the wordmark out on mount.
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setTyped(WORDMARK.slice(0, i));
+      if (i >= WORDMARK.length) {
+        clearInterval(id);
+        setDone(true);
+      }
+    }, 85);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <section className="hud relative mb-6 overflow-hidden px-5 pb-9 pt-6">
@@ -54,11 +75,18 @@ export function CommandBanner({
           </div>
         </div>
 
+        {/* wordmark, typed out */}
         <h1
-          className="display poweron mt-3 text-[40px] font-bold uppercase leading-[0.92] tracking-[0.01em] text-ink"
+          className={`display mt-3 text-[40px] font-bold uppercase leading-[0.92] tracking-[0.01em] text-ink [text-shadow:0_0_22px_rgba(245,182,61,0.22)] ${done ? "signal" : ""}`}
           aria-label="The Barracks"
         >
-          <span className="signal inline-block">The Barracks</span>
+          <span aria-hidden>{typed || " "}</span>
+          {!done && (
+            <span
+              className="cursor ml-1 inline-block h-[34px] w-[10px] translate-y-[3px] bg-sand align-baseline"
+              aria-hidden
+            />
+          )}
         </h1>
 
         <p className="mt-2 flex items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">

@@ -47,7 +47,7 @@ export default async function StandingsPage() {
       <ConsoleHeader
         title="Ranks"
         tag="Leaderboard"
-        right={<Link href="/trial" className="label text-ink-soft">Tribunal →</Link>}
+        right={<Link href="/trial" className="label text-ink-soft">Courtroom →</Link>}
       />
 
       <StandingsTabs cup={cup} casual={casual} strikeCount={strikeCount} />

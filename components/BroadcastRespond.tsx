@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { respondBroadcast } from "@/app/actions/broadcasts";
+import { useAnnounce } from "@/components/Announce";
 import { heroDate, shortDate } from "@/lib/dates";
 import type { Broadcast, BroadcastResponse } from "@/lib/types";
 
@@ -27,6 +28,7 @@ export function BroadcastRespond({
   mine: BroadcastResponse | null;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const [answer, setAnswer] = useState<"yes" | "no" | null>(mine?.answer ?? null);
   const [comment, setComment] = useState(mine?.comment ?? "");
   const [dates, setDates] = useState<string[]>(mine?.available_dates ?? []);
@@ -53,6 +55,7 @@ export function BroadcastRespond({
     }
     setSaved(true);
     setSaving(false);
+    announce(broadcast.kind === "dates" ? "Deployment check logged" : "Answer transmitted");
     router.refresh();
   }
 

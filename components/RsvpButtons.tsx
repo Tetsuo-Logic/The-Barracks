@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRsvp, backOut } from "@/app/actions/rsvps";
+import { useAnnounce } from "@/components/Announce";
 import type { RsvpStatus } from "@/lib/types";
 
 const OPTIONS: { value: RsvpStatus; label: string; fill: string }[] = [
@@ -23,6 +24,7 @@ export function RsvpButtons({
   locked?: boolean;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const [status, setStatus] = useState<RsvpStatus | null>(current);
   const [error, setError] = useState<string | null>(null);
   const [backingOut, setBackingOut] = useState(false);
@@ -40,6 +42,8 @@ export function RsvpButtons({
       if (!res.ok) {
         setStatus(previous);
         setError("Couldn't save your answer. Tap to try again.");
+      } else {
+        announce(`Roll call logged · ${next === "in" ? "you're in" : "you're out"}`);
       }
     });
   }
@@ -75,7 +79,7 @@ export function RsvpButtons({
               </p>
               <p className="mb-3 text-sm text-ink">
                 You said you were in. Backing out now goes straight to the
-                Tribunal for a strike hearing. Put your reasons down — they
+                Courtroom for a strike hearing. Put your reasons down — they
                 become your defence.
               </p>
               <textarea

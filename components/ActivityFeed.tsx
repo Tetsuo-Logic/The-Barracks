@@ -309,7 +309,7 @@ function TrialRow({ trial, byId }: { trial: Trial; byId: Map<string, Profile> })
     <Link href={`/trial/${trial.id}`} className="block border-b border-rule py-3">
       <div className="flex items-center justify-between">
         <span className="label" style={{ color: "var(--color-flag)" }}>
-          The Tribunal
+          The Courtroom
         </span>
         <span className="flex items-center gap-2 text-xs text-ink-soft">
           <span

@@ -8,6 +8,7 @@ import {
   deleteGameRequest,
 } from "@/app/actions/requests";
 import { GAMES, gameById, DEFAULT_GAME } from "@/lib/games";
+import { useAnnounce } from "@/components/Announce";
 import type { GameRequestWithPlayer } from "@/lib/queries";
 
 // Player-initiated "request a game" entry point + the open-requests board. Any
@@ -23,6 +24,7 @@ export function GameRequests({
   currentUserId: string;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const [composing, setComposing] = useState(false);
   const [game, setGame] = useState<string>(DEFAULT_GAME);
   const [note, setNote] = useState("");
@@ -38,10 +40,12 @@ export function GameRequests({
       setBusy(false);
       return;
     }
+    const g = gameById(game);
     setNote("");
     setGame(DEFAULT_GAME);
     setComposing(false);
     setBusy(false);
+    announce(`Game request raised · ${g.name}`);
     router.refresh();
   }
 

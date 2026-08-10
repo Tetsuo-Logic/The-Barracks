@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBroadcast } from "@/app/actions/broadcasts";
 import { createTrial } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
+import { useAnnounce } from "@/components/Announce";
 import { shortDate } from "@/lib/dates";
 import type { BroadcastKind, Profile } from "@/lib/types";
 
@@ -15,11 +16,12 @@ const KINDS: { value: Mode; label: string; hint: string }[] = [
   { value: "dates", label: "Deploy", hint: "Deployment check — offer nights; they tick what they can do." },
   { value: "ask", label: "Ask", hint: "They reply in words." },
   { value: "announce", label: "Tell", hint: "Just put out a dispatch." },
-  { value: "court", label: "Court", hint: "Court-martial someone for flaking." },
+  { value: "court", label: "Court", hint: "Take someone to the Courtroom for flaking." },
 ];
 
 export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const [mode, setMode] = useState<Mode>("yesno");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -54,6 +56,7 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
         setSending(false);
         return;
       }
+      announce("Courtroom convened · summons issued");
       router.push(`/trial/${res.id}`);
       return;
     }
@@ -75,9 +78,12 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
       setSending(false);
       return;
     }
+    const label =
+      mode === "dates" ? "Deployment check sent" : mode === "announce" ? "Dispatch transmitted" : "Comms transmitted";
     setBody("");
     setTitle("");
     setSending(false);
+    announce(label);
     router.refresh();
   }
 
