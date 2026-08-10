@@ -66,8 +66,8 @@ export default async function FixturesPage({
           <p className="label mb-2" style={{ color: "var(--color-sand)" }}>▸ Next up</p>
           <EmptyState action={isAdmin ? <AddDateButton /> : undefined}>
             {isAdmin
-              ? "No games on the board. Someone call the first one."
-              : "No games on the board yet — request one below. 🎮"}
+              ? "No games on the board. Deploy one, or put a request in below. 🎮"
+              : "No games on the board yet — put a request in below. 🎮"}
           </EmptyState>
         </>
       )}

@@ -1,8 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 // The shared console section header — a compact HUD strip that makes every page
-// read as part of the same system: scanlines, a sweeping recon beam, a pulsing
-// status dot, a mono "sector" tag and the angular display title.
+// read as part of the same system. The title TYPES OUT on load, matching the
+// command banner: scanlines, a sweeping recon beam, a pulsing dot, a mono
+// "sector" tag and the angular display title.
 export function ConsoleHeader({
   title,
   tag = "Sector",
@@ -14,6 +18,23 @@ export function ConsoleHeader({
   right?: ReactNode;
   className?: string;
 }) {
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    setTyped("");
+    setDone(false);
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setTyped(title.slice(0, i));
+      if (i >= title.length) {
+        clearInterval(id);
+        setDone(true);
+      }
+    }, 55);
+    return () => clearInterval(id);
+  }, [title]);
+
   return (
     <div className={`hud relative overflow-hidden px-4 py-3 ${className}`}>
       <div className="scanlines pointer-events-none absolute inset-0 opacity-30" aria-hidden />
@@ -28,8 +49,17 @@ export function ConsoleHeader({
             <div className="font-mono text-[9px] uppercase tracking-[0.24em] text-ink-soft">
               {tag}
             </div>
-            <div className="display truncate text-[19px] font-semibold uppercase leading-none tracking-[0.02em] text-ink">
-              {title}
+            <div
+              className="display truncate text-[19px] font-semibold uppercase leading-none tracking-[0.02em] text-ink"
+              aria-label={title}
+            >
+              <span aria-hidden>{typed || " "}</span>
+              {!done && (
+                <span
+                  className="cursor ml-0.5 inline-block h-[15px] w-[7px] translate-y-[2px] bg-sand"
+                  aria-hidden
+                />
+              )}
             </div>
           </div>
         </div>

@@ -25,9 +25,14 @@ export function CommandBanner({
     "NO APPEALS",
   ].join("  ·  ");
 
-  // Type the wordmark out on mount.
+  // The sitrep line — types out in green, under the wordmark.
+  const sitrep = `games-night ops · squad ${squad}${callsign ? ` · ${callsign}` : " · no appeals"}`;
+
+  // Phase 1: type the wordmark. Phase 2 (after): type the sitrep in green.
   const [typed, setTyped] = useState("");
   const [done, setDone] = useState(false);
+  const [subTyped, setSubTyped] = useState("");
+
   useEffect(() => {
     let i = 0;
     const id = setInterval(() => {
@@ -40,6 +45,20 @@ export function CommandBanner({
     }, 85);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!done) return;
+    setSubTyped("");
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setSubTyped(sitrep.slice(0, i));
+      if (i >= sitrep.length) {
+        clearInterval(id);
+      }
+    }, 32);
+    return () => clearInterval(id);
+  }, [done, sitrep]);
 
   return (
     <section className="hud relative mb-6 overflow-hidden px-5 pb-9 pt-6">
@@ -89,16 +108,17 @@ export function CommandBanner({
           )}
         </h1>
 
-        <p className="mt-2 flex items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
+        <p className="mt-2 flex min-h-[1.3em] items-center font-mono text-[11px] uppercase tracking-[0.18em] text-moss">
           <span className="text-sand">{"//"}</span>
-          <span className="ml-1.5">
-            games-night ops · squad {squad}
-            {callsign ? ` · ${callsign}` : " · no appeals"}
+          <span className="ml-1.5" aria-label={sitrep}>
+            {subTyped}
           </span>
-          <span
-            className="cursor ml-1 inline-block h-[12px] w-[7px] translate-y-[1px] bg-sand"
-            aria-hidden
-          />
+          {done && (
+            <span
+              className="cursor ml-1 inline-block h-[12px] w-[7px] translate-y-[1px] bg-moss"
+              aria-hidden
+            />
+          )}
         </p>
       </div>
 
