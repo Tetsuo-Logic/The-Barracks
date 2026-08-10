@@ -420,9 +420,9 @@ export type LastRound = {
 
 export type PlayerRecord = {
   profile: Profile;
-  played: number;
-  wins: number;
-  skins: number;
+  played: number; // non-cancelled games this player committed to
+  warnings: number;
+  strikes: number;
   lastRounds: LastRound[];
   photos: PhotoWithUrl[];
 };
@@ -437,25 +437,33 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     .single();
   if (!profile) return null;
 
-  const [{ data: comps }, { data: profiles }, { data: scores }, { data: photoRows }] =
-    await Promise.all([
-      supabase.from("competitions").select("*"),
-      supabase.from("profiles").select("*"),
-      supabase.from("scores").select("*"),
-      supabase.from("photos").select("*").eq("uploader_id", id).order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: comps },
+    { data: scores },
+    { data: photoRows },
+    { data: myRsvps },
+    { data: myWarnings },
+    { data: myStrikes },
+  ] = await Promise.all([
+    supabase.from("competitions").select("*"),
+    supabase.from("scores").select("*"),
+    supabase.from("photos").select("*").eq("uploader_id", id).order("created_at", { ascending: false }),
+    supabase.from("rsvps").select("competition_id").eq("player_id", id).eq("status", "in"),
+    supabase.from("warnings").select("id").eq("player_id", id),
+    supabase.from("strikes").select("id").eq("player_id", id),
+  ]);
 
-  // Reuse standings maths for the record.
-  const { computeStandings } = await import("@/lib/standings");
   const { toPar } = await import("@/lib/scoring");
-  const standings = computeStandings(
-    (comps ?? []) as Competition[],
-    (profiles ?? []) as Profile[],
-    (scores ?? []) as Score[],
-  );
-  const row = standings.rows.find((r) => r.player.id === id);
-
   const compById = new Map(((comps ?? []) as Competition[]).map((c) => [c.id, c]));
+
+  // Played = games in the calendar that weren't cancelled and this player
+  // committed to (roll call: in).
+  const played = ((myRsvps ?? []) as { competition_id: string }[]).filter((r) => {
+    const c = compById.get(r.competition_id);
+    return c && c.status !== "cancelled";
+  }).length;
+  const warnings = (myWarnings ?? []).length;
+  const strikes = (myStrikes ?? []).length;
   const lastRounds: LastRound[] = [];
   for (const s of (scores ?? []) as Score[]) {
     if (s.player_id !== id) continue;
@@ -483,9 +491,9 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
 
   return {
     profile: profile as Profile,
-    played: row?.played ?? 0,
-    wins: row?.wins ?? 0,
-    skins: row?.skins ?? 0,
+    played,
+    warnings,
+    strikes,
     lastRounds,
     photos,
   };

@@ -6,7 +6,7 @@ import type { PlayerRecord } from "@/lib/queries";
 
 // Read-only profile: identity, record, last five rounds as thin bars, photos.
 export function ProfileView({ record }: { record: PlayerRecord }) {
-  const { profile, played, wins, skins, lastRounds, photos } = record;
+  const { profile, played, warnings, strikes, lastRounds, photos } = record;
 
   return (
     <div>
@@ -26,8 +26,8 @@ export function ProfileView({ record }: { record: PlayerRecord }) {
       {/* record */}
       <div className="mt-6 grid grid-cols-3 overflow-hidden rounded-[3px] border border-rule">
         <Stat label="Played" value={played} />
-        <Stat label="Won" value={wins} border />
-        <Stat label="Skins" value={skins} border />
+        <Stat label="Warnings" value={warnings} border />
+        <Stat label="Strikes" value={strikes} border />
       </div>
 
       {/* last five */}

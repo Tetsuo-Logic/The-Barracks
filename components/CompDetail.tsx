@@ -16,7 +16,7 @@ import { isLocked } from "@/lib/rsvp";
 import type { CompetitionDetail } from "@/lib/queries";
 import type { RsvpStatus } from "@/lib/types";
 
-type Tab = "details" | "card" | "photos" | "chat";
+type Tab = "details" | "card" | "photos";
 
 const STATUS_TEXT: Record<RsvpStatus, string> = { in: "In", out: "Out", maybe: "Maybe" };
 const STATUS_COLOUR: Record<RsvpStatus, string> = {
@@ -40,8 +40,8 @@ export function CompDetail({
   const heading = compHeading(comp);
   // Non-golf ops skip the scorecard tab entirely.
   const tabs: Tab[] = isGolf
-    ? ["details", "card", "photos", "chat"]
-    : ["details", "photos", "chat"];
+    ? ["details", "card", "photos"]
+    : ["details", "photos"];
   const [tab, setTab] = useState<Tab>("details");
   const [entering, setEntering] = useState(false);
 
@@ -106,7 +106,7 @@ export function CompDetail({
             )}
           </p>
           {comp.status === "cancelled" && (
-            <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">Scrubbed</p>
+            <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">Cancelled</p>
           )}
         </div>
       </div>
@@ -123,7 +123,7 @@ export function CompDetail({
               color: tab === t ? "var(--color-ink)" : "var(--color-ink-soft)",
             }}
           >
-            {t === "chat" ? `Chat${comments.length ? ` ${comments.length}` : ""}` : t}
+            {t}
           </button>
         ))}
       </div>
@@ -131,6 +131,16 @@ export function CompDetail({
       <div className="mt-5">
         {tab === "details" && (
           <div>
+            {comp.status === "cancelled" && (
+              <div className="mb-4 rounded-[3px] border border-flag/50 bg-card p-3">
+                <p className="label mb-0.5" style={{ color: "var(--color-flag)" }}>
+                  Cancelled
+                </p>
+                <p className="text-ink">
+                  {comp.cancel_reason || "Called off."}
+                </p>
+              </div>
+            )}
             {comp.stake && <p className="mb-4 text-ink">{comp.stake}</p>}
             {comp.notes && <p className="mb-4 text-ink-soft">{comp.notes}</p>}
 
@@ -198,6 +208,17 @@ export function CompDetail({
                   />
                 </div>
               )}
+
+            {/* Comments — inline (no separate Chat tab) */}
+            <hr className="rule my-6" />
+            <p className="label mb-2">Comments 💬</p>
+            <Chat
+              competitionId={comp.id}
+              initial={comments}
+              profiles={profiles}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+            />
           </div>
         )}
 
@@ -237,16 +258,6 @@ export function CompDetail({
 
         {tab === "photos" && (
           <Photos competitionId={comp.id} photos={photos} profiles={profiles} />
-        )}
-
-        {tab === "chat" && (
-          <Chat
-            competitionId={comp.id}
-            initial={comments}
-            profiles={profiles}
-            currentUserId={currentUserId}
-            isAdmin={isAdmin}
-          />
         )}
       </div>
 

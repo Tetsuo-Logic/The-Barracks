@@ -12,6 +12,7 @@ export async function addRadarGame(input: {
   title: string;
   releaseDate?: string;
   note?: string;
+  youtubeUrl?: string;
 }): Promise<Result> {
   const supabase = await createClient();
   const {
@@ -26,6 +27,7 @@ export async function addRadarGame(input: {
     title,
     note: input.note?.trim() || null,
     release_date: input.releaseDate || null,
+    youtube_url: input.youtubeUrl?.trim() || null,
     added_by: user.id,
   });
   if (error) return { ok: false, error: "Couldn't add it to the radar." };

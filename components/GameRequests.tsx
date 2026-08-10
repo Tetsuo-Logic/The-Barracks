@@ -187,7 +187,7 @@ export function GameRequests({
       ) : (
         !composing && (
           <p className="mt-3 text-sm text-ink-soft">
-            No requests on the board. Fancy a game? Put it up. 🎮
+            No requests on the board.
           </p>
         )
       )}

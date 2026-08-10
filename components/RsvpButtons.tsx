@@ -171,7 +171,7 @@ export function RsvpButtons({
         <p className="mt-2 text-sm text-ink-soft">You&apos;re out. Saved.</p>
       ) : (
         <p className="mt-2 text-sm text-ink-soft">
-          Say you&apos;re in and you&apos;re committed.
+          In or out — drop a comment below. 💬
         </p>
       )}
     </div>

@@ -57,6 +57,7 @@ export interface Competition {
   par: number[] | null;
   stroke_index: number[] | null;
   status: CompetitionStatus;
+  cancel_reason: string | null; // why it was cancelled, if it was
   for_cup: boolean; // counts toward the Threeball Cup, vs a casual round
   created_at: string;
 }
@@ -156,6 +157,7 @@ export interface RadarGame {
   title: string;
   note: string | null;
   release_date: string | null; // 'YYYY-MM-DD'
+  youtube_url: string | null; // optional trailer link
   added_by: string | null;
   created_at: string;
 }

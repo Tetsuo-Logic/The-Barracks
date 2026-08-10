@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addRadarGame, setRadarInterest, deleteRadarGame } from "@/app/actions/radar";
+import { addGame } from "@/app/actions/games";
 import { useAnnounce } from "@/components/Announce";
 import { shortDate } from "@/lib/dates";
 import type { RadarItem } from "@/lib/queries";
@@ -24,13 +25,19 @@ export function RadarBoard({
   const [title, setTitle] = useState("");
   const [release, setRelease] = useState("");
   const [note, setNote] = useState("");
+  const [trailer, setTrailer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function add() {
     setBusy(true);
     setError(null);
-    const res = await addRadarGame({ title, releaseDate: release || undefined, note });
+    const res = await addRadarGame({
+      title,
+      releaseDate: release || undefined,
+      note,
+      youtubeUrl: trailer || undefined,
+    });
     setBusy(false);
     if (!res.ok) {
       setError(res.error);
@@ -39,8 +46,17 @@ export function RadarBoard({
     setTitle("");
     setRelease("");
     setNote("");
+    setTrailer("");
     setComposing(false);
     announce(`On the radar · ${title.trim()}`);
+    router.refresh();
+  }
+
+  async function toGames(title: string) {
+    setBusy(true);
+    const res = await addGame(title);
+    setBusy(false);
+    announce(res.ok ? `Added to games list · ${title}` : res.error);
     router.refresh();
   }
 
@@ -88,6 +104,14 @@ export function RadarBoard({
             value={release}
             onChange={(e) => setRelease(e.target.value)}
             className="mb-3 block w-full max-w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          <label className="label mb-1 block">Trailer link (optional)</label>
+          <input
+            value={trailer}
+            onChange={(e) => setTrailer(e.target.value)}
+            inputMode="url"
+            placeholder="Paste a YouTube link…"
+            className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
           />
           <label className="label mb-1 block">Note (optional)</label>
           <input
@@ -175,6 +199,30 @@ export function RadarBoard({
                     Not for me{g.no > 0 ? ` · ${g.no}` : ""}
                   </button>
                 </div>
+
+                {(g.youtube_url || isAdmin) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {g.youtube_url && (
+                      <a
+                        href={g.youtube_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-[3px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.06em] text-ink transition-colors hover:border-ink"
+                      >
+                        ▶ Watch trailer
+                      </a>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => toGames(g.title)}
+                        disabled={busy}
+                        className="rounded-[3px] border border-sand/60 px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.06em] text-sand transition-colors hover:border-sand disabled:opacity-50"
+                      >
+                        + Add to games
+                      </button>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}

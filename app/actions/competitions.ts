@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
 import { heroDate, shortTime } from "@/lib/dates";
-import { gameById, gameHasScorecard, DEFAULT_GAME } from "@/lib/games";
-import type { CompetitionFormat, Profile } from "@/lib/types";
+import { gameById, gameHasScorecard, compHeading, DEFAULT_GAME } from "@/lib/games";
+import type { Competition, CompetitionFormat, Profile } from "@/lib/types";
 
 export type CompetitionInput = {
   id?: string;
@@ -123,6 +123,39 @@ export async function saveCompetition(
   revalidatePath("/");
   revalidatePath("/calendar");
   return { ok: true, id: data.id as string };
+}
+
+// Call a fixture off (keep the record). Stores the reason and tells the squad.
+export async function cancelCompetition(id: string, reason: string): Promise<Result> {
+  const { supabase, user, isAdmin } = await requireAdmin();
+  if (!user) return { ok: false, error: "Not signed in." };
+  if (!isAdmin) return { ok: false, error: "Only the CO can do that." };
+
+  const { data: comp } = await supabase.from("competitions").select("*").eq("id", id).single();
+  const trimmed = reason.trim();
+  const { error } = await supabase
+    .from("competitions")
+    .update({ status: "cancelled", cancel_reason: trimmed || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: "Couldn't cancel it." };
+
+  const c = comp as Competition | null;
+  const { data: others } = await supabase.from("profiles").select("id").neq("id", user.id);
+  await sendToPlayers(
+    ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
+    "new_comp",
+    {
+      title: `❌ Cancelled: ${c ? compHeading(c) : "a game"}`,
+      body: trimmed ? `"${trimmed}"` : "Called off.",
+      url: `/comp/${id}`,
+      tag: `cancel-${id}`,
+    },
+  );
+
+  revalidatePath("/");
+  revalidatePath("/calendar");
+  revalidatePath(`/comp/${id}`);
+  return { ok: true, id };
 }
 
 export async function deleteCompetition(id: string): Promise<Result> {

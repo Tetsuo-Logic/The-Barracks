@@ -640,3 +640,13 @@ drop policy if exists radar_interest_insert on radar_interest;
 create policy radar_interest_insert on radar_interest for insert with check (player_id = auth.uid());
 drop policy if exists radar_interest_update on radar_interest;
 create policy radar_interest_update on radar_interest for update using (player_id = auth.uid()) with check (player_id = auth.uid());
+
+-- ============================================================
+-- 0023_cancel_reason.sql — cancel a fixture with a reason.
+-- ============================================================
+alter table competitions add column if not exists cancel_reason text;
+
+-- ============================================================
+-- 0024_radar_trailer.sql — optional trailer link on radar games.
+-- ============================================================
+alter table radar_games add column if not exists youtube_url text;

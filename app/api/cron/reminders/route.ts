@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendToPlayers } from "@/lib/push";
 import { heroDate, shortTime } from "@/lib/dates";
-import { compHeading, compMetaChip } from "@/lib/games";
-import type { Competition, Profile, Rsvp } from "@/lib/types";
+import { compHeading, compMetaChip, gameIdFromName } from "@/lib/games";
+import type { Competition, Profile, RadarGame, Rsvp } from "@/lib/types";
 
 // Daily sweep (§6.4), run by Vercel Cron, guarded by CRON_SECRET.
 // - chase: competitions 3 days out with players who haven't answered
@@ -81,10 +81,45 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Radar releases out today → tell everyone and add it to the games list.
+  const { data: releases } = await admin
+    .from("radar_games")
+    .select("*")
+    .eq("release_date", todayStr);
+  for (const r of (releases ?? []) as RadarGame[]) {
+    const everyoneIds = allProfiles.map((p) => p.id);
+    const fresh = await notYetSent(admin, r.id, "radar_release", everyoneIds);
+    if (fresh.length > 0) {
+      await sendToPlayers(fresh, "new_comp", {
+        title: `🎮 Out today: ${r.title}`,
+        body: "It's released — added to the games list. Fancy a night?",
+        url: "/radar",
+        tag: `radar-release-${r.id}`,
+      });
+      await markSent(admin, r.id, "radar_release", fresh);
+      sent += fresh.length;
+      await addReleasedGameToList(admin, r.title);
+    }
+  }
+
   return NextResponse.json({ ok: true, sent });
 }
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
+
+// Add a released radar game to the CO-editable games list (idempotent by id).
+async function addReleasedGameToList(admin: Admin, title: string) {
+  const id = gameIdFromName(title);
+  if (!id) return;
+  const { data } = await admin.from("app_settings").select("games").eq("id", 1).maybeSingle();
+  const raw = (data as { games?: unknown } | null)?.games;
+  const games = Array.isArray(raw)
+    ? (raw as { id: string; name: string; emoji: string; hasScorecard: boolean }[])
+    : [];
+  if (games.some((g) => g.id === id)) return;
+  games.push({ id, name: title.trim(), emoji: "🎮", hasScorecard: false });
+  await admin.from("app_settings").update({ games }).eq("id", 1);
+}
 
 async function notYetSent(admin: Admin, compId: string, kind: string, playerIds: string[]) {
   if (playerIds.length === 0) return [];

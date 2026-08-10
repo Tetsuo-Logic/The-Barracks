@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   saveCompetition,
   deleteCompetition,
+  cancelCompetition,
   type CompetitionInput,
 } from "@/app/actions/competitions";
 import { todayISO } from "@/lib/dates";
@@ -53,6 +54,8 @@ export function CompSheet({
   const [strokeIndex, setStrokeIndex] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const initialisedFor = useRef<string | null>(null);
 
@@ -98,6 +101,8 @@ export function CompSheet({
       setStrokeIndex([]);
     }
     setConfirmingCancel(false);
+    setShowCancel(false);
+    setCancelReason("");
     setError(null);
     // trigger slide-up next frame
     requestAnimationFrame(() => setShown(true));
@@ -167,6 +172,19 @@ export function CompSheet({
       return;
     }
     announce("Game deleted · stood down");
+    close();
+  }
+
+  async function doCancelFixture() {
+    if (!initial) return;
+    setSaving(true);
+    const res = await cancelCompetition(initial.id, cancelReason);
+    if (!res.ok) {
+      setError(res.error);
+      setSaving(false);
+      return;
+    }
+    announce("Fixture cancelled · squad notified");
     close();
   }
 
@@ -366,15 +384,54 @@ export function CompSheet({
             {saving ? "Deploying…" : editing ? "Save changes" : "Deploy request"}
           </button>
 
-          {/* Cancel the competition (edit only) */}
+          {/* Cancel or delete (edit only) */}
           {editing && (
-            <div className="mt-6 border-t border-rule pt-5">
+            <div className="mt-6 space-y-5 border-t border-rule pt-5">
+              {/* Cancel the fixture — keeps it, notifies everyone with a reason */}
+              {!showCancel ? (
+                <button
+                  onClick={() => setShowCancel(true)}
+                  className="text-sm font-medium text-flag"
+                >
+                  Cancel fixture
+                </button>
+              ) : (
+                <div>
+                  <p className="mb-2 text-sm text-ink">
+                    Call it off? Everyone gets told, with your reason.
+                  </p>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows={2}
+                    placeholder="Why it's off — servers down, someone's out…"
+                    className="mb-2 w-full resize-none rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowCancel(false)}
+                      className="rounded-[3px] border border-rule px-4 py-2 text-sm text-ink-soft"
+                    >
+                      Keep it
+                    </button>
+                    <button
+                      onClick={doCancelFixture}
+                      disabled={saving}
+                      className="rounded-[3px] bg-flag px-4 py-2 text-sm font-semibold text-paper disabled:opacity-60"
+                    >
+                      Cancel &amp; notify
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Delete entirely — removes the row and everything on it */}
               {!confirmingCancel ? (
                 <button
                   onClick={() => setConfirmingCancel(true)}
-                  className="text-sm font-medium text-flag"
+                  className="text-xs text-ink-soft hover:text-flag"
                 >
-                  Delete this game
+                  Or delete it entirely
                 </button>
               ) : (
                 <div>
