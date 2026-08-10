@@ -32,6 +32,7 @@ export function ComplaintBoard({
   const announce = useAnnounce();
   const byId = new Map(profiles.map((p) => [p.id, p]));
 
+  const [composing, setComposing] = useState(false);
   const [reason, setReason] = useState("");
   const [action, setAction] = useState("");
   const [comment, setComment] = useState("");
@@ -54,6 +55,7 @@ export function ComplaintBoard({
     setAction("");
     setComment("");
     setAgainstId("");
+    setComposing(false);
     setBusy(false);
     announce("Complaint filed · before the board");
     router.refresh();
@@ -64,68 +66,90 @@ export function ComplaintBoard({
 
   return (
     <div>
-      {/* file a complaint */}
-      <div className="rounded-[3px] border border-rule bg-card p-4">
-        <p className="label mb-3">Raise it with the board</p>
-
-        <label className="label mb-1 block">Who&apos;s it about?</label>
-        <select
-          value={againstId}
-          onChange={(e) => setAgainstId(e.target.value)}
-          className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-        >
-          <option value="">No One In Particular</option>
-          {others.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
-        <label className="label mb-1 block">The complaint</label>
-        <input
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Went AWOL and left us a man down"
-          className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-        />
-        <label className="label mb-1 block">Action you want</label>
-        <div className="relative mb-3">
-          <select
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+      {/* header row + collapsed compose (matches Radar / Requests) */}
+      <div className="mb-1 flex items-center justify-between">
+        <p className="label">Before the President</p>
+        {!composing && (
+          <button
+            onClick={() => setComposing(true)}
+            className="label text-ink-soft transition-colors hover:text-ink"
           >
-            <option value="">No Specific Action — Just Raising It</option>
-            <option value="Formal Warning">Formal Warning</option>
-            <option value="Strike">Strike</option>
-          </select>
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
-            ▾
-          </span>
-        </div>
-        <label className="label mb-1 block">Comment</label>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          placeholder="It's affecting morale."
-          className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-        />
-        {error && <p className="mt-2 text-sm text-flag">{error}</p>}
-        <button
-          onClick={file}
-          disabled={busy || !reason.trim()}
-          className="mt-3 w-full rounded-[3px] bg-ink px-4 py-3 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
-        >
-          {busy ? "Filing" : "File it"}
-        </button>
+            + File a complaint
+          </button>
+        )}
       </div>
+      <hr className="rule" />
 
-      {/* awaiting a ruling */}
-      <div className="mt-8">
-        <p className="label mb-1">Before the president</p>
-        <hr className="rule mb-2" />
+      {composing && (
+        <div className="mt-3 rounded-[3px] border border-rule bg-card p-4">
+          <label className="label mb-1 block">Who&apos;s it about?</label>
+          <select
+            value={againstId}
+            onChange={(e) => setAgainstId(e.target.value)}
+            className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          >
+            <option value="">No One In Particular</option>
+            {others.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="label mb-1 block">The complaint</label>
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Went AWOL and left us a man down"
+            className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          <label className="label mb-1 block">Action you want</label>
+          <div className="relative mb-3">
+            <select
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+            >
+              <option value="">No Specific Action — Just Raising It</option>
+              <option value="Formal Warning">Formal Warning</option>
+              <option value="Strike">Strike</option>
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
+              ▾
+            </span>
+          </div>
+          <label className="label mb-1 block">Comment</label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            placeholder="It's affecting morale."
+            className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          {error && <p className="mt-2 text-sm text-flag">{error}</p>}
+          <div className="mt-3 flex gap-3">
+            <button
+              onClick={() => {
+                setComposing(false);
+                setError(null);
+              }}
+              className="rounded-[3px] border border-rule px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={file}
+              disabled={busy || !reason.trim()}
+              className="flex-1 rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+            >
+              {busy ? "Filing" : "File it"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* open complaints — the board lands on its actual state */}
+      <div className="mt-4">
         {open.length === 0 ? (
           <p className="py-6 text-center text-ink-soft">Nothing outstanding. A peaceful reign.</p>
         ) : (
