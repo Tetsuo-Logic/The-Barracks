@@ -666,3 +666,8 @@ drop policy if exists broadcast_messages_read on broadcast_messages;
 create policy broadcast_messages_read on broadcast_messages for select using (auth.uid() is not null);
 drop policy if exists broadcast_messages_insert on broadcast_messages;
 create policy broadcast_messages_insert on broadcast_messages for insert with check (author_id = auth.uid());
+
+-- ============================================================
+-- 0026_radar_platform.sql — platform on radar games.
+-- ============================================================
+alter table radar_games add column if not exists platform text;

@@ -1,4 +1,5 @@
 import { requireProfile } from "@/lib/auth";
+import { previewingAsPlayer } from "@/lib/preview";
 import {
   getFixturesData,
   getCompetition,
@@ -33,7 +34,7 @@ export default async function FixturesPage({
     getGames(),
   ]);
 
-  const isAdmin = profile.is_admin;
+  const isAdmin = profile.is_admin && !(await previewingAsPlayer());
   // Only the organiser gets the create/edit sheet.
   const sheet = isAdmin ? sp.sheet : undefined;
   const sheetOpen = Boolean(sheet);

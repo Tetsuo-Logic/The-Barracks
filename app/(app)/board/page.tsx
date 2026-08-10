@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
+import { previewingAsPlayer } from "@/lib/preview";
 import { createClient } from "@/lib/supabase/server";
 import { ComplaintBoard } from "@/components/ComplaintBoard";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
@@ -7,6 +8,7 @@ import type { Complaint, Profile } from "@/lib/types";
 
 export default async function BoardPage() {
   const profile = await requireProfile();
+  const preview = await previewingAsPlayer();
   const supabase = await createClient();
 
   const [{ data: complaints }, { data: profiles }] = await Promise.all([
@@ -36,8 +38,8 @@ export default async function BoardPage() {
         complaints={(complaints ?? []) as Complaint[]}
         profiles={allProfiles}
         currentUserId={profile.id}
-        canRule={profile.is_president || profile.is_admin}
-        isAdmin={profile.is_admin}
+        canRule={(profile.is_president || profile.is_admin) && !preview}
+        isAdmin={profile.is_admin && !preview}
       />
     </div>
   );

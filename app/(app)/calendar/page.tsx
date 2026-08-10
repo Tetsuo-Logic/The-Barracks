@@ -1,4 +1,5 @@
 import { requireProfile } from "@/lib/auth";
+import { previewingAsPlayer } from "@/lib/preview";
 import { createClient } from "@/lib/supabase/server";
 import { CalendarView, type RadarRelease } from "@/components/CalendarView";
 import { AddDateButton } from "@/components/AddDateButton";
@@ -17,6 +18,7 @@ export default async function CalendarPage() {
     .filter((r) => r.release_date)
     .map((r) => ({ id: r.id, title: r.title, date: r.release_date as string }));
 
+  const isAdmin = profile.is_admin && !(await previewingAsPlayer());
   const now = new Date();
 
   return (
@@ -24,7 +26,7 @@ export default async function CalendarPage() {
       <ConsoleHeader
         title="Calendar"
         tag="Schedule"
-        right={profile.is_admin ? <AddDateButton /> : undefined}
+        right={isAdmin ? <AddDateButton /> : undefined}
       />
       <CalendarView
         competitions={(data ?? []) as Competition[]}

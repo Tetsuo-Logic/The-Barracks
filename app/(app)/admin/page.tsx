@@ -5,15 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { StrikesManager } from "@/components/StrikesManager";
 import { PresidentPicker } from "@/components/PresidentPicker";
 import { GamesManager } from "@/components/GamesManager";
+import { PreviewToggle } from "@/components/PreviewControls";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { MegaphoneIcon } from "@/components/Icons";
 import { getGames } from "@/lib/queries";
+import { previewingAsPlayer } from "@/lib/preview";
 import type { Profile, Strike, Warning } from "@/lib/types";
 
 // The organiser's control room. Admin only.
 export default async function AdminPage() {
   const profile = await requireProfile();
-  if (!profile.is_admin) redirect("/");
+  if (!profile.is_admin || (await previewingAsPlayer())) redirect("/");
 
   const supabase = await createClient();
   const [{ data: profiles }, { data: strikes }, { data: warnings }, games] = await Promise.all([
@@ -45,6 +47,14 @@ export default async function AdminPage() {
         <span className="text-ink">The Courtroom</span>
         <span className="label text-ink-soft">Convene →</span>
       </Link>
+
+      <section>
+        <p className="label mb-1">Testing</p>
+        <p className="mb-3 text-sm text-ink-soft">
+          See the app as a normal player. Exit from the banner up top.
+        </p>
+        <PreviewToggle />
+      </section>
 
       <section>
         <p className="label mb-1">Games 🎮</p>

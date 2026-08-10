@@ -158,6 +158,7 @@ export interface RadarGame {
   note: string | null;
   release_date: string | null; // 'YYYY-MM-DD'
   youtube_url: string | null; // optional trailer link
+  platform: string | null; // PC / PlayStation / Xbox / VR
   added_by: string | null;
   created_at: string;
 }

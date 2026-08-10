@@ -7,9 +7,11 @@ import type { Profile } from "@/lib/types";
 export function Header({
   profile,
   pendingCount = 0,
+  isAdmin = profile.is_admin,
 }: {
   profile: Profile;
   pendingCount?: number;
+  isAdmin?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-20 mx-auto flex w-full max-w-[520px] items-center justify-between border-b border-rule bg-paper/80 px-4 py-3 backdrop-blur-md [box-shadow:0_1px_0_rgba(245,182,61,0.12)]">
@@ -51,7 +53,7 @@ export function Header({
         >
           <BoardIcon width={26} height={26} />
         </Link>
-        {profile.is_admin && (
+        {isAdmin && (
           <Link
             href="/broadcast"
             aria-label="Comms — ping the squad"

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
+import { previewingAsPlayer } from "@/lib/preview";
 import { getActivityFeed, getInbox } from "@/lib/queries";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { Inbox } from "@/components/Inbox";
@@ -11,6 +12,7 @@ import { ConsoleHeader } from "@/components/ConsoleHeader";
 // sending messages lives on /broadcast (organiser only).
 export default async function ActivityPage() {
   const profile = await requireProfile();
+  const isAdmin = profile.is_admin && !(await previewingAsPlayer());
 
   const [inbox, activity] = await Promise.all([
     getInbox(profile),
@@ -29,9 +31,9 @@ export default async function ActivityPage() {
 
       <p className="label mb-1">History</p>
       <hr className="rule" />
-      <ActivityFeed activity={activity} currentUserId={profile.id} isAdmin={profile.is_admin} />
+      <ActivityFeed activity={activity} currentUserId={profile.id} isAdmin={isAdmin} />
 
-      {profile.is_admin && <ClearHistory clearedBefore={activity.clearedBefore} />}
+      {isAdmin && <ClearHistory clearedBefore={activity.clearedBefore} />}
     </div>
   );
 }

@@ -26,6 +26,7 @@ export function RadarBoard({
   const [release, setRelease] = useState("");
   const [note, setNote] = useState("");
   const [trailer, setTrailer] = useState("");
+  const [platform, setPlatform] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +38,7 @@ export function RadarBoard({
       releaseDate: release || undefined,
       note,
       youtubeUrl: trailer || undefined,
+      platform: platform || undefined,
     });
     setBusy(false);
     if (!res.ok) {
@@ -47,6 +49,7 @@ export function RadarBoard({
     setRelease("");
     setNote("");
     setTrailer("");
+    setPlatform("");
     setComposing(false);
     announce(`On the radar · ${title.trim()}`);
     router.refresh();
@@ -98,6 +101,24 @@ export function RadarBoard({
             placeholder="GTA VI, EA FC 26…"
             className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
           />
+          <label className="label mb-1 block">Platform (optional)</label>
+          <div className="relative mb-3">
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+            >
+              <option value="">Any / not sure</option>
+              <option value="PC">PC</option>
+              <option value="PlayStation">PlayStation</option>
+              <option value="Xbox">Xbox</option>
+              <option value="VR">VR</option>
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
+              ▾
+            </span>
+          </div>
+
           <label className="label mb-1 block">Release date (optional)</label>
           <input
             type="date"
@@ -158,7 +179,8 @@ export function RadarBoard({
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{g.title}</p>
                     <p className="mt-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
-                      {g.release_date ? `Out ${shortDate(g.release_date)}` : "No date"} · {g.adderName}
+                      {g.release_date ? `Out ${shortDate(g.release_date)}` : "No date"}
+                      {g.platform ? ` · ${g.platform}` : ""} · {g.adderName}
                     </p>
                     {g.note && <p className="mt-1 text-sm text-ink-soft">{g.note}</p>}
                   </div>

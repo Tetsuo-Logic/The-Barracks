@@ -336,7 +336,7 @@ export function CompSheet({
                 <input
                   value={stake}
                   onChange={(e) => setStake(e.target.value)}
-                  placeholder="£5 a game, loser buys the drinks"
+                  placeholder=""
                   className="w-full rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
                 />
               </div>
