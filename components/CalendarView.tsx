@@ -17,14 +17,18 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+export type RadarRelease = { id: string; title: string; date: string };
+
 // Month grid, Monday-first (§5). Dots in the format colour; today gets a flag
-// ring. Tap a day → its fixtures below. Prev/next between months.
+// ring; radar releases get an amber 🛰️ marker. Tap a day → its fixtures below.
 export function CalendarView({
   competitions,
+  releases = [],
   initialYear,
   initialMonth,
 }: {
   competitions: Competition[];
+  releases?: RadarRelease[];
   initialYear: number;
   initialMonth: number; // 0-based
 }) {
@@ -37,6 +41,13 @@ export function CalendarView({
   for (const c of competitions) {
     if (c.status === "cancelled") continue;
     (byDate.get(c.date) ?? byDate.set(c.date, []).get(c.date)!).push(c);
+  }
+
+  const releasesByDate = new Map<string, RadarRelease[]>();
+  for (const r of releases) {
+    const list = releasesByDate.get(r.date) ?? [];
+    list.push(r);
+    releasesByDate.set(r.date, list);
   }
 
   // grid cells (Monday-first)
@@ -59,11 +70,21 @@ export function CalendarView({
     setSelected(null);
   }
 
-  const monthFixtures = competitions
-    .filter((c) => c.status !== "cancelled" && c.date.startsWith(`${year}-${String(month + 1).padStart(2, "0")}`))
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const monthFixtures = competitions.filter(
+    (c) => c.status !== "cancelled" && c.date.startsWith(monthPrefix),
+  );
+  const monthReleases = releases.filter((r) => r.date.startsWith(monthPrefix));
+
+  // Combined, date-sorted month list: fixtures + radar releases.
+  type Item = { date: string; comp?: Competition; release?: RadarRelease };
+  const monthItems: Item[] = [
+    ...monthFixtures.map((c) => ({ date: c.date, comp: c })),
+    ...monthReleases.map((r) => ({ date: r.date, release: r })),
+  ].sort((a, z) => (a.date < z.date ? -1 : 1));
 
   const listForDay = selected ? (byDate.get(selected) ?? []) : null;
+  const dayReleases = selected ? releasesByDate.get(selected) ?? [] : [];
 
   return (
     <div>
@@ -98,23 +119,29 @@ export function CalendarView({
               }}
             >
               <span className="font-narrow text-sm tabular-nums text-ink">{day}</span>
-              <span className="mt-0.5 flex h-1.5 gap-0.5">
+              <span className="mt-0.5 flex h-2 items-center gap-0.5">
                 {comps?.slice(0, 3).map((c) => (
                   <span key={c.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: gameById(c.game).hasScorecard ? FORMAT_COLOUR[c.format] : gameById(c.game).colour }} />
                 ))}
+                {releasesByDate.has(iso) && (
+                  <span className="text-[9px] leading-none">🛰️</span>
+                )}
               </span>
             </button>
           );
         })}
       </div>
 
-      {/* selected day fixtures */}
-      {listForDay && listForDay.length > 0 && (
+      {/* selected day fixtures + releases */}
+      {selected && ((listForDay && listForDay.length > 0) || dayReleases.length > 0) && (
         <div className="mt-5">
           <p className="label mb-1">On this day</p>
           <hr className="rule" />
-          {listForDay.map((c) => (
+          {listForDay?.map((c) => (
             <DayRow key={c.id} comp={c} />
+          ))}
+          {dayReleases.map((r) => (
+            <ReleaseRow key={r.id} release={r} />
           ))}
         </div>
       )}
@@ -123,13 +150,37 @@ export function CalendarView({
       <div className="mt-6">
         <p className="label mb-1">{MONTHS[month]}</p>
         <hr className="rule" />
-        {monthFixtures.length === 0 ? (
+        {monthItems.length === 0 ? (
           <p className="py-6 text-center text-ink-soft">Nothing this month.</p>
         ) : (
-          monthFixtures.map((c) => <DayRow key={c.id} comp={c} />)
+          monthItems.map((it) =>
+            it.comp ? (
+              <DayRow key={it.comp.id} comp={it.comp} />
+            ) : (
+              <ReleaseRow key={it.release!.id} release={it.release!} />
+            ),
+          )
         )}
       </div>
     </div>
+  );
+}
+
+function ReleaseRow({ release }: { release: RadarRelease }) {
+  return (
+    <Link href="/radar" className="flex items-center gap-3 border-b border-rule py-3">
+      <span className="shrink-0 text-sm leading-none">🛰️</span>
+      <span className="w-10 shrink-0 font-narrow text-sm font-semibold tabular-nums text-ink">
+        {parseDate(release.date).getDate()}
+      </span>
+      <span className="flex-1 truncate text-ink">{release.title}</span>
+      <span
+        className="shrink-0 font-narrow text-xs font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--color-sand)" }}
+      >
+        Release
+      </span>
+    </Link>
   );
 }
 
