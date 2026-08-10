@@ -6,6 +6,7 @@ import {
   GamepadIcon,
   CalendarIcon,
   TrophyIcon,
+  RadarIcon,
   PersonIcon,
 } from "@/components/Icons";
 
@@ -22,6 +23,12 @@ const TABS = [
     label: "Ranks",
     Icon: TrophyIcon,
     match: (p: string) => p.startsWith("/standings"),
+  },
+  {
+    href: "/radar",
+    label: "Radar",
+    Icon: RadarIcon,
+    match: (p: string) => p.startsWith("/radar"),
   },
   {
     href: "/you",

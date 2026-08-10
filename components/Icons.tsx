@@ -22,6 +22,18 @@ export function FlagIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function RadarIcon(props: SVGProps<SVGSVGElement>) {
+  // Radar — concentric rings, a sweep line and a blip.
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4.5" />
+      <line x1="12" y1="12" x2="18.5" y2="7.5" />
+      <circle cx="15.5" cy="15" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function GamepadIcon(props: SVGProps<SVGSVGElement>) {
   // Games — a two-grip controller with d-pad + buttons.
   return (

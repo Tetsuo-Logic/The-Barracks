@@ -151,6 +151,22 @@ export interface GameRequest {
   created_at: string;
 }
 
+export interface RadarGame {
+  id: string;
+  title: string;
+  note: string | null;
+  release_date: string | null; // 'YYYY-MM-DD'
+  added_by: string | null;
+  created_at: string;
+}
+
+export interface RadarInterest {
+  radar_id: string;
+  player_id: string;
+  interested: boolean;
+  updated_at: string;
+}
+
 export type BroadcastKind = "announce" | "yesno" | "ask" | "dates";
 
 export interface Broadcast {

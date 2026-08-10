@@ -8,6 +8,8 @@ import type {
   GameRequest,
   Photo,
   Profile,
+  RadarGame,
+  RadarInterest,
   Rsvp,
   Score,
   Trial,
@@ -93,6 +95,56 @@ export async function getGames(): Promise<Game[]> {
       hasScorecard: Boolean(item.hasScorecard),
     };
   });
+}
+
+export type RadarItem = RadarGame & {
+  adderName: string;
+  yes: number; // interested count
+  no: number; // not-interested count
+  mine: boolean | null; // this player's stance
+};
+
+/** The radar wishlist, soonest release first, with interest tallies. */
+export async function getRadar(playerId: string): Promise<{
+  items: RadarItem[];
+  totalPlayers: number;
+}> {
+  const supabase = await createClient();
+  const [{ data: gamesRows }, { data: interest }, { data: profiles }] = await Promise.all([
+    supabase.from("radar_games").select("*").order("created_at", { ascending: false }),
+    supabase.from("radar_interest").select("*"),
+    supabase.from("profiles").select("id, name"),
+  ]);
+
+  const nameById = new Map(((profiles ?? []) as Pick<Profile, "id" | "name">[]).map((p) => [p.id, p.name]));
+  const byRadar = new Map<string, RadarInterest[]>();
+  for (const r of (interest ?? []) as RadarInterest[]) {
+    const list = byRadar.get(r.radar_id) ?? [];
+    list.push(r);
+    byRadar.set(r.radar_id, list);
+  }
+
+  const items: RadarItem[] = ((gamesRows ?? []) as RadarGame[]).map((g) => {
+    const votes = byRadar.get(g.id) ?? [];
+    const mine = votes.find((v) => v.player_id === playerId);
+    return {
+      ...g,
+      adderName: (g.added_by && nameById.get(g.added_by)) || "Someone",
+      yes: votes.filter((v) => v.interested).length,
+      no: votes.filter((v) => !v.interested).length,
+      mine: mine ? mine.interested : null,
+    };
+  });
+
+  // Soonest known release date first, then undated.
+  items.sort((a, z) => {
+    if (a.release_date && z.release_date) return a.release_date < z.release_date ? -1 : 1;
+    if (a.release_date) return -1;
+    if (z.release_date) return 1;
+    return a.created_at < z.created_at ? 1 : -1;
+  });
+
+  return { items, totalPlayers: (profiles ?? []).length };
 }
 
 export type GameRequestWithPlayer = GameRequest & { requester: Profile | null };
