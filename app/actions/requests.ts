@@ -2,27 +2,57 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendToPlayers } from "@/lib/push";
-import { gameById, GAMES } from "@/lib/games";
+import { gameById, gameIdFromName } from "@/lib/games";
 import type { GameRequestStatus, Profile } from "@/lib/types";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-// Any player floats a game they fancy. It pings the CO to organise it.
-export async function requestGame(game: string, note?: string): Promise<Result> {
+// Add a game to the CO-editable list (service role, bypasses CO-only RLS) so a
+// player can request a game that isn't in the list yet.
+async function ensureGameInList(id: string, name: string): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const { data } = await admin.from("app_settings").select("games").eq("id", 1).maybeSingle();
+  const raw = (data as { games?: unknown } | null)?.games;
+  const games = Array.isArray(raw)
+    ? (raw as { id: string; name: string; emoji: string; hasScorecard: boolean }[])
+    : [];
+  if (games.some((g) => g.id === id)) return;
+  games.push({ id, name, emoji: "🎮", hasScorecard: false });
+  await admin.from("app_settings").update({ games }).eq("id", 1);
+}
+
+// Any player floats a game they fancy. A custom name (not in the list yet) is
+// auto-formatted and added to the games list. It pings the CO to organise it.
+export async function requestGame(
+  game: string,
+  note?: string,
+  customName?: string,
+): Promise<Result> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  if (!GAMES.some((g) => g.id === game)) {
-    return { ok: false, error: "Pick a game first." };
+  let gameId = game;
+  let name: string;
+  const custom = customName?.trim();
+  if (custom) {
+    gameId = gameIdFromName(custom);
+    if (!gameId) return { ok: false, error: "That name won't work — try letters and numbers." };
+    name = custom;
+    await ensureGameInList(gameId, name);
+  } else {
+    if (!gameId) return { ok: false, error: "Pick a game first." };
+    name = gameById(gameId).name;
   }
 
   const { error } = await supabase.from("game_requests").insert({
     requested_by: user.id,
-    game,
+    game: gameId,
     note: note?.trim() || null,
   });
   if (error) return { ok: false, error: "Couldn't send the request." };
@@ -34,7 +64,6 @@ export async function requestGame(game: string, note?: string): Promise<Result> 
     .eq("id", user.id)
     .single();
   const who = (me as { name?: string })?.name ?? "Someone";
-  const g = gameById(game);
 
   const { data: admins } = await supabase
     .from("profiles")
@@ -45,14 +74,15 @@ export async function requestGame(game: string, note?: string): Promise<Result> 
     ((admins ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
     "new_comp",
     {
-      title: `${g.emoji} Game request`,
-      body: `${who} wants ${g.name}${note?.trim() ? ` — “${note.trim()}”` : ""}. Rally the squad?`,
-      url: "/",
+      title: `🎮 Game request${custom ? " (new game)" : ""}`,
+      body: `${who} wants ${name}${note?.trim() ? ` — “${note.trim()}”` : ""}. Rally the squad?`,
+      url: custom ? "/admin" : "/",
       tag: "game-request",
     },
   );
 
   revalidatePath("/");
+  revalidatePath("/admin");
   return { ok: true };
 }
 

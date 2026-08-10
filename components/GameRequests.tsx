@@ -30,25 +30,36 @@ export function GameRequests({
   const firstGame = games[0]?.id ?? DEFAULT_GAME;
   const [composing, setComposing] = useState(false);
   const [game, setGame] = useState<string>(firstGame);
+  const [customName, setCustomName] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isOther = game === "__other__";
 
   async function send() {
+    if (isOther && !customName.trim()) {
+      setError("Type the game's name.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const res = await requestGame(game, note);
+    const res = await requestGame(
+      isOther ? "" : game,
+      note,
+      isOther ? customName : undefined,
+    );
     if (!res.ok) {
       setError(res.error);
       setBusy(false);
       return;
     }
-    const g = gameById(game);
+    const label = isOther ? customName.trim() : gameById(game).name;
     setNote("");
+    setCustomName("");
     setGame(firstGame);
     setComposing(false);
     setBusy(false);
-    announce(`Game request raised · ${g.name}`);
+    announce(`Game request raised · ${label}`);
     router.refresh();
   }
 
@@ -97,11 +108,27 @@ export function GameRequests({
                   {g.emoji} {g.name}
                 </option>
               ))}
+              <option value="__other__">➕ Other — type it</option>
             </select>
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-soft">
               ▼
             </span>
           </div>
+
+          {isOther && (
+            <>
+              <label className="label mb-1 mt-4 block">New game</label>
+              <input
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Rocket League, Tekken 8…"
+                className="w-full rounded-[3px] border border-rule bg-paper px-4 py-3 text-ink outline-none focus:border-ink"
+              />
+              <p className="mt-1 text-xs text-ink-soft">
+                Added to the games list automatically — the CO gets a heads-up.
+              </p>
+            </>
+          )}
 
           <label className="label mb-1 mt-4 block">Note (optional)</label>
           <input

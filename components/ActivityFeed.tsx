@@ -44,13 +44,11 @@ function deleteTarget(item: ActivityItem): { kind: DeletableKind; id: string } |
   }
 }
 
-type FilterKey = "all" | "messages" | "rounds" | "comments" | "court";
+type FilterKey = "all" | "messages" | "court";
 
 const FILTERS: { key: FilterKey; label: string; match: (i: ActivityItem) => boolean }[] = [
   { key: "all", label: "All", match: () => true },
   { key: "messages", label: "Messages", match: (i) => i.kind === "broadcast" },
-  { key: "rounds", label: "Rounds", match: (i) => i.kind === "round" || i.kind === "result" },
-  { key: "comments", label: "Comments", match: (i) => i.kind === "comment" },
   { key: "court", label: "Court", match: (i) => i.kind === "trial" },
 ];
 
