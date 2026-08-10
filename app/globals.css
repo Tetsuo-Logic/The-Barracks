@@ -71,26 +71,16 @@
   input[type="time"] {
     max-width: 100%;
     box-sizing: border-box;
-    -webkit-appearance: none;
-    appearance: none;
-    color-scheme: dark; /* so the native picker/text render for a dark UI */
   }
 
-  /* The little calendar/clock icon is black by default — invert it so it shows
-     on the dark theme. On light, leave it dark. */
-  input[type="date"]::-webkit-calendar-picker-indicator,
-  input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: 0.75;
-    cursor: pointer;
+  /* Render native controls (the date/time picker icon, spinners, scrollbars)
+     for the active theme — this is what makes the calendar icon visible on dark
+     and dark on light. Applied at the root so the browser picks the right set. */
+  :root {
+    color-scheme: dark;
   }
-  :root[data-theme="light"] input[type="date"],
-  :root[data-theme="light"] input[type="time"] {
+  :root[data-theme="light"] {
     color-scheme: light;
-  }
-  :root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
-  :root[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: none;
   }
 
   /* iOS zooms the viewport on focus for inputs under 16px (§10) */

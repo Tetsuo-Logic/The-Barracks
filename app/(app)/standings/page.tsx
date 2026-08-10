@@ -47,6 +47,7 @@ export default async function StandingsPage() {
       <ConsoleHeader
         title="Ranks"
         tag="Leaderboard"
+        sub="Only PGA counts"
         right={<Link href="/trial" className="label text-ink-soft">Courtroom →</Link>}
       />
 

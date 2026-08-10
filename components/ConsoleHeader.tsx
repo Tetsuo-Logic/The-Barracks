@@ -10,16 +10,19 @@ import type { ReactNode } from "react";
 export function ConsoleHeader({
   title,
   tag = "Sector",
+  sub,
   right,
   className = "mb-5",
 }: {
   title: string;
   tag?: string;
+  sub?: string; // optional green typed line under the title
   right?: ReactNode;
   className?: string;
 }) {
   const [typed, setTyped] = useState("");
   const [done, setDone] = useState(false);
+  const [subTyped, setSubTyped] = useState("");
   useEffect(() => {
     setTyped("");
     setDone(false);
@@ -34,6 +37,19 @@ export function ConsoleHeader({
     }, 55);
     return () => clearInterval(id);
   }, [title]);
+
+  // Type the green sub-line once the title finishes.
+  useEffect(() => {
+    if (!done || !sub) return;
+    setSubTyped("");
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setSubTyped(sub.slice(0, i));
+      if (i >= sub.length) clearInterval(id);
+    }, 34);
+    return () => clearInterval(id);
+  }, [done, sub]);
 
   return (
     <div className={`hud relative overflow-hidden px-4 py-3 ${className}`}>
@@ -61,6 +77,21 @@ export function ConsoleHeader({
                 />
               )}
             </div>
+            {sub && (
+              <div
+                className="mt-1 flex items-center font-mono text-[10px] uppercase tracking-[0.14em] text-moss"
+                aria-label={sub}
+              >
+                <span className="text-sand">{"//"}</span>
+                <span className="ml-1.5">{subTyped}</span>
+                {done && (
+                  <span
+                    className="cursor ml-1 inline-block h-[9px] w-[5px] translate-y-[1px] bg-moss"
+                    aria-hidden
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
         {right && <div className="shrink-0 text-right">{right}</div>}
