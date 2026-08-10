@@ -11,7 +11,7 @@ import { todayISO } from "@/lib/dates";
 import { CoursePicker } from "@/components/CoursePicker";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/image";
-import { GAMES, gameHasScorecard, DEFAULT_GAME } from "@/lib/games";
+import { gameHasScorecard, DEFAULT_GAME, type Game } from "@/lib/games";
 import { useAnnounce } from "@/components/Announce";
 import type { Competition, CompetitionFormat } from "@/lib/types";
 
@@ -27,10 +27,12 @@ export function CompSheet({
   open,
   initial,
   recentCourses,
+  games,
 }: {
   open: boolean;
   initial: Competition | null;
   recentCourses: string[];
+  games: Game[];
 }) {
   const router = useRouter();
   const announce = useAnnounce();
@@ -82,7 +84,7 @@ export function CompSheet({
       setNotes(initial.notes ?? "");
       setStrokeIndex(initial.stroke_index ?? []);
     } else {
-      setGame(DEFAULT_GAME);
+      setGame(games[0]?.id ?? DEFAULT_GAME);
       setCourse("");
       setDate(todayISO());
       setTeeTime("");
@@ -198,7 +200,7 @@ export function CompSheet({
               onChange={(e) => setGame(e.target.value)}
               className="w-full appearance-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
             >
-              {GAMES.map((g) => (
+              {games.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.emoji} {g.name}
                 </option>

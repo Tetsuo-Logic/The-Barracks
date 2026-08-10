@@ -23,9 +23,40 @@ export const DEFAULT_GAME = "threeball";
 
 const GAME_BY_ID = new Map(GAMES.map((g) => [g.id, g]));
 
-/** Look up a game by id, always returning something (falls back to golf). */
+/** A game id → its display name: "rocket-league" → "Rocket League". */
+export function prettifyGameId(id: string): string {
+  return id
+    .replace(/[-_]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Slug a name into a game id: "Rocket League" → "rocket-league". */
+export function gameIdFromName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Look up a game by id. Seed games resolve to their config; a custom/unknown id
+ * is synthesized from the id itself (name derived, generic emoji, no scorecard)
+ * so every screen renders it correctly without loading the editable list. An
+ * empty id falls back to golf (the historical default).
+ */
 export function gameById(id: string | null | undefined): Game {
-  return (id && GAME_BY_ID.get(id)) || GAMES[0];
+  if (!id) return GAMES[0];
+  const known = GAME_BY_ID.get(id);
+  if (known) return known;
+  return {
+    id,
+    name: prettifyGameId(id),
+    emoji: "🎮",
+    colour: "#7c8b83",
+    hasScorecard: false,
+  };
 }
 
 /** Does this game keep a scorecard (i.e. is it the golf cup)? */

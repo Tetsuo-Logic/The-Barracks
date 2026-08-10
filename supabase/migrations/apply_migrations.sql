@@ -589,3 +589,19 @@ create policy game_requests_update on game_requests
 drop policy if exists game_requests_delete on game_requests;
 create policy game_requests_delete on game_requests
   for delete using (requested_by = auth.uid() or public.is_admin());
+
+-- ============================================================
+-- 0021_custom_games.sql — CO-editable games list on app_settings.
+-- ============================================================
+
+alter table app_settings add column if not exists games jsonb;
+insert into app_settings (id) values (1) on conflict (id) do nothing;
+update app_settings
+set games = '[
+  {"id":"threeball","name":"The Threeball Cup","emoji":"⛳","hasScorecard":true},
+  {"id":"cod","name":"COD","emoji":"🎮","hasScorecard":false},
+  {"id":"showdown","name":"Showdown","emoji":"🕹️","hasScorecard":false},
+  {"id":"fifa","name":"FIFA","emoji":"⚽","hasScorecard":false},
+  {"id":"gta","name":"GTA","emoji":"🚗","hasScorecard":false}
+]'::jsonb
+where id = 1 and games is null;

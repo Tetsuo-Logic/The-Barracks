@@ -7,7 +7,7 @@ import {
   setGameRequestStatus,
   deleteGameRequest,
 } from "@/app/actions/requests";
-import { GAMES, gameById, DEFAULT_GAME } from "@/lib/games";
+import { gameById, DEFAULT_GAME, type Game } from "@/lib/games";
 import { useAnnounce } from "@/components/Announce";
 import type { GameRequestWithPlayer } from "@/lib/queries";
 
@@ -18,15 +18,18 @@ export function GameRequests({
   requests,
   isAdmin,
   currentUserId,
+  games,
 }: {
   requests: GameRequestWithPlayer[];
   isAdmin: boolean;
   currentUserId: string;
+  games: Game[];
 }) {
   const router = useRouter();
   const announce = useAnnounce();
+  const firstGame = games[0]?.id ?? DEFAULT_GAME;
   const [composing, setComposing] = useState(false);
-  const [game, setGame] = useState<string>(DEFAULT_GAME);
+  const [game, setGame] = useState<string>(firstGame);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export function GameRequests({
     }
     const g = gameById(game);
     setNote("");
-    setGame(DEFAULT_GAME);
+    setGame(firstGame);
     setComposing(false);
     setBusy(false);
     announce(`Game request raised · ${g.name}`);
@@ -89,7 +92,7 @@ export function GameRequests({
               onChange={(e) => setGame(e.target.value)}
               className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-4 py-3 text-ink outline-none focus:border-ink"
             >
-              {GAMES.map((g) => (
+              {games.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.emoji} {g.name}
                 </option>

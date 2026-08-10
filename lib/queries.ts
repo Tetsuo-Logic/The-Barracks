@@ -12,6 +12,7 @@ import type {
   Score,
   Trial,
 } from "@/lib/types";
+import { GAMES, type Game } from "@/lib/games";
 import type { PhotoWithUrl } from "@/components/Photos";
 
 export type RsvpWithPlayer = Rsvp & { player: Profile | null };
@@ -68,6 +69,30 @@ export async function getFixturesData(): Promise<FixturesData> {
     .slice(0, 8);
 
   return { profiles: allProfiles, next, upcoming, recent, rsvpsByComp };
+}
+
+/** The CO-editable games list (stored on app_settings). Falls back to the seed
+ *  list if unset. Seed colours are merged back in for list dots. */
+export async function getGames(): Promise<Game[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("app_settings")
+    .select("games")
+    .eq("id", 1)
+    .maybeSingle();
+  const raw = (data as { games?: unknown } | null)?.games;
+  if (!Array.isArray(raw) || raw.length === 0) return GAMES;
+  const seedById = new Map(GAMES.map((g) => [g.id, g]));
+  return raw.map((g) => {
+    const item = g as { id: string; name: string; emoji?: string; hasScorecard?: boolean };
+    return {
+      id: item.id,
+      name: item.name,
+      emoji: item.emoji ?? "🎮",
+      colour: seedById.get(item.id)?.colour ?? "#7c8b83",
+      hasScorecard: Boolean(item.hasScorecard),
+    };
+  });
 }
 
 export type GameRequestWithPlayer = GameRequest & { requester: Profile | null };

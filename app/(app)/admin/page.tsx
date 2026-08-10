@@ -4,8 +4,10 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { StrikesManager } from "@/components/StrikesManager";
 import { PresidentPicker } from "@/components/PresidentPicker";
+import { GamesManager } from "@/components/GamesManager";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { MegaphoneIcon } from "@/components/Icons";
+import { getGames } from "@/lib/queries";
 import type { Profile, Strike, Warning } from "@/lib/types";
 
 // The organiser's control room. Admin only.
@@ -14,10 +16,11 @@ export default async function AdminPage() {
   if (!profile.is_admin) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: profiles }, { data: strikes }, { data: warnings }] = await Promise.all([
+  const [{ data: profiles }, { data: strikes }, { data: warnings }, games] = await Promise.all([
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
     supabase.from("strikes").select("*"),
     supabase.from("warnings").select("*"),
+    getGames(),
   ]);
 
   return (
@@ -42,6 +45,14 @@ export default async function AdminPage() {
         <span className="text-ink">The Courtroom</span>
         <span className="label text-ink-soft">Convene →</span>
       </Link>
+
+      <section>
+        <p className="label mb-1">Games 🎮</p>
+        <p className="mb-4 text-sm text-ink-soft">
+          Add any game, remove any. Only The Threeball Cup keeps golf scoring.
+        </p>
+        <GamesManager games={games} />
+      </section>
 
       <section>
         <p className="label mb-1">The president</p>

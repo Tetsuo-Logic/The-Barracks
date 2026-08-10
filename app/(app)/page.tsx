@@ -4,6 +4,7 @@ import {
   getCompetition,
   getInbox,
   getOpenGameRequests,
+  getGames,
 } from "@/lib/queries";
 import { EmptyState } from "@/components/EmptyState";
 import { NextUpCard } from "@/components/NextUpCard";
@@ -26,9 +27,10 @@ export default async function FixturesPage({
     searchParams,
   ]);
   const { profiles, next, upcoming, recent, rsvpsByComp } = data;
-  const [inbox, gameRequests] = await Promise.all([
+  const [inbox, gameRequests, games] = await Promise.all([
     getInbox(profile),
     getOpenGameRequests(),
+    getGames(),
   ]);
 
   const isAdmin = profile.is_admin;
@@ -89,6 +91,7 @@ export default async function FixturesPage({
         requests={gameRequests}
         isAdmin={isAdmin}
         currentUserId={profile.id}
+        games={games}
       />
 
       {recent.length > 0 && (
@@ -114,6 +117,7 @@ export default async function FixturesPage({
           open={sheetOpen}
           initial={editComp}
           recentCourses={recentCourses}
+          games={games}
         />
       )}
     </div>
