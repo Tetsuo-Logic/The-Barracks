@@ -13,7 +13,7 @@ export default async function LoginPage() {
   return (
     <main className="flex min-h-[100dvh] flex-col justify-center bg-paper px-6">
       <div className="mx-auto w-full max-w-[520px]">
-        <div className="mb-6 text-[64px] leading-none">🪖</div>
+        <div className="mb-6 text-[72px] leading-none">🪖</div>
         <p className="label mb-3" style={{ color: "var(--color-sand)" }}>The Barracks</p>
         <h1 className="display text-[36px] font-bold uppercase leading-[0.95] tracking-[0.01em] text-ink [text-shadow:0_0_22px_rgba(245,182,61,0.2)]">
           Report for duty.
