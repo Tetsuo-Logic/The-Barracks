@@ -69,6 +69,7 @@ export function ActivityFeed({
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +88,7 @@ export function ActivityFeed({
   function cancel() {
     setSelecting(false);
     setSelected(new Set());
+    setConfirming(false);
     setError(null);
   }
 
@@ -97,13 +99,13 @@ export function ActivityFeed({
       .map(deleteTarget)
       .filter((t): t is { kind: DeletableKind; id: string } => t !== null);
     if (targets.length === 0) return;
-    if (!confirm(`Delete ${targets.length} item${targets.length === 1 ? "" : "s"} for good? This can't be undone.`)) return;
     setBusy(true);
     setError(null);
     const res = await deleteActivity(targets);
     setBusy(false);
     if (!res.ok) {
       setError(res.error ?? "Couldn't delete those.");
+      setConfirming(false);
       return;
     }
     cancel();
@@ -113,33 +115,52 @@ export function ActivityFeed({
   return (
     <div>
       {isAdmin && (
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-end gap-2">
           {!selecting ? (
             <button
               onClick={() => setSelecting(true)}
-              className="font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+              className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft transition-colors hover:border-flag hover:text-flag"
             >
-              Select to delete
+              🗑 Select to delete
             </button>
+          ) : !confirming ? (
+            <>
+              <button
+                onClick={cancel}
+                className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => selected.size > 0 && setConfirming(true)}
+                disabled={selected.size === 0}
+                className="rounded-[4px] bg-flag px-4 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-paper disabled:opacity-40"
+              >
+                Delete ({selected.size})
+              </button>
+            </>
           ) : (
             <>
               <button
-                onClick={doDelete}
-                disabled={busy || selected.size === 0}
-                className="rounded-[3px] bg-flag px-4 py-1.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+                onClick={() => setConfirming(false)}
+                disabled={busy}
+                className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft"
               >
-                {busy ? "Deleting" : `Delete (${selected.size})`}
+                Back
               </button>
               <button
-                onClick={cancel}
+                onClick={doDelete}
                 disabled={busy}
-                className="font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+                className="rounded-[4px] bg-flag px-4 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-paper disabled:opacity-50"
               >
-                Cancel
+                {busy ? "Deleting…" : `Confirm — delete ${selected.size}`}
               </button>
             </>
           )}
         </div>
+      )}
+      {isAdmin && selecting && !confirming && (
+        <p className="mb-3 text-xs text-ink-soft">Tap items to select, then Delete.</p>
       )}
       {error && <p className="mb-2 text-sm text-flag">{error}</p>}
 
