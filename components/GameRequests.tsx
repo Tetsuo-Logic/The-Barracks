@@ -134,7 +134,7 @@ export function GameRequests({
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Friday night? Winner stays on…"
+            placeholder=""
             className="w-full rounded-[3px] border border-rule bg-paper px-4 py-3 text-ink outline-none focus:border-ink"
           />
 
