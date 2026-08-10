@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { submitDefence, castVote } from "@/app/actions/trials";
+import { submitDefence, castVote, dismissTrial } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
+import { useAnnounce } from "@/components/Announce";
 import type { Penalty, Profile, Trial, TrialVote, Verdict } from "@/lib/types";
 
 // The three ways a juror can land: acquit, warn, or strike.
@@ -26,24 +27,43 @@ export function TrialView({
   votes,
   profiles,
   currentUserId,
+  isAdmin = false,
 }: {
   trial: Trial;
   votes: TrialVote[];
   profiles: Profile[];
   currentUserId: string;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const announce = useAnnounce();
   const defendant = profiles.find((p) => p.id === trial.defendant_id);
   const jurors = profiles.filter((p) => p.id !== trial.defendant_id);
   const voteByJuror = new Map(votes.map((v) => [v.juror_id, v]));
   const isDefendant = currentUserId === trial.defendant_id;
   const myVote = voteByJuror.get(currentUserId) ?? null;
   const closed = trial.status === "closed";
+  // Closed with no verdict = the CO threw it out.
+  const dismissed = closed && trial.verdict == null;
 
   const [defence, setDefence] = useState(trial.defence ?? "");
   const [comment, setComment] = useState(myVote?.comment ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function dismiss() {
+    if (!confirm("Dismiss this case? It's thrown out with no verdict.")) return;
+    setBusy(true);
+    setError(null);
+    const res = await dismissTrial(trial.id);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    announce("Case dismissed · thrown out");
+    router.refresh();
+  }
 
   async function fileDefence() {
     setBusy(true);
@@ -82,8 +102,9 @@ export function TrialView({
         <div
           className="mt-4 rounded-[3px] p-4 text-center font-narrow text-[20px] font-bold uppercase tracking-[0.08em]"
           style={{
-            backgroundColor:
-              trial.verdict === "guilty"
+            backgroundColor: dismissed
+              ? "var(--color-ink-soft)"
+              : trial.verdict === "guilty"
                 ? trial.penalty === "strike"
                   ? "var(--color-flag)"
                   : "var(--color-sand)"
@@ -91,12 +112,25 @@ export function TrialView({
             color: "var(--color-paper)",
           }}
         >
-          {trial.verdict === "guilty"
-            ? trial.penalty === "strike"
-              ? "Guilty — strike added"
-              : "Guilty — warning"
-            : "Not guilty"}
+          {dismissed
+            ? "Case dismissed"
+            : trial.verdict === "guilty"
+              ? trial.penalty === "strike"
+                ? "Guilty — strike added"
+                : "Guilty — warning"
+              : "Not guilty"}
         </div>
+      )}
+
+      {/* CO: dismiss the case (throw it out, no verdict) */}
+      {isAdmin && !closed && (
+        <button
+          onClick={dismiss}
+          disabled={busy}
+          className="mt-4 w-full rounded-[4px] border border-ink-soft/60 py-2.5 font-mono text-sm font-semibold uppercase tracking-[0.12em] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink disabled:opacity-50"
+        >
+          ⚖️ Dismiss case
+        </button>
       )}
 
       {/* defence */}

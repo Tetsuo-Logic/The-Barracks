@@ -64,6 +64,55 @@ export async function createTrial(input: {
   return { ok: true, id: data.id as string };
 }
 
+// The CO throws the case out — closed, no verdict, no penalty. The real-court
+// term: case dismissed.
+export async function dismissTrial(
+  trialId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+  if (!me?.is_admin) return { ok: false, error: "Only the CO can dismiss a case." };
+
+  const { error } = await supabase
+    .from("trials")
+    .update({ status: "closed", verdict: null, penalty: null })
+    .eq("id", trialId);
+  if (error) return { ok: false, error: "Couldn't dismiss the case." };
+
+  // Tell everyone the case is thrown out.
+  const { data: trial } = await supabase
+    .from("trials")
+    .select("defendant_id, charge")
+    .eq("id", trialId)
+    .single();
+  const tx = trial as { defendant_id?: string; charge?: string } | null;
+  const { data: everyone } = await supabase.from("profiles").select("id, name");
+  const people = (everyone ?? []) as (Pick<Profile, "id"> & { name: string })[];
+  const name = people.find((p) => p.id === tx?.defendant_id)?.name ?? "The accused";
+  await sendToPlayers(
+    people.map((p) => p.id),
+    "results",
+    {
+      title: "⚖️ Case dismissed",
+      body: `${name} walks — the CO threw it out.`,
+      url: `/trial/${trialId}`,
+      tag: `trial-${trialId}`,
+    },
+  );
+
+  revalidatePath(`/trial/${trialId}`);
+  revalidatePath("/trial");
+  return { ok: true };
+}
+
 // The accused states their case.
 export async function submitDefence(
   trialId: string,

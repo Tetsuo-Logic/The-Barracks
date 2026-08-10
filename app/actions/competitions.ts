@@ -126,16 +126,15 @@ export async function saveCompetition(
   return { ok: true, id: data.id as string };
 }
 
-export async function cancelCompetition(id: string): Promise<Result> {
+export async function deleteCompetition(id: string): Promise<Result> {
   const { supabase, user, isAdmin } = await requireAdmin();
   if (!user) return { ok: false, error: "Not signed in." };
-  if (!isAdmin) return { ok: false, error: "Only the organiser can do that." };
+  if (!isAdmin) return { ok: false, error: "Only the CO can do that." };
 
-  const { error } = await supabase
-    .from("competitions")
-    .update({ status: "cancelled" })
-    .eq("id", id);
-  if (error) return { ok: false, error: "Couldn't cancel it." };
+  // Hard delete — the row and its RSVPs/scores/comments/photos (on delete
+  // cascade) go with it.
+  const { error } = await supabase.from("competitions").delete().eq("id", id);
+  if (error) return { ok: false, error: "Couldn't delete it." };
 
   revalidatePath("/");
   revalidatePath("/calendar");

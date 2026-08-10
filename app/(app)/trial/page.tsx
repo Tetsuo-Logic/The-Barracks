@@ -60,10 +60,18 @@ export default async function TrialsPage() {
                         ? "var(--color-sand)"
                         : t.verdict === "guilty"
                           ? "var(--color-flag)"
-                          : "var(--color-moss)",
+                          : t.verdict == null
+                            ? "var(--color-ink-soft)"
+                            : "var(--color-moss)",
                   }}
                 >
-                  {t.status === "open" ? "In session" : t.verdict === "guilty" ? "Guilty" : "Not guilty"}
+                  {t.status === "open"
+                    ? "In session"
+                    : t.verdict === "guilty"
+                      ? "Guilty"
+                      : t.verdict == null
+                        ? "Dismissed"
+                        : "Not guilty"}
                 </span>
               </Link>
             );

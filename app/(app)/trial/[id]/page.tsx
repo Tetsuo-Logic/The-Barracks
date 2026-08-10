@@ -32,6 +32,7 @@ export default async function TrialPage({
         votes={(votes ?? []) as TrialVote[]}
         profiles={(profiles ?? []) as Profile[]}
         currentUserId={profile.id}
+        isAdmin={profile.is_admin}
       />
     </div>
   );

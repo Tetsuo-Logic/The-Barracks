@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveCompetition,
-  cancelCompetition,
+  deleteCompetition,
   type CompetitionInput,
 } from "@/app/actions/competitions";
 import { todayISO } from "@/lib/dates";
@@ -155,15 +155,16 @@ export function CompSheet({
     close();
   }
 
-  async function doCancel() {
+  async function doDelete() {
     if (!initial) return;
     setSaving(true);
-    const res = await cancelCompetition(initial.id);
+    const res = await deleteCompetition(initial.id);
     if (!res.ok) {
       setError(res.error);
       setSaving(false);
       return;
     }
+    announce("Game deleted · stood down");
     close();
   }
 
@@ -371,12 +372,12 @@ export function CompSheet({
                   onClick={() => setConfirmingCancel(true)}
                   className="text-sm font-medium text-flag"
                 >
-                  Scrub this game
+                  Delete this game
                 </button>
               ) : (
                 <div>
                   <p className="mb-2 text-sm text-ink">
-                    Scrub it for everyone? This can&apos;t be undone.
+                    Delete it for everyone? This can&apos;t be undone.
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -386,11 +387,11 @@ export function CompSheet({
                       Keep it
                     </button>
                     <button
-                      onClick={doCancel}
+                      onClick={doDelete}
                       disabled={saving}
                       className="rounded-[3px] bg-flag px-4 py-2 text-sm font-semibold text-paper disabled:opacity-60"
                     >
-                      Scrub the game
+                      Delete game
                     </button>
                   </div>
                 </div>
