@@ -74,7 +74,7 @@ export function ComplaintBoard({
           onChange={(e) => setAgainstId(e.target.value)}
           className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
         >
-          <option value="">No one in particular</option>
+          <option value="">No One In Particular</option>
           {others.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -90,12 +90,20 @@ export function ComplaintBoard({
           className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
         />
         <label className="label mb-1 block">Action you want</label>
-        <input
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          placeholder="A formal warning"
-          className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-        />
+        <div className="relative mb-3">
+          <select
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          >
+            <option value="">No Specific Action — Just Raising It</option>
+            <option value="Formal Warning">Formal Warning</option>
+            <option value="Strike">Strike</option>
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
+            ▾
+          </span>
+        </div>
         <label className="label mb-1 block">Comment</label>
         <textarea
           value={comment}
@@ -323,7 +331,7 @@ function ComplaintCard({
                   onChange={(e) => setPick(e.target.value)}
                   className="min-w-0 flex-1 rounded-[3px] border border-rule bg-paper px-3 py-2 text-ink outline-none focus:border-ink"
                 >
-                  <option value="">Pick a player</option>
+                  <option value="">Pick A Player</option>
                   {others.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}

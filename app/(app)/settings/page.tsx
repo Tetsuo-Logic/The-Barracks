@@ -5,6 +5,7 @@ import { signOut } from "@/app/actions/auth";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { InstallCard } from "@/components/InstallCard";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function SettingsPage() {
   const profile = await requireProfile();
@@ -30,6 +31,11 @@ export default async function SettingsPage() {
       )}
 
       <InstallCard />
+
+      <section>
+        <p className="label mb-3">Display</p>
+        <ThemeToggle />
+      </section>
 
       <section>
         <p className="label mb-3">Notifications</p>

@@ -20,7 +20,8 @@ export function CoursePicker({
   const all = useMemo(() => {
     const seen = new Set<string>();
     const list: string[] = [];
-    for (const c of [...recent, ...COURSES]) {
+    // "Casual Rounds" pinned to the top for a no-specific-course game.
+    for (const c of ["Casual Rounds", ...recent, ...COURSES]) {
       const key = c.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
@@ -52,7 +53,7 @@ export function CoursePicker({
         className="flex w-full items-center justify-between rounded-[3px] border border-rule bg-card px-4 py-3 text-left outline-none focus:border-ink"
       >
         <span className={value ? "text-ink" : "text-ink-soft/60"}>
-          {value || "Choose a course"}
+          {value || "Choose a course (optional)"}
         </span>
         <span className="text-ink-soft">{open ? "▲" : "▼"}</span>
       </button>

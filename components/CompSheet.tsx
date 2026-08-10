@@ -212,7 +212,7 @@ export function CompSheet({
           {/* Course — golf only (searchable dropdown of the PGA Tour 2K25 courses) */}
           {isGolf && (
             <div className="mt-4">
-              <label className="label mb-1 block">Course</label>
+              <label className="label mb-1 block">Course (optional)</label>
               <CoursePicker value={course} onChange={setCourse} recent={recentCourses} />
             </div>
           )}
@@ -312,7 +312,7 @@ export function CompSheet({
 
               {/* Stake */}
               <div className="mt-4">
-                <label className="label mb-1 block">Stake</label>
+                <label className="label mb-1 block">Stake (optional)</label>
                 <input
                   value={stake}
                   onChange={(e) => setStake(e.target.value)}
@@ -358,7 +358,7 @@ export function CompSheet({
           {/* Primary action */}
           <button
             onClick={submit}
-            disabled={saving || (isGolf && !course.trim())}
+            disabled={saving}
             className="mt-6 w-full rounded-[4px] bg-sand px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-[0.12em] text-paper transition-shadow hover:[box-shadow:0_0_20px_-4px_var(--color-sand)] disabled:opacity-50"
           >
             {saving ? "Deploying…" : editing ? "Save changes" : "Deploy request"}

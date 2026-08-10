@@ -51,7 +51,6 @@ export async function saveCompetition(
   const isGolf = gameHasScorecard(game);
 
   const course = input.course?.trim() || null;
-  if (isGolf && !course) return { ok: false, error: "A course is needed." };
   if (!input.date) return { ok: false, error: "A date is needed." };
 
   // Par defaults to all 4s — nobody enters 18 numbers before playing (§5).

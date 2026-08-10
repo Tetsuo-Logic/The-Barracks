@@ -82,13 +82,22 @@
     font-size: 16px;
   }
 
-  /* Section labels: mono terminal readout, uppercase, wide-tracked */
+  /* Dropdown options read as Title Case everywhere. `capitalize` only upper-cases
+     the first letter of each word — it never lowercases, so COD/FIFA stay intact.
+     Selects that opt into a mono uppercase style override this via their class. */
+  select {
+    text-transform: capitalize;
+  }
+
+  /* Section labels: mono terminal readout, uppercase, wide-tracked, amber.
+     Muted labels (nav, secondary actions) opt out with an explicit text-* class,
+     which wins over this via Tailwind's utility layer. */
   .label {
     font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-weight: 500;
-    color: var(--color-ink-soft);
+    color: var(--color-sand);
     font-size: 10.5px;
   }
 
@@ -251,4 +260,49 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ── Themes: dark (default, in @theme) · dim · light ─────────────────────────
+   The colour tokens are plain CSS variables, so a more-specific selector on the
+   root swaps the whole app. */
+
+/* Dim — a softer charcoal, easier on the eyes than command-black. */
+:root[data-theme="dim"] {
+  --color-paper: #172019;
+  --color-card: #202b25;
+  --color-card-2: #29352e;
+  --color-ink: #e8efe9;
+  --color-ink-soft: #93a69a;
+  --color-rule: #34413a;
+}
+
+/* Light — field-manual: tan canvas, gunmetal-olive ink, brass + rust. */
+:root[data-theme="light"] {
+  --color-paper: #e6e0d0;
+  --color-card: #f1ecde;
+  --color-card-2: #eae4d3;
+  --color-ink: #23291f;
+  --color-ink-soft: #5c6654;
+  --color-rule: #cec6b0;
+  --color-flag: #b4472a;
+  --color-moss: #3a6b39;
+  --color-sand: #a97e1c;
+  --shadow-card: 0 0 0 1px rgba(169, 126, 28, 0.06), 0 8px 22px -14px rgba(35, 41, 31, 0.35);
+}
+:root[data-theme="light"] body {
+  background-image:
+    radial-gradient(1100px 460px at 50% -160px, rgba(169, 126, 28, 0.14), transparent 62%),
+    radial-gradient(900px 500px at 100% 0%, rgba(58, 107, 57, 0.06), transparent 60%),
+    linear-gradient(rgba(35, 41, 31, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35, 41, 31, 0.045) 1px, transparent 1px);
+}
+/* Soften the CRT scanlines on light so they read as a faint hatch, not stripes. */
+:root[data-theme="light"] .scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.08) 0,
+    rgba(0, 0, 0, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }

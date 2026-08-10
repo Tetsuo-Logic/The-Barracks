@@ -58,6 +58,16 @@ export async function fileComplaint(input: {
     },
   );
 
+  // Tell the accused they've been named (unless they filed it themselves).
+  if (againstId && againstId !== user.id) {
+    await sendToPlayers([againstId], "board", {
+      title: "⚖️ You've been named in a complaint",
+      body: `${who}: ${reason}`,
+      url: "/board",
+      tag: "board",
+    });
+  }
+
   // Tell the person it's about so they can respond.
   if (againstId && againstId !== user.id) {
     await sendToPlayers([againstId], "board", {

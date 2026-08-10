@@ -183,7 +183,7 @@ function Switch({ on, disabled, onClick }: { on: boolean; disabled?: boolean; on
       role="switch"
       aria-checked={on}
       className="relative h-6 w-10 rounded-full transition-colors"
-      style={{ backgroundColor: on ? "var(--color-moss)" : "var(--color-rule)" }}
+      style={{ backgroundColor: on ? "var(--color-sand)" : "var(--color-rule)" }}
     >
       <span
         className="absolute top-0.5 h-5 w-5 rounded-full bg-paper transition-all"

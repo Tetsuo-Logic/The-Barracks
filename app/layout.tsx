@@ -69,9 +69,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${archivo.variable} ${archivoNarrow.variable} ${jetbrainsMono.variable} ${chakraPetch.variable} h-full`}
     >
       <body className="min-h-[100dvh] flex flex-col">
+        {/* Apply the saved theme before paint (dark is the default). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('barracks-theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}",
+          }}
+        />
         <ServiceWorkerRegister />
         {children}
       </body>

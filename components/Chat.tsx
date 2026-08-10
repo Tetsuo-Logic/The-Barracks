@@ -24,10 +24,12 @@ export function Chat({
 }) {
   const [comments, setComments] = useState<Comment[]>(initial);
   const [body, setBody] = useState("");
+  const [to, setTo] = useState(""); // "" = everyone; else a player id to tag
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const profileById = new Map(profiles.map((p) => [p.id, p]));
+  const others = profiles.filter((p) => p.id !== currentUserId);
 
   useEffect(() => {
     const supabase = createClient();
@@ -68,15 +70,18 @@ export function Chat({
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    const text = body.trim();
-    if (!text) return;
+    const raw = body.trim();
+    if (!raw) return;
+    // If aimed at someone, tag the message. Everyone still gets the notification.
+    const target = to ? profileById.get(to) : null;
+    const text = target ? `@${target.name} ${raw}` : raw;
     setSending(true);
     setError(null);
     setBody("");
     const res = await postComment(competitionId, text);
     if (!res.ok) {
       setError(res.error);
-      setBody(text);
+      setBody(raw);
     }
     setSending(false);
   }
@@ -140,21 +145,45 @@ export function Chat({
 
       <form
         onSubmit={send}
-        className="sticky bottom-0 flex gap-2 border-t border-rule bg-paper py-3"
+        className="sticky bottom-0 flex flex-col gap-2 border-t border-rule bg-paper py-3"
       >
-        <input
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Say something"
-          className="flex-1 rounded-[3px] border border-rule bg-card px-4 py-2.5 text-ink outline-none focus:border-ink"
-        />
-        <button
-          type="submit"
-          disabled={sending || !body.trim()}
-          className="rounded-[3px] bg-ink px-4 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
-        >
-          Send
-        </button>
+        {others.length > 0 && (
+          <label className="flex items-center gap-2">
+            <span className="label shrink-0">To</span>
+            <div className="relative flex-1">
+              <select
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="w-full appearance-none rounded-[3px] border border-rule bg-card px-3 py-2 font-mono text-xs uppercase tracking-[0.08em] text-ink outline-none focus:border-ink"
+              >
+                <option value="">Everyone</option>
+                {others.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
+                ▾
+              </span>
+            </div>
+          </label>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={to ? `Message ${profileById.get(to)?.name ?? ""}…` : "Say something"}
+            className="flex-1 rounded-[3px] border border-rule bg-card px-4 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          <button
+            type="submit"
+            disabled={sending || !body.trim()}
+            className="rounded-[3px] bg-ink px-4 font-narrow font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+          >
+            Send
+          </button>
+        </div>
       </form>
       {error && <p className="pb-2 text-sm text-flag">{error}</p>}
     </div>
