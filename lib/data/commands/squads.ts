@@ -17,6 +17,7 @@ export async function createSquad(db: Db, game: string, name?: string, clanTag?:
   const groupId = await currentGroup(db);
   if (!groupId) return { ok: false, error: "No Barracks found." };
   if (!game) return { ok: false, error: "Pick a game." };
+  if (!name?.trim()) return { ok: false, error: "Name the squad." };
   const { error } = await db.from("squads").insert({
     group_id: groupId,
     game,
@@ -96,6 +97,7 @@ export async function requestSquad(
   } = await db.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
   if (!input.game) return { ok: false, error: "Pick a game." };
+  if (!input.name?.trim()) return { ok: false, error: "Name the squad." };
   const groupId = await currentGroup(db);
   if (!groupId) return { ok: false, error: "No Barracks found." };
 

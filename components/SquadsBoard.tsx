@@ -66,6 +66,10 @@ export function SquadsBoard({
       announce("Pick a game.");
       return;
     }
+    if (!newName.trim()) {
+      announce("Name the squad.");
+      return;
+    }
     setBusy(true);
     const res = isAdmin
       ? await createSquad(newGame, newName, newTag)
@@ -115,7 +119,7 @@ export function SquadsBoard({
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="label mb-1 block">Name (optional)</label>
+              <label className="label mb-1 block">Name</label>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -142,7 +146,7 @@ export function SquadsBoard({
             </button>
             <button
               onClick={submit}
-              disabled={busy || !newGame}
+              disabled={busy || !newGame || !newName.trim()}
               className="flex-1 rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
             >
               {isAdmin ? "Form squad 🪖" : "Send request 🪖"}
