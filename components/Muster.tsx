@@ -90,6 +90,8 @@ export function Muster({
     if (r) r.available_dates.forEach((iso, i) => map.set(iso, { from: r.from_times[i] ?? "", to: r.to_times[i] ?? "" }));
     return map;
   });
+  // Once you've sent your times, the picker collapses to a "sent" summary.
+  const [respSent, setRespSent] = useState<boolean>(() => (muster?.myResponse?.available_dates.length ?? 0) > 0);
 
   // Propose / approve
   const [proposeDate, setProposeDate] = useState("");
@@ -224,28 +226,34 @@ export function Muster({
   const windowSlots = slots(m.window_from, m.window_to);
   const hasWindow = windowSlots.length > 1;
 
-  // Per-night: how many can play + the window everyone available overlaps.
-  function overlapFor(iso: string): { count: number; from: string; to: string } {
-    const avail = muster!.responses.filter((r) => r.available_dates.includes(iso));
-    let maxFrom = -Infinity;
-    let minTo = Infinity;
-    let anyTimes = false;
-    for (const r of avail) {
-      const idx = r.available_dates.indexOf(iso);
-      const f = r.from_times[idx];
-      const t = r.to_times[idx];
-      if (f && t) {
-        anyTimes = true;
-        maxFrom = Math.max(maxFrom, toMin(f));
-        minTo = Math.min(minTo, toMin(t));
+  const availFor = (iso: string) => muster!.responses.filter((r) => r.available_dates.includes(iso));
+
+  // How many can play at each start-hour of the window that night — handles
+  // everyone giving different hours (no strict overlap needed).
+  function slotCountsFor(iso: string): { slot: string; count: number }[] {
+    const avail = availFor(iso);
+    return windowSlots.slice(0, -1).map((s) => {
+      const sMin = toMin(s);
+      let count = 0;
+      for (const r of avail) {
+        const idx = r.available_dates.indexOf(iso);
+        // No hours given = free the whole window.
+        const fromMin = toMin(r.from_times[idx] || m.window_from || s);
+        const toMinV = toMin(r.to_times[idx] || m.window_to || s);
+        if (fromMin <= sMin && toMinV > sMin) count++;
       }
-    }
-    if (!anyTimes || maxFrom >= minTo) return { count: avail.length, from: "", to: "" };
-    return { count: avail.length, from: toHHMM(maxFrom), to: toHHMM(minTo) };
+      return { slot: s, count };
+    });
+  }
+  // The busiest hour that night — the time to propose.
+  function peakFor(iso: string): { slot: string; count: number } | null {
+    const sc = slotCountsFor(iso);
+    if (!sc.length) return null;
+    return sc.reduce((best, x) => (x.count > best.count ? x : best), sc[0]);
   }
 
   const tally = m.dates
-    .map((iso) => ({ iso, ...overlapFor(iso) }))
+    .map((iso) => ({ iso, count: availFor(iso).length, peak: peakFor(iso) }))
     .sort((a, b) => b.count - a.count);
   const bestDate = tally[0]?.iso ?? m.dates[0] ?? "";
 
@@ -311,7 +319,7 @@ export function Muster({
   }
 
   const proposeSel = proposeDate || bestDate;
-  const proposeTimeVal = proposeTime || overlapFor(proposeSel).from || m.window_from || "";
+  const proposeTimeVal = proposeTime || peakFor(proposeSel)?.slot || m.window_from || "";
 
   // ── Open: collecting availability ──
   return (
@@ -324,8 +332,28 @@ export function Muster({
         </p>
       )}
 
+      {/* Sent — collapsed summary while the Captain plans */}
+      {mine && respSent && (
+        <div className="rounded-[3px] border border-moss/40 bg-moss/5 p-3">
+          <p className="label" style={{ color: "var(--color-moss)" }}>✓ Options sent</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            Awaiting the Captain&apos;s planning
+            {myAvail.size > 0
+              ? ` — you're on ${[...myAvail.keys()].sort().map(dateChip).join(", ")}`
+              : " — you marked none this week"}
+            .
+          </p>
+          <button
+            onClick={() => setRespSent(false)}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-[3px] border border-rule px-3 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink"
+          >
+            Edit my times
+          </button>
+        </div>
+      )}
+
       {/* Member's own availability — a night + their hours that night */}
-      {mine && (
+      {mine && !respSent && (
         <>
           <ul className="flex flex-col gap-2">
             {m.dates.map((iso) => {
@@ -403,12 +431,12 @@ export function Muster({
               const dates = [...myAvail.keys()].sort();
               const froms = dates.map((d) => myAvail.get(d)!.from);
               const tos = dates.map((d) => myAvail.get(d)!.to);
-              run(() => respondMuster(m.id, dates, froms, tos), "Nights saved ✋");
+              run(() => respondMuster(m.id, dates, froms, tos), "Options sent ✋").then(() => setRespSent(true));
             }}
             disabled={busy}
             className="mt-2 rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
           >
-            Save my nights
+            Send my times ✋
           </button>
         </>
       )}
@@ -417,16 +445,23 @@ export function Muster({
           The President doesn't propose to themselves; they approve what comes up. */}
       {canCall && (
         <div className="mt-3 border-t border-rule pt-3">
-          <p className="label mb-2">Tally · overlap</p>
+          <p className="label mb-2">Tally · best time</p>
           <ul className="flex flex-col gap-1.5">
-            {tally.map(({ iso, count, from, to }) => (
+            {tally.map(({ iso, count, peak }) => (
               <li key={iso} className="flex items-center gap-2 text-sm">
                 <span className="w-16 shrink-0 font-narrow font-semibold text-ink">{dateChip(iso)}</span>
                 <span className="w-10 shrink-0 font-narrow tabular-nums text-ink-soft">
                   {count}/{memberCount}
                 </span>
-                <span className="font-narrow text-xs font-semibold uppercase tracking-[0.04em]" style={{ color: from ? "var(--color-moss)" : "var(--color-ink-soft)" }}>
-                  {count === 0 ? "—" : from && to ? `${shortTime(from)}–${shortTime(to)}` : hasWindow ? "no overlap" : "any time"}
+                <span
+                  className="font-narrow text-xs font-semibold uppercase tracking-[0.04em]"
+                  style={{ color: count > 0 && peak ? "var(--color-moss)" : "var(--color-ink-soft)" }}
+                >
+                  {count === 0
+                    ? "—"
+                    : peak
+                      ? `best ${shortTime(peak.slot)} · ${peak.count} on`
+                      : "any time"}
                 </span>
               </li>
             ))}
@@ -448,12 +483,26 @@ export function Muster({
                 </option>
               ))}
             </select>
-            <input
-              type="time"
-              value={proposeTimeVal}
-              onChange={(e) => setProposeTime(e.target.value)}
-              className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
-            />
+            {hasWindow ? (
+              <select
+                value={proposeTimeVal}
+                onChange={(e) => setProposeTime(e.target.value)}
+                className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+              >
+                {slotCountsFor(proposeSel).map(({ slot, count }) => (
+                  <option key={slot} value={slot}>
+                    {shortTime(slot)} · {count} on
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="time"
+                value={proposeTimeVal}
+                onChange={(e) => setProposeTime(e.target.value)}
+                className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+              />
+            )}
           </div>
           <div className="mt-2 flex gap-2">
             <button
