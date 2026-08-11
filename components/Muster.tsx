@@ -73,8 +73,6 @@ export function Muster({
   const [apprDate, setApprDate] = useState(muster?.muster.chosen_date ?? "");
   const [apprTime, setApprTime] = useState(muster?.muster.chosen_time ?? "");
 
-  const canRun = iAmCaptain || isAdmin;
-
   async function run(fn: () => Promise<{ ok: boolean; error?: string }>, ok?: string) {
     setBusy(true);
     const res = await fn();
@@ -205,18 +203,18 @@ export function Muster({
         {isAdmin ? (
           <div className="mt-3 border-t border-rule pt-3">
             <p className="label mb-2">Approve &amp; deploy</p>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <input
                 type="date"
                 value={apprDate}
                 onChange={(e) => setApprDate(e.target.value)}
-                className="rounded-[3px] border border-rule bg-card px-3 py-2 text-ink outline-none focus:border-ink"
+                className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
               />
               <input
                 type="time"
                 value={apprTime}
                 onChange={(e) => setApprTime(e.target.value)}
-                className="rounded-[3px] border border-rule bg-card px-3 py-2 text-ink outline-none focus:border-ink"
+                className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
               />
             </div>
             <div className="mt-3 flex gap-2">
@@ -303,8 +301,9 @@ export function Muster({
         </>
       )}
 
-      {/* Tally + propose (Captain / CO) */}
-      {canRun && (
+      {/* Tally + propose — the Captain (or the CO only when there's no Captain).
+          The President doesn't propose to themselves; they approve what comes up. */}
+      {canCall && (
         <div className="mt-3 border-t border-rule pt-3">
           <p className="label mb-2">Tally</p>
           <ul className="flex flex-col gap-1">
@@ -324,11 +323,11 @@ export function Muster({
           </ul>
 
           <p className="label mb-1 mt-3">Propose a night</p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <select
               value={proposeDate || bestDate}
               onChange={(e) => setProposeDate(e.target.value)}
-              className="rounded-[3px] border border-rule bg-card px-3 py-2 text-ink outline-none focus:border-ink"
+              className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
             >
               {m.dates.map((iso) => (
                 <option key={iso} value={iso}>
@@ -340,7 +339,7 @@ export function Muster({
               <select
                 value={proposeTime}
                 onChange={(e) => setProposeTime(e.target.value)}
-                className="rounded-[3px] border border-rule bg-card px-3 py-2 text-ink outline-none focus:border-ink"
+                className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
               >
                 <option value="">Time…</option>
                 {m.times.map((t) => (
@@ -354,7 +353,7 @@ export function Muster({
                 type="time"
                 value={proposeTime}
                 onChange={(e) => setProposeTime(e.target.value)}
-                className="rounded-[3px] border border-rule bg-card px-3 py-2 text-ink outline-none focus:border-ink"
+                className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
               />
             )}
           </div>
