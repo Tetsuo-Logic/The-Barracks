@@ -137,6 +137,8 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 
 **The single-tenant linchpin:** every RLS read policy is `using (auth.uid() is not null)` — any signed-in user sees every row. Multi-tenancy replaces this with *"you're a member of this row's group"* via `is_member(group_id)` / `has_role(group_id, role)`.
 
+**Group deletion is never a hard cascade.** Domain tables reference `groups` with `on delete no action`, so deletion is *blocked* while history exists. Deleting a Barracks must eventually be a **soft-delete / archive** workflow (mark inactive, retain the record) — never a `delete group` that vaporises years of operations, court cases and results. `memberships` may cascade from `groups`; the domain tables must not.
+
 ---
 
 ## 7. Migration sequence (app works throughout)
@@ -153,6 +155,8 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 
 `main` stays v1; experiments happen on the branch with a Vercel preview; a phase merges to `main` only when proven. **Phase 3 is the delicate one** — a wrong RLS predicate could leak one group's data into another.
 
+**Migration safety at scale.** Adding a column with a *constant* default is metadata-only (fast) in Postgres 11+, but `UPDATE` backfills (`ROW EXCLUSIVE`) and especially `SET NOT NULL` (a full-table scan under `ACCESS EXCLUSIVE`) can lock large tables. When a table is large: backfill in batches, and enforce NOT NULL via a `NOT VALID` check constraint + `VALIDATE` rather than a blocking scan. Always add the query indexes (`group_id`, membership `user_id`) while tables are small. At today's size all of this is instantaneous and moot.
+
 ---
 
 ## 8. Status log
@@ -160,4 +164,5 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 - **2026-08-11 — Phase 0** complete. `v1` tag = commit `8da2038`. `experiments` branch created.
 - **2026-08-11 — Phase 1** complete (on `experiments`). Zero behaviour change. Established `lib/domain`, `lib/permissions`, `lib/data/{queries,commands}`; migrated the `radar`, `requests` and `trials` Server Actions to thin wrappers over shared commands; adopted permission predicates across 10 pages. Build/typecheck/lint green. **Remaining actions still hold their own logic — to be migrated to the command pattern incrementally (same mechanical transform).**
 - **2026-08-11 — Principle added:** "Ambitious surface, disciplined core" (§1) recorded as a permanent product/architecture constraint.
-- **Next:** review Phase 1, then discuss Phase 2 **before** applying any database migrations.
+- **2026-08-11 — Phase 2 designed & reviewed.** Additive `groups` + `memberships` + `group_id` on 9 group-scoped tables (three-class split), seeded + backfilled, with indexes on `group_id` and membership `user_id`. RLS, roles and app all unchanged. Group deletion recorded as a future soft-delete workflow. **SQL ready; not yet applied.**
+- **Next:** run the Phase 2 migration in Supabase, verify, then design Phase 3 (group-scoped RLS + roles→memberships) for review before applying.
