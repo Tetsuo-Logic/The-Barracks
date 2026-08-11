@@ -22,6 +22,7 @@ export type CompetitionInput = {
   par?: number[];
   stroke_index?: number[];
   for_cup?: boolean;
+  squad_id?: string | null; // Sq-3: scope the op to a squad (null = whole Barracks)
 };
 
 type Result = { ok: true; id: string } | { ok: false; error: string };
@@ -47,7 +48,20 @@ export async function saveCompetition(
   if (!user) return { ok: false, error: "Not signed in." };
   if (!isAdmin) return { ok: false, error: "Only the CO can do that." };
 
-  const game = gameById(input.game).id ?? DEFAULT_GAME;
+  // Sq-3: a squad op inherits the squad's game (a squad *is* one game).
+  const squadId = input.squad_id?.trim() || null;
+  let squadGame: string | null = null;
+  if (squadId) {
+    const { data: sq } = await supabase
+      .from("squads")
+      .select("game")
+      .eq("id", squadId)
+      .maybeSingle();
+    if (!sq) return { ok: false, error: "That squad doesn't exist." };
+    squadGame = (sq as { game: string }).game;
+  }
+
+  const game = squadGame ?? gameById(input.game).id ?? DEFAULT_GAME;
   const isGolf = gameHasScorecard(game);
 
   const course = input.course?.trim() || null;
@@ -78,6 +92,7 @@ export async function saveCompetition(
         : null,
     // Only golf ops can count for the cup.
     for_cup: isGolf ? (input.for_cup ?? true) : false,
+    squad_id: squadId,
   };
 
   if (input.id) {
@@ -98,11 +113,24 @@ export async function saveCompetition(
     .single();
   if (error || !data) return { ok: false, error: "Couldn't add the date." };
 
-  // Tell everyone but the creator (§6.4).
-  const { data: others } = await supabase
-    .from("profiles")
-    .select("id")
-    .neq("id", user.id);
+  // Tell the roster but the creator (§6.4). A squad op only pings its squad;
+  // a whole-Barracks op pings everyone.
+  let recipients: string[];
+  if (squadId) {
+    const { data: members } = await supabase
+      .from("squad_members")
+      .select("user_id")
+      .eq("squad_id", squadId);
+    recipients = ((members ?? []) as { user_id: string }[])
+      .map((m) => m.user_id)
+      .filter((id) => id !== user.id);
+  } else {
+    const { data: others } = await supabase
+      .from("profiles")
+      .select("id")
+      .neq("id", user.id);
+    recipients = ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id);
+  }
   const { day, mon } = heroDate(row.date);
   const g = gameById(game);
   const tee = shortTime(row.tee_time);
@@ -110,7 +138,7 @@ export async function saveCompetition(
     ? `${course}, ${row.holes} holes${tee ? ` · ${tee}` : ""}. Roll call?`
     : `${row.title || g.name} · ${day} ${mon}${tee ? ` · ${tee}` : ""}. Roll call?`;
   await sendToPlayers(
-    ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
+    recipients,
     "new_comp",
     {
       title: `${g.emoji} New game: ${g.name}`,

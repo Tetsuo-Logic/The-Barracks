@@ -30,15 +30,20 @@ export function CompDetail({
   detail,
   currentUserId,
   isAdmin,
+  isCO,
 }: {
   detail: CompetitionDetail;
   currentUserId: string;
   isAdmin: boolean;
+  isCO: boolean;
 }) {
-  const { comp, profiles, rsvps, scores, comments, photos } = detail;
+  const { comp, profiles, roster, squad, rsvps, scores, comments, photos } = detail;
   const game = gameById(comp.game);
   const isGolf = game.hasScorecard;
   const heading = compHeading(comp);
+  const squadLabel = squad
+    ? [squad.clan_tag, squad.name || gameById(squad.game).name].filter(Boolean).join(" ")
+    : null;
   // Every event has an Operation Room; golf additionally keeps its scorecard.
   const tabs: Tab[] = isGolf
     ? ["details", "room", "card", "photos"]
@@ -106,6 +111,11 @@ export function CompDetail({
               </>
             )}
           </p>
+          {squadLabel && (
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded-[3px] border border-rule bg-card px-2 py-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-sand">
+              🎖 {squadLabel} squad
+            </p>
+          )}
           {comp.status === "cancelled" && (
             <p className="mt-1 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-flag">Cancelled</p>
           )}
@@ -164,7 +174,7 @@ export function CompDetail({
 
             <p className="label mb-2">On the roster</p>
             <ul className="flex flex-col gap-2">
-              {profiles.map((p) => {
+              {roster.map((p) => {
                 const r = byPlayer.get(p.id);
                 return (
                   <li key={p.id} className="flex items-center gap-2 text-sm">
@@ -203,12 +213,12 @@ export function CompDetail({
 
             {/* Someone said in and flaked? Take them to court (§ organiser). */}
             {isAdmin &&
-              profiles.some(
+              roster.some(
                 (p) => p.id !== currentUserId && byPlayer.get(p.id)?.status === "in",
               ) && (
                 <div className="mt-6">
                   <ConveneTrial
-                    candidates={profiles.filter(
+                    candidates={roster.filter(
                       (p) =>
                         p.id !== currentUserId &&
                         byPlayer.get(p.id)?.status === "in",
@@ -270,9 +280,9 @@ export function CompDetail({
           <OperationRoom
             comp={comp}
             rsvps={rsvps}
-            profiles={profiles}
+            profiles={roster}
             currentUserId={currentUserId}
-            isCO={isAdmin}
+            isCO={isCO}
           />
         )}
 

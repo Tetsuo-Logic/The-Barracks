@@ -576,6 +576,18 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
   });
 }
 
+export type SquadOption = { id: string; game: string; name: string | null; clan_tag: string | null };
+
+/** Lightweight squad list for the deploy sheet's squad picker. */
+export async function getSquadOptions(): Promise<SquadOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("squads")
+    .select("id, game, name, clan_tag")
+    .order("created_at", { ascending: true });
+  return (data ?? []) as SquadOption[];
+}
+
 export type SquadRequestView = SquadRequest & { requester: Profile | null };
 
 /** Open squad requests awaiting the President's approval. */
@@ -595,6 +607,9 @@ export async function getSquadRequests(): Promise<SquadRequestView[]> {
 export type CompetitionDetail = {
   comp: Competition;
   profiles: Profile[];
+  roster: Profile[]; // who's expected — the squad's members if squad-scoped, else everyone
+  squad: Squad | null; // Sq-3: the squad this Operation belongs to
+  squadCaptainId: string | null; // Sq-3: that squad's Captain (a CO of this room)
   rsvps: RsvpWithPlayer[];
   scores: Score[];
   results: Result[];
@@ -633,6 +648,24 @@ export async function getCompetitionDetail(
   const allProfiles = (profiles ?? []) as Profile[];
   const profileById = new Map(allProfiles.map((p) => [p.id, p]));
 
+  // Sq-3: if this Operation belongs to a squad, the roster + CO scope to it.
+  const compRow = comp as Competition;
+  let squad: Squad | null = null;
+  let squadCaptainId: string | null = null;
+  let roster = allProfiles;
+  if (compRow.squad_id) {
+    const [{ data: sq }, { data: sm }] = await Promise.all([
+      supabase.from("squads").select("*").eq("id", compRow.squad_id).maybeSingle(),
+      supabase.from("squad_members").select("user_id, is_captain").eq("squad_id", compRow.squad_id),
+    ]);
+    squad = (sq as Squad) ?? null;
+    const members = (sm ?? []) as { user_id: string; is_captain: boolean }[];
+    squadCaptainId = members.find((m) => m.is_captain)?.user_id ?? null;
+    const memberIds = new Set(members.map((m) => m.user_id));
+    // Keep roster in the same created_at order as allProfiles.
+    roster = allProfiles.filter((p) => memberIds.has(p.id));
+  }
+
   // Sign the photo URLs (private bucket, §3).
   const photoRows = (photos ?? []) as Photo[];
   let photosWithUrl: PhotoWithUrl[] = [];
@@ -650,8 +683,11 @@ export async function getCompetitionDetail(
   }
 
   return {
-    comp: comp as Competition,
+    comp: compRow,
     profiles: allProfiles,
+    roster,
+    squad,
+    squadCaptainId,
     rsvps: ((rsvps ?? []) as Rsvp[]).map((r) => ({
       ...r,
       player: profileById.get(r.player_id) ?? null,

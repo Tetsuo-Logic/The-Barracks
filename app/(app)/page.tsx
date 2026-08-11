@@ -7,6 +7,7 @@ import {
   getInbox,
   getOpenGameRequests,
   getGames,
+  getSquadOptions,
 } from "@/lib/queries";
 import { EmptyState } from "@/components/EmptyState";
 import { NextUpCard } from "@/components/NextUpCard";
@@ -29,10 +30,11 @@ export default async function FixturesPage({
     searchParams,
   ]);
   const { profiles, next, upcoming, recent, rsvpsByComp } = data;
-  const [inbox, gameRequests, games] = await Promise.all([
+  const [inbox, gameRequests, games, squads] = await Promise.all([
     getInbox(profile),
     getOpenGameRequests(),
     getGames(),
+    getSquadOptions(),
   ]);
 
   const isAdmin = effectiveAdmin(profile, await previewingAsPlayer());
@@ -120,6 +122,7 @@ export default async function FixturesPage({
           initial={editComp}
           recentCourses={recentCourses}
           games={games}
+          squads={squads}
         />
       )}
     </div>

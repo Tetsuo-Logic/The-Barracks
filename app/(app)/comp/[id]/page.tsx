@@ -18,6 +18,14 @@ export default async function CompPage({
   ]);
   if (!detail) notFound();
 
+  const isAdmin = effectiveAdmin(profile, await previewingAsPlayer());
+  // CO of this room = the President/organiser, or the squad's Captain, or a
+  // stand-in Captain named for this one event (Sq-3).
+  const isCO =
+    isAdmin ||
+    detail.squadCaptainId === profile.id ||
+    detail.comp.acting_captain_id === profile.id;
+
   return (
     <div>
       <Link
@@ -29,7 +37,8 @@ export default async function CompPage({
       <CompDetail
         detail={detail}
         currentUserId={profile.id}
-        isAdmin={effectiveAdmin(profile, await previewingAsPlayer())}
+        isAdmin={isAdmin}
+        isCO={isCO}
       />
     </div>
   );

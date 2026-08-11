@@ -62,6 +62,8 @@ export interface Competition {
   started_at: string | null; // Operation Room: went live
   finished_at: string | null; // Operation Room: closed / archived
   games_count: number; // Operation Room: games played this session
+  squad_id: string | null; // Sq-3: the squad this Operation belongs to (null = whole Barracks)
+  acting_captain_id: string | null; // Sq-3: stand-in Captain for this one event
   created_at: string;
 }
 

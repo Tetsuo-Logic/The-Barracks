@@ -15,6 +15,7 @@ import { compressImage } from "@/lib/image";
 import { gameHasScorecard, DEFAULT_GAME, type Game } from "@/lib/games";
 import { useAnnounce } from "@/components/Announce";
 import type { Competition, CompetitionFormat } from "@/lib/types";
+import type { SquadOption } from "@/lib/queries";
 
 const FORMATS: { value: CompetitionFormat; label: string }[] = [
   { value: "stroke", label: "Stroke" },
@@ -29,17 +30,20 @@ export function CompSheet({
   initial,
   recentCourses,
   games,
+  squads,
 }: {
   open: boolean;
   initial: Competition | null;
   recentCourses: string[];
   games: Game[];
+  squads: SquadOption[];
 }) {
   const router = useRouter();
   const announce = useAnnounce();
   const editing = Boolean(initial);
 
   const [shown, setShown] = useState(false);
+  const [squadId, setSquadId] = useState<string>("");
   const [game, setGame] = useState<string>(DEFAULT_GAME);
   const [course, setCourse] = useState("");
   const [date, setDate] = useState(todayISO());
@@ -71,6 +75,7 @@ export function CompSheet({
     initialisedFor.current = key;
 
     if (initial) {
+      setSquadId(initial.squad_id ?? "");
       setGame(initial.game || DEFAULT_GAME);
       setCourse(initial.course ?? "");
       setDate(initial.date);
@@ -87,6 +92,7 @@ export function CompSheet({
       setNotes(initial.notes ?? "");
       setStrokeIndex(initial.stroke_index ?? []);
     } else {
+      setSquadId("");
       setGame(games[0]?.id ?? DEFAULT_GAME);
       setCourse("");
       setDate(todayISO());
@@ -127,6 +133,7 @@ export function CompSheet({
       ? {
           id: initial?.id,
           game,
+          squad_id: squadId || null,
           course,
           title: oneoff ? title : "",
           image_url: oneoff ? imageUrl : null,
@@ -146,6 +153,7 @@ export function CompSheet({
           // Non-golf op: just a name, a night and a start time.
           id: initial?.id,
           game,
+          squad_id: squadId || null,
           title: title || undefined,
           date,
           tee_time: teeTime || undefined,
@@ -210,13 +218,56 @@ export function CompSheet({
             {editing ? "▸ Edit game" : "▸ New game"}
           </p>
 
-          {/* Game — the whole form pivots on this */}
+          {/* Squad — scope the op to one squad (locks the game to its), or the
+              whole Barracks. Only shown when squads exist. */}
+          {squads.length > 0 && (
+            <div className="mb-4">
+              <label className="label mb-1 block">Squad</label>
+              <div className="relative">
+                <select
+                  value={squadId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSquadId(id);
+                    const sq = squads.find((s) => s.id === id);
+                    if (sq) setGame(sq.game);
+                  }}
+                  className="w-full appearance-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+                >
+                  <option value="">🏰 Whole Barracks</option>
+                  {squads.map((sq) => {
+                    const g = games.find((x) => x.id === sq.game);
+                    const label = [sq.clan_tag, sq.name || g?.name || sq.game]
+                      .filter(Boolean)
+                      .join(" ");
+                    return (
+                      <option key={sq.id} value={sq.id}>
+                        {g?.emoji ?? "🎖"} {label}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-soft">
+                  ▼
+                </span>
+              </div>
+              {squadId && (
+                <p className="mt-1 text-xs text-ink-soft">
+                  Only this squad is on the roster and gets pinged.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Game — the whole form pivots on this. Locked to the squad's game
+              when an op is squad-scoped (a squad is one game). */}
           <label className="label mb-1 block">Game</label>
           <div className="relative">
             <select
               value={game}
               onChange={(e) => setGame(e.target.value)}
-              className="w-full appearance-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink"
+              disabled={squadId !== ""}
+              className="w-full appearance-none rounded-[3px] border border-rule bg-card px-4 py-3 text-ink outline-none focus:border-ink disabled:opacity-60"
             >
               {games.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -228,6 +279,9 @@ export function CompSheet({
               ▼
             </span>
           </div>
+          {squadId && (
+            <p className="mt-1 text-xs text-ink-soft">Set by the squad.</p>
+          )}
 
           {/* Course — golf only (searchable dropdown of the PGA Tour 2K25 courses) */}
           {isGolf && (
