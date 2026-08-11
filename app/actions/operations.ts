@@ -35,3 +35,9 @@ export async function setAttendance(eventId: string, playerId: string, present: 
   if (res.ok) revalidatePath(`/comp/${eventId}`);
   return res;
 }
+
+export async function setActingCaptain(eventId: string, playerId: string | null) {
+  const res = await ops.setActingCaptain(await createClient(), eventId, playerId);
+  if (res.ok) revalidatePath(`/comp/${eventId}`);
+  return res;
+}

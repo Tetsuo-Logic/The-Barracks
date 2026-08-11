@@ -1,32 +1,35 @@
 import type { Db, Result } from "./types";
 
-// Operation Room commands. Start/close update the event directly (competitions
-// update is CO-only via RLS). The games counter + roll call go through the
-// SECURITY DEFINER functions so a plain participant can advance the count and
-// the CO can mark others present.
+// Operation Room commands. Start/close/roll-call go through SECURITY DEFINER
+// functions gated on can_command (CO, the squad's Captain, or the event's acting
+// Captain) — competitions update is group-admin-only via RLS, so a Captain would
+// otherwise be denied. The games counter is open to any participant.
 
 export async function startOperation(db: Db, eventId: string): Promise<Result> {
-  const { error } = await db
-    .from("competitions")
-    .update({ started_at: new Date().toISOString() })
-    .eq("id", eventId)
-    .is("started_at", null);
-  if (error) return { ok: false, error: "Couldn't start the operation." };
+  const { error } = await db.rpc("start_operation", { p_event: eventId });
+  if (error) return { ok: false, error: "Couldn't start the operation. Are you the CO or Captain?" };
   return { ok: true };
 }
 
-// Close & archive. The CO can correct the final games count here (in case
-// people forgot to tap "new game" during the night).
+// Close & archive. The CO/Captain can correct the final games count here (in
+// case people forgot to tap "new game" during the night).
 export async function closeOperation(db: Db, eventId: string, gamesCount: number): Promise<Result> {
-  const { error } = await db
-    .from("competitions")
-    .update({
-      finished_at: new Date().toISOString(),
-      games_count: Math.max(0, Math.round(gamesCount)),
-      status: "played",
-    })
-    .eq("id", eventId);
-  if (error) return { ok: false, error: "Couldn't close the operation." };
+  const { error } = await db.rpc("close_operation", {
+    p_event: eventId,
+    p_games: Math.max(0, Math.round(gamesCount)),
+  });
+  if (error) return { ok: false, error: "Couldn't close the operation. Are you the CO or Captain?" };
+  return { ok: true };
+}
+
+// The real Captain / CO names (or clears) a stand-in Captain for this one event.
+export async function setActingCaptain(
+  db: Db,
+  eventId: string,
+  playerId: string | null,
+): Promise<Result> {
+  const { error } = await db.rpc("set_acting_captain", { p_event: eventId, p_player: playerId });
+  if (error) return { ok: false, error: "Couldn't name the acting Captain." };
   return { ok: true };
 }
 

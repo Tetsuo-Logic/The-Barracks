@@ -8,6 +8,7 @@ import {
   closeOperation,
   advanceGames,
   setAttendance,
+  setActingCaptain,
 } from "@/app/actions/operations";
 import { Avatar } from "@/components/Avatar";
 import { useAnnounce } from "@/components/Announce";
@@ -87,6 +88,50 @@ export function OperationRoom({
     return <p className="py-8 text-center text-ink-soft">This operation was cancelled.</p>;
   }
 
+  // Sq-3b: a squad op can have a stand-in Captain for the night. The Captain / CO
+  // names them; everyone else just sees who's leading.
+  const actingCaptain = comp.acting_captain_id
+    ? profiles.find((p) => p.id === comp.acting_captain_id) ?? null
+    : null;
+
+  const commandBlock =
+    comp.squad_id && isCO && !finished ? (
+      <div className="mt-4 rounded-[3px] border border-rule bg-card p-4">
+        <p className="label mb-1">Acting Captain</p>
+        <p className="mb-2 text-xs text-ink-soft">
+          Can&apos;t make it? Hand the room to someone for tonight only.
+        </p>
+        <div className="relative">
+          <select
+            value={comp.acting_captain_id ?? ""}
+            onChange={(e) =>
+              run(
+                () => setActingCaptain(comp.id, e.target.value || null),
+                e.target.value ? "Acting Captain named ⭐" : "Acting Captain cleared",
+              )
+            }
+            disabled={busy}
+            className="w-full appearance-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink disabled:opacity-60"
+          >
+            <option value="">No stand-in — Captain leads</option>
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.id === currentUserId ? "You" : p.name}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">▾</span>
+        </div>
+      </div>
+    ) : null;
+
+  const actingNote =
+    actingCaptain && !isCO ? (
+      <p className="mt-3 text-center font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-sand">
+        ⭐ {actingCaptain.id === currentUserId ? "You are" : `${actingCaptain.name} is`} acting Captain tonight
+      </p>
+    ) : null;
+
   // ── Standing by (not started) ──────────────────────────────────────────────
   if (!started) {
     const expected = profiles.filter((p) => rsvpByPlayer.get(p.id)?.status === "in");
@@ -107,6 +152,8 @@ export function OperationRoom({
         ) : (
           <p className="mt-4 text-center text-sm text-ink-soft">The CO opens the room when the night kicks off.</p>
         )}
+        {commandBlock}
+        {actingNote}
       </div>
     );
   }
@@ -212,6 +259,9 @@ export function OperationRoom({
           })}
         </ul>
       </div>
+
+      {commandBlock}
+      {actingNote}
 
       {isCO && !closing && (
         <button
