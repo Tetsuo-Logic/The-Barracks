@@ -15,8 +15,9 @@ import { heroDate, shortTime } from "@/lib/dates";
 import type { MusterView } from "@/lib/queries";
 
 // One squad's Muster — the Captain's pre-week arrangement, all roles/states.
-// No muster → Captain can call one. Open → members tick nights, Captain proposes.
-// Proposed → President approves & deploys (or sends back).
+// No muster → Captain calls one (nights + a kick-off window). Open → members say
+// which nights + their window each night; the Captain reads the overlap and
+// proposes. Proposed → President approves & deploys (or sends back).
 
 function isoLocal(d: Date): string {
   const y = d.getFullYear();
@@ -35,6 +36,23 @@ function nextDays(n: number): string[] {
 function dateChip(iso: string): string {
   const { dow, day } = heroDate(iso);
   return `${dow} ${day}`;
+}
+function toMin(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+function toHHMM(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+// Hourly slots across a window, inclusive of both ends.
+function slots(from: string | null, to: string | null): string[] {
+  if (!from || !to) return [];
+  const a = toMin(from);
+  const b = toMin(to);
+  if (b <= a) return [from];
+  const out: string[] = [];
+  for (let t = a; t <= b; t += 60) out.push(toHHMM(t));
+  return out;
 }
 
 export function Muster({
@@ -61,11 +79,17 @@ export function Muster({
   // Call-a-muster form
   const [calling, setCalling] = useState(false);
   const [pickDates, setPickDates] = useState<Set<string>>(new Set(nextDays(7)));
-  const [time, setTime] = useState("");
+  const [winFrom, setWinFrom] = useState("18:00");
+  const [winTo, setWinTo] = useState("22:00");
   const [note, setNote] = useState("");
 
-  // Member response
-  const [myDates, setMyDates] = useState<Set<string>>(new Set(muster?.myResponse ?? []));
+  // Member response — nights I can do, each with my own window.
+  const [myAvail, setMyAvail] = useState<Map<string, { from: string; to: string }>>(() => {
+    const map = new Map<string, { from: string; to: string }>();
+    const r = muster?.myResponse;
+    if (r) r.available_dates.forEach((iso, i) => map.set(iso, { from: r.from_times[i] ?? "", to: r.to_times[i] ?? "" }));
+    return map;
+  });
 
   // Propose / approve
   const [proposeDate, setProposeDate] = useState("");
@@ -94,7 +118,8 @@ export function Muster({
           <button
             onClick={() => {
               setPickDates(new Set(nextDays(7)));
-              setTime("");
+              setWinFrom("18:00");
+              setWinTo("22:00");
               setNote("");
               setCalling(true);
             }}
@@ -103,7 +128,7 @@ export function Muster({
             📆 Call a Muster
           </button>
           <p className="mt-1 text-xs text-ink-soft">
-            Set up this week&apos;s night — pick the nights, the squad says when they&apos;re free.
+            Set up this week&apos;s night — pick the nights + a window, the squad says when they&apos;re free.
           </p>
         </div>
       );
@@ -144,14 +169,23 @@ export function Muster({
         </div>
 
         <p className="mb-1 mt-3 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">
-          Proposed time (optional)
+          Kick-off window
         </p>
-        <input
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="time"
+            value={winFrom}
+            onChange={(e) => setWinFrom(e.target.value)}
+            className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          <input
+            type="time"
+            value={winTo}
+            onChange={(e) => setWinTo(e.target.value)}
+            className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+        </div>
+        <p className="mt-1 text-xs text-ink-soft">The squad picks their hours inside this.</p>
 
         <p className="mb-1 mt-3 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">Note (optional)</p>
         <input
@@ -168,8 +202,10 @@ export function Muster({
           <button
             onClick={() => {
               const dates = [...pickDates].sort();
+              const wf = winFrom && winTo && toMin(winTo) > toMin(winFrom) ? winFrom : undefined;
+              const wt = wf ? winTo : undefined;
               run(
-                () => openMuster({ squadId, dates, times: time ? [time] : [], note }),
+                () => openMuster({ squadId, dates, windowFrom: wf, windowTo: wt, note }),
                 "Muster called · squad notified 📆",
               ).then(() => setCalling(false));
             }}
@@ -185,8 +221,31 @@ export function Muster({
 
   // ── Active muster ──────────────────────────────────────────────────────────
   const m = muster.muster;
+  const windowSlots = slots(m.window_from, m.window_to);
+  const hasWindow = windowSlots.length > 1;
+
+  // Per-night: how many can play + the window everyone available overlaps.
+  function overlapFor(iso: string): { count: number; from: string; to: string } {
+    const avail = muster!.responses.filter((r) => r.available_dates.includes(iso));
+    let maxFrom = -Infinity;
+    let minTo = Infinity;
+    let anyTimes = false;
+    for (const r of avail) {
+      const idx = r.available_dates.indexOf(iso);
+      const f = r.from_times[idx];
+      const t = r.to_times[idx];
+      if (f && t) {
+        anyTimes = true;
+        maxFrom = Math.max(maxFrom, toMin(f));
+        minTo = Math.min(minTo, toMin(t));
+      }
+    }
+    if (!anyTimes || maxFrom >= minTo) return { count: avail.length, from: "", to: "" };
+    return { count: avail.length, from: toHHMM(maxFrom), to: toHHMM(minTo) };
+  }
+
   const tally = m.dates
-    .map((iso) => ({ iso, count: muster.responses.filter((r) => r.available_dates.includes(iso)).length }))
+    .map((iso) => ({ iso, ...overlapFor(iso) }))
     .sort((a, b) => b.count - a.count);
   const bestDate = tally[0]?.iso ?? m.dates[0] ?? "";
 
@@ -251,48 +310,101 @@ export function Muster({
     );
   }
 
+  const proposeSel = proposeDate || bestDate;
+  const proposeTimeVal = proposeTime || overlapFor(proposeSel).from || m.window_from || "";
+
   // ── Open: collecting availability ──
   return (
     <div className="mt-3 rounded-[3px] border border-rule bg-paper p-3">
       <p className="label mb-2" style={{ color: "var(--color-sand)" }}>📆 Muster · which nights can you play?</p>
       {m.note && <p className="mb-2 text-sm text-ink-soft">“{m.note}”</p>}
-      {m.times.length > 0 && (
+      {hasWindow && (
         <p className="mb-2 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
-          Times: {m.times.map((t) => shortTime(t)).join(" · ")}
+          Window: {shortTime(m.window_from)}–{shortTime(m.window_to)}
         </p>
       )}
 
-      {/* Member's own availability tabs */}
+      {/* Member's own availability — a night + their hours that night */}
       {mine && (
         <>
-          <div className="flex flex-wrap gap-1.5">
+          <ul className="flex flex-col gap-2">
             {m.dates.map((iso) => {
-              const on = myDates.has(iso);
+              const avail = myAvail.get(iso);
+              const on = !!avail;
               return (
-                <button
-                  key={iso}
-                  onClick={() =>
-                    setMyDates((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(iso)) next.delete(iso);
-                      else next.add(iso);
-                      return next;
-                    })
-                  }
-                  className="rounded-[3px] border px-2.5 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.04em]"
-                  style={{
-                    backgroundColor: on ? "var(--color-moss)" : "transparent",
-                    borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
-                    color: on ? "var(--color-paper)" : "var(--color-ink-soft)",
-                  }}
-                >
-                  {dateChip(iso)}
-                </button>
+                <li key={iso} className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setMyAvail((prev) => {
+                        const next = new Map(prev);
+                        if (next.has(iso)) next.delete(iso);
+                        else next.set(iso, { from: m.window_from ?? "", to: m.window_to ?? "" });
+                        return next;
+                      })
+                    }
+                    className="w-20 shrink-0 rounded-[3px] border px-2 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.04em]"
+                    style={{
+                      backgroundColor: on ? "var(--color-moss)" : "transparent",
+                      borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
+                      color: on ? "var(--color-paper)" : "var(--color-ink-soft)",
+                    }}
+                  >
+                    {dateChip(iso)}
+                  </button>
+                  {on && hasWindow && avail ? (
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={avail.from}
+                        onChange={(e) =>
+                          setMyAvail((prev) => {
+                            const next = new Map(prev);
+                            const cur = next.get(iso);
+                            if (cur) next.set(iso, { ...cur, from: e.target.value });
+                            return next;
+                          })
+                        }
+                        className="rounded-[3px] border border-rule bg-card px-2 py-1.5 text-sm text-ink outline-none focus:border-ink"
+                      >
+                        {windowSlots.slice(0, -1).map((t) => (
+                          <option key={t} value={t}>{shortTime(t)}</option>
+                        ))}
+                      </select>
+                      <span className="text-ink-soft">–</span>
+                      <select
+                        value={avail.to}
+                        onChange={(e) =>
+                          setMyAvail((prev) => {
+                            const next = new Map(prev);
+                            const cur = next.get(iso);
+                            if (cur) next.set(iso, { ...cur, to: e.target.value });
+                            return next;
+                          })
+                        }
+                        className="rounded-[3px] border border-rule bg-card px-2 py-1.5 text-sm text-ink outline-none focus:border-ink"
+                      >
+                        {windowSlots
+                          .filter((t) => toMin(t) > toMin(avail.from))
+                          .map((t) => (
+                            <option key={t} value={t}>{shortTime(t)}</option>
+                          ))}
+                      </select>
+                    </div>
+                  ) : on ? (
+                    <span className="font-narrow text-xs uppercase tracking-[0.06em] text-moss">Any time</span>
+                  ) : (
+                    <span className="font-narrow text-xs uppercase tracking-[0.06em] text-ink-soft">Can&apos;t make it</span>
+                  )}
+                </li>
               );
             })}
-          </div>
+          </ul>
           <button
-            onClick={() => run(() => respondMuster(m.id, [...myDates]), "Nights saved ✋")}
+            onClick={() => {
+              const dates = [...myAvail.keys()].sort();
+              const froms = dates.map((d) => myAvail.get(d)!.from);
+              const tos = dates.map((d) => myAvail.get(d)!.to);
+              run(() => respondMuster(m.id, dates, froms, tos), "Nights saved ✋");
+            }}
             disabled={busy}
             className="mt-2 rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
           >
@@ -305,19 +417,17 @@ export function Muster({
           The President doesn't propose to themselves; they approve what comes up. */}
       {canCall && (
         <div className="mt-3 border-t border-rule pt-3">
-          <p className="label mb-2">Tally</p>
-          <ul className="flex flex-col gap-1">
-            {tally.map(({ iso, count }) => (
+          <p className="label mb-2">Tally · overlap</p>
+          <ul className="flex flex-col gap-1.5">
+            {tally.map(({ iso, count, from, to }) => (
               <li key={iso} className="flex items-center gap-2 text-sm">
                 <span className="w-16 shrink-0 font-narrow font-semibold text-ink">{dateChip(iso)}</span>
-                <span className="font-narrow tabular-nums text-ink-soft">
+                <span className="w-10 shrink-0 font-narrow tabular-nums text-ink-soft">
                   {count}/{memberCount}
                 </span>
-                <span
-                  className="h-1.5 rounded-full bg-moss"
-                  style={{ width: `${memberCount ? (count / memberCount) * 80 : 0}px` }}
-                  aria-hidden
-                />
+                <span className="font-narrow text-xs font-semibold uppercase tracking-[0.04em]" style={{ color: from ? "var(--color-moss)" : "var(--color-ink-soft)" }}>
+                  {count === 0 ? "—" : from && to ? `${shortTime(from)}–${shortTime(to)}` : hasWindow ? "no overlap" : "any time"}
+                </span>
               </li>
             ))}
           </ul>
@@ -325,8 +435,11 @@ export function Muster({
           <p className="label mb-1 mt-3">Propose a night</p>
           <div className="grid grid-cols-2 gap-2">
             <select
-              value={proposeDate || bestDate}
-              onChange={(e) => setProposeDate(e.target.value)}
+              value={proposeSel}
+              onChange={(e) => {
+                setProposeDate(e.target.value);
+                setProposeTime("");
+              }}
               className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
             >
               {m.dates.map((iso) => (
@@ -335,32 +448,17 @@ export function Muster({
                 </option>
               ))}
             </select>
-            {m.times.length > 0 ? (
-              <select
-                value={proposeTime}
-                onChange={(e) => setProposeTime(e.target.value)}
-                className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
-              >
-                <option value="">Time…</option>
-                {m.times.map((t) => (
-                  <option key={t} value={t}>
-                    {shortTime(t)}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="time"
-                value={proposeTime}
-                onChange={(e) => setProposeTime(e.target.value)}
-                className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
-              />
-            )}
+            <input
+              type="time"
+              value={proposeTimeVal}
+              onChange={(e) => setProposeTime(e.target.value)}
+              className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+            />
           </div>
           <div className="mt-2 flex gap-2">
             <button
               onClick={() =>
-                run(() => proposeMuster(m.id, proposeDate || bestDate, proposeTime || undefined), "Sent up to the President ⚑")
+                run(() => proposeMuster(m.id, proposeSel, proposeTimeVal || undefined), "Sent up to the President ⚑")
               }
               disabled={busy}
               className="flex-1 rounded-[3px] bg-sand px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"

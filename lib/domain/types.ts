@@ -176,7 +176,9 @@ export interface Muster {
   created_by: string | null;
   status: MusterStatus;
   dates: string[]; // candidate nights, 'YYYY-MM-DD'
-  times: string[]; // proposed start times, 'HH:MM'
+  times: string[]; // legacy proposed start times, 'HH:MM' (superseded by window)
+  window_from: string | null; // kick-off window start, 'HH:MM'
+  window_to: string | null; // kick-off window end, 'HH:MM'
   note: string | null;
   chosen_date: string | null; // set when the Captain proposes
   chosen_time: string | null;
@@ -188,6 +190,8 @@ export interface MusterResponse {
   muster_id: string;
   user_id: string;
   available_dates: string[];
+  from_times: string[]; // per-night start, index-aligned with available_dates
+  to_times: string[]; // per-night end, index-aligned with available_dates
   updated_at: string;
 }
 

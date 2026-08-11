@@ -25,10 +25,10 @@ async function pushAndStore(
   await sendToPlayers(userIds, "new_comp", p);
 }
 
-// Captain calls a muster: candidate nights + proposed times for the week ahead.
+// Captain calls a muster: candidate nights + a kick-off window for the week ahead.
 export async function openMuster(
   db: Db,
-  input: { squadId: string; dates: string[]; times: string[]; note?: string },
+  input: { squadId: string; dates: string[]; windowFrom?: string; windowTo?: string; note?: string },
 ): Promise<Result> {
   const {
     data: { user },
@@ -55,7 +55,8 @@ export async function openMuster(
     game: squad.game,
     created_by: user.id,
     dates: input.dates,
-    times: input.times,
+    window_from: input.windowFrom || null,
+    window_to: input.windowTo || null,
     note: input.note?.trim() || null,
   });
   if (error) return { ok: false, error: "Couldn't call the muster. Are you the Captain?" };
@@ -70,8 +71,15 @@ export async function openMuster(
   return { ok: true };
 }
 
-// A squad member ticks which candidate nights they can do (upsert).
-export async function respondMuster(db: Db, musterId: string, availableDates: string[]): Promise<Result> {
+// A squad member marks the nights they can do + their window each night (upsert).
+// availableDates, fromTimes, toTimes are index-aligned.
+export async function respondMuster(
+  db: Db,
+  musterId: string,
+  availableDates: string[],
+  fromTimes: string[],
+  toTimes: string[],
+): Promise<Result> {
   const {
     data: { user },
   } = await db.auth.getUser();
@@ -81,6 +89,8 @@ export async function respondMuster(db: Db, musterId: string, availableDates: st
       muster_id: musterId,
       user_id: user.id,
       available_dates: availableDates,
+      from_times: fromTimes,
+      to_times: toTimes,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "muster_id,user_id" },

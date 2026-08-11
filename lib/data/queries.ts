@@ -616,10 +616,17 @@ export type SquadNightRequestView = {
   created_at: string;
 };
 
+export type MusterResponseView = {
+  user_id: string;
+  available_dates: string[];
+  from_times: string[]; // index-aligned with available_dates
+  to_times: string[];
+};
+
 export type MusterView = {
   muster: Muster;
-  responses: { user_id: string; available_dates: string[] }[];
-  myResponse: string[] | null; // the caller's ticked nights, if they've answered
+  responses: MusterResponseView[];
+  myResponse: MusterResponseView | null; // the caller's answer, if any
 };
 
 export type SquadView = {
@@ -686,11 +693,20 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
     const captain = mems.find((m) => m.is_captain);
     const mu = musterBySquad.get(sq.id) ?? null;
     const muResponses = mu ? responsesByMuster.get(mu.id) ?? [] : [];
+    const toView = (r: MusterResponse): MusterResponseView => ({
+      user_id: r.user_id,
+      available_dates: r.available_dates ?? [],
+      from_times: r.from_times ?? [],
+      to_times: r.to_times ?? [],
+    });
     const musterView: MusterView | null = mu
       ? {
           muster: mu,
-          responses: muResponses.map((r) => ({ user_id: r.user_id, available_dates: r.available_dates })),
-          myResponse: muResponses.find((r) => r.user_id === currentUserId)?.available_dates ?? null,
+          responses: muResponses.map(toView),
+          myResponse: (() => {
+            const mine = muResponses.find((r) => r.user_id === currentUserId);
+            return mine ? toView(mine) : null;
+          })(),
         }
       : null;
     return {
