@@ -20,7 +20,7 @@ const TABS = [
   },
   {
     href: "/standings",
-    label: "Ranks",
+    label: "Service",
     Icon: TrophyIcon,
     match: (p: string) => p.startsWith("/standings"),
   },

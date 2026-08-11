@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   startOperation,
-  endOperation,
+  closeOperation,
   advanceGames,
   setAttendance,
 } from "@/app/actions/operations";
@@ -43,6 +43,8 @@ export function OperationRoom({
   const router = useRouter();
   const announce = useAnnounce();
   const [busy, setBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [gamesEdit, setGamesEdit] = useState("");
 
   // Live: refresh whenever the room row or its roll call changes (RLS-scoped).
   useEffect(() => {
@@ -211,14 +213,56 @@ export function OperationRoom({
         </ul>
       </div>
 
-      {isCO && (
+      {isCO && !closing && (
         <button
-          onClick={() => run(() => endOperation(comp.id), "Operation closed · archived")}
+          onClick={() => {
+            setGamesEdit(String(comp.games_count));
+            setClosing(true);
+          }}
           disabled={busy}
           className="mt-6 w-full rounded-[3px] border border-ink-soft/60 py-2.5 font-mono text-sm font-semibold uppercase tracking-[0.12em] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink disabled:opacity-50"
         >
           ■ End Operation
         </button>
+      )}
+
+      {isCO && closing && (
+        <div className="mt-6 rounded-[3px] border border-rule bg-card p-4">
+          <p className="label mb-3">Close operation</p>
+          <div className="grid grid-cols-2 items-center gap-x-3 gap-y-2 text-sm">
+            <span className="text-ink-soft">Started</span>
+            <span className="text-right font-narrow tabular-nums text-ink">{hhmm(comp.started_at!)}</span>
+            <span className="text-ink-soft">Deployed</span>
+            <span className="text-right font-narrow tabular-nums text-ink">
+              {rsvps.filter((r) => r.attended === true).length}
+            </span>
+            <span className="text-ink-soft">Games</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={gamesEdit}
+              onChange={(e) => setGamesEdit(e.target.value)}
+              className="w-full rounded-[3px] border border-rule bg-paper px-3 py-2 text-right font-narrow tabular-nums text-ink outline-none focus:border-ink"
+            />
+          </div>
+          <p className="mt-2 text-xs text-ink-soft">Fix the games total if anyone forgot to tap during the night.</p>
+          <div className="mt-3 flex gap-3">
+            <button
+              onClick={() => setClosing(false)}
+              className="rounded-[3px] border border-rule px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => run(() => closeOperation(comp.id, Number(gamesEdit) || 0), "Operation closed · archived")}
+              disabled={busy}
+              className="flex-1 rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+            >
+              Confirm &amp; archive
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

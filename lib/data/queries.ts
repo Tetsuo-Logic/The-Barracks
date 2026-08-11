@@ -17,6 +17,7 @@ import type {
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
 import { computeRankings, type RankRow } from "@/lib/rankings";
+import { computeService, type Service } from "@/lib/service";
 import type { PhotoWithUrl } from "@/components/Photos";
 
 export type RsvpWithPlayer = Rsvp & { player: Profile | null };
@@ -426,6 +427,7 @@ export type PlayerRecord = {
   warnings: number;
   strikes: number;
   notes: { id: string; note: string; created_at: string }[];
+  serviceRecord: Service;
   lastRounds: LastRound[];
   photos: PhotoWithUrl[];
 };
@@ -452,7 +454,7 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     supabase.from("competitions").select("*"),
     supabase.from("scores").select("*"),
     supabase.from("photos").select("*").eq("uploader_id", id).order("created_at", { ascending: false }),
-    supabase.from("rsvps").select("competition_id").eq("player_id", id).eq("status", "in"),
+    supabase.from("rsvps").select("competition_id, status, attended").eq("player_id", id),
     supabase.from("warnings").select("id").eq("player_id", id),
     supabase.from("strikes").select("id").eq("player_id", id),
     supabase
@@ -467,10 +469,12 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
 
   // Played = games in the calendar that weren't cancelled and this player
   // committed to (roll call: in).
-  const played = ((myRsvps ?? []) as { competition_id: string }[]).filter((r) => {
+  const myRsvpRows = (myRsvps ?? []) as { competition_id: string; status: string; attended: boolean | null }[];
+  const played = myRsvpRows.filter((r) => {
     const c = compById.get(r.competition_id);
-    return c && c.status !== "cancelled";
+    return c && c.status !== "cancelled" && r.status === "in";
   }).length;
+  const serviceRecord = computeService(myRsvpRows, (comps ?? []) as Competition[]);
   const warnings = (myWarnings ?? []).length;
   const strikes = (myStrikes ?? []).length;
   const notes = (myNotes ?? []) as { id: string; note: string; created_at: string }[];
@@ -505,9 +509,32 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     warnings,
     strikes,
     notes,
+    serviceRecord,
     lastRounds,
     photos,
   };
+}
+
+/** Service-record roster — each member's participation (Operations · games ·
+ *  hours). Participation, not a ranking. */
+export async function getServiceRoster(): Promise<{ profile: Profile; service: Service }[]> {
+  const supabase = await createClient();
+  const [{ data: profiles }, { data: comps }, { data: rsvps }] = await Promise.all([
+    supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+    supabase.from("competitions").select("*"),
+    supabase.from("rsvps").select("competition_id, player_id, attended"),
+  ]);
+  const allComps = (comps ?? []) as Competition[];
+  const byPlayer = new Map<string, { competition_id: string; attended: boolean | null }[]>();
+  for (const r of (rsvps ?? []) as { competition_id: string; player_id: string; attended: boolean | null }[]) {
+    const arr = byPlayer.get(r.player_id) ?? [];
+    arr.push(r);
+    byPlayer.set(r.player_id, arr);
+  }
+  return ((profiles ?? []) as Profile[]).map((p) => ({
+    profile: p,
+    service: computeService(byPlayer.get(p.id) ?? [], allComps),
+  }));
 }
 
 export type CompetitionDetail = {

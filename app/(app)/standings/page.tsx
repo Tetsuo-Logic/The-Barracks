@@ -1,26 +1,26 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
-import { getRankings } from "@/lib/data/queries";
-import { RankingsTable } from "@/components/RankingsTable";
+import { getServiceRoster } from "@/lib/data/queries";
+import { ServiceRoster } from "@/components/ServiceRoster";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 
-// The Barracks leaderboard — every game, ranked by wins (tie-break win%).
-// Reads from `results`, so only recognised fixtures count. Game/squad/season
-// filters come later.
+// Service Records — the squad's participation (Operations · games · hours).
+// Deliberately NOT a "best player" ranking; Barracks records who shows up and
+// puts the hours in. Competitive standings live at Battle/League level (later).
 export default async function StandingsPage() {
   await requireProfile();
-  const rows = await getRankings();
+  const roster = await getServiceRoster();
 
   return (
     <div>
       <ConsoleHeader
-        title="Ranks"
-        tag="Leaderboard"
-        sub="A win is a win"
+        title="Service"
+        tag="Records"
+        sub="Who shows up, not who's best"
         right={<Link href="/trial" className="label text-ink-soft">Courtroom →</Link>}
       />
 
-      <RankingsTable rows={rows} />
+      <ServiceRoster rows={roster} />
     </div>
   );
 }

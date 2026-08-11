@@ -14,11 +14,12 @@ export async function startOperation(eventId: string) {
   return res;
 }
 
-export async function endOperation(eventId: string) {
-  const res = await ops.endOperation(await createClient(), eventId);
+export async function closeOperation(eventId: string, gamesCount: number) {
+  const res = await ops.closeOperation(await createClient(), eventId, gamesCount);
   if (res.ok) {
     revalidatePath(`/comp/${eventId}`);
     revalidatePath("/");
+    revalidatePath("/standings");
   }
   return res;
 }

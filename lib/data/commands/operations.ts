@@ -15,10 +15,16 @@ export async function startOperation(db: Db, eventId: string): Promise<Result> {
   return { ok: true };
 }
 
-export async function endOperation(db: Db, eventId: string): Promise<Result> {
+// Close & archive. The CO can correct the final games count here (in case
+// people forgot to tap "new game" during the night).
+export async function closeOperation(db: Db, eventId: string, gamesCount: number): Promise<Result> {
   const { error } = await db
     .from("competitions")
-    .update({ finished_at: new Date().toISOString(), status: "played" })
+    .update({
+      finished_at: new Date().toISOString(),
+      games_count: Math.max(0, Math.round(gamesCount)),
+      status: "played",
+    })
     .eq("id", eventId);
   if (error) return { ok: false, error: "Couldn't close the operation." };
   return { ok: true };

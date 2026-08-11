@@ -6,7 +6,7 @@ import type { PlayerRecord } from "@/lib/queries";
 
 // Read-only profile: identity, record, last five rounds as thin bars, photos.
 export function ProfileView({ record }: { record: PlayerRecord }) {
-  const { profile, played, warnings, strikes, notes, lastRounds, photos } = record;
+  const { profile, played, warnings, strikes, notes, serviceRecord, lastRounds, photos } = record;
 
   return (
     <div>
@@ -28,6 +28,17 @@ export function ProfileView({ record }: { record: PlayerRecord }) {
         <Stat label="Played" value={played} />
         <Stat label="Warnings" value={warnings} border />
         <Stat label="Strikes" value={strikes} border />
+      </div>
+
+      {/* Service Record — participation, not a ranking */}
+      <div className="mt-6">
+        <p className="label mb-2">Service Record</p>
+        <div className="grid grid-cols-4 overflow-hidden rounded-[3px] border border-rule">
+          <Stat label="Ops" value={serviceRecord.operations} />
+          <Stat label="Games" value={serviceRecord.games} border />
+          <Stat label="Hours" value={serviceRecord.hours} border />
+          <Stat label="No-show" value={serviceRecord.noShows} border />
+        </div>
       </div>
 
       {/* player notes — behaviour logged from the Courtroom (not guilty, noted) */}
