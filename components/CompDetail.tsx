@@ -13,7 +13,7 @@ import { ConveneTrial } from "@/components/ConveneTrial";
 import { heroDate, isToday, shortTime, formatLabel } from "@/lib/dates";
 import { gameById, compHeading } from "@/lib/games";
 import { playerScores } from "@/lib/scoring";
-import { isLocked } from "@/lib/rsvp";
+import { isLocked, isClosed } from "@/lib/rsvp";
 import type { CompetitionDetail } from "@/lib/queries";
 import type { RsvpStatus } from "@/lib/types";
 
@@ -145,12 +145,21 @@ export function CompDetail({
             {comp.stake && <p className="mb-4 text-ink">{comp.stake}</p>}
             {comp.notes && <p className="mb-4 text-ink-soft">{comp.notes}</p>}
 
-            {comp.status !== "cancelled" && (
+            {!isClosed(comp) ? (
               <>
                 <p className="label mb-2">Roll call ✋</p>
                 <RsvpButtons competitionId={comp.id} current={mine} locked={isLocked(comp)} />
                 <hr className="rule my-5" />
               </>
+            ) : (
+              comp.status !== "cancelled" && (
+                <>
+                  <p className="rounded-[3px] border border-rule bg-card px-3 py-2 text-sm text-ink-soft">
+                    🔒 This operation is {comp.finished_at ? "closed & archived" : "under way"} — roll call is locked.
+                  </p>
+                  <hr className="rule my-5" />
+                </>
+              )
             )}
 
             <p className="label mb-2">On the roster</p>

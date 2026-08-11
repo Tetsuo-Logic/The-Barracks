@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
-import { isLocked } from "@/lib/rsvp";
+import { isLocked, isClosed } from "@/lib/rsvp";
 import { shortDate } from "@/lib/dates";
 import { compHeading } from "@/lib/games";
 import type { Competition, Profile, RsvpStatus } from "@/lib/types";
@@ -18,6 +18,15 @@ export async function setRsvp(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
+
+  const { data: lock } = await supabase
+    .from("competitions")
+    .select("status, started_at")
+    .eq("id", competitionId)
+    .single();
+  if (lock && isClosed(lock as Pick<Competition, "status" | "started_at">)) {
+    return { ok: false, error: "This operation is closed — roll call is locked." };
+  }
 
   const { error } = await supabase.from("rsvps").upsert(
     {
@@ -80,6 +89,7 @@ export async function backOut(
     .single();
   if (!comp) return { ok: false, error: "Competition not found." };
   const c = comp as Competition;
+  if (isClosed(c)) return { ok: false, error: "This operation is closed." };
 
   const { error } = await supabase.from("rsvps").upsert(
     {

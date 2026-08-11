@@ -19,6 +19,15 @@ export function isLocked(comp: Competition, now: number = Date.now()): boolean {
   return now >= lockAt(comp).getTime();
 }
 
+/**
+ * Closed for good — the operation has been started, finished/archived, or
+ * scrubbed. Once the CO opens or closes the room, RSVP is locked: no more
+ * flip-flopping your answer after the fact.
+ */
+export function isClosed(comp: Pick<Competition, "status" | "started_at">): boolean {
+  return comp.status !== "upcoming" || comp.started_at != null;
+}
+
 /** A punishable back-out: was in, now isn't, inside the lock window. */
 export function isFlake(
   comp: Competition,
