@@ -145,6 +145,22 @@ export interface Result {
   updated_at: string;
 }
 
+// A game-specific squad within a Barracks — one game per squad, hard-locked.
+export interface Squad {
+  id: string;
+  group_id: string;
+  game: string; // the squad's fixed identity (a game id from lib/games)
+  name: string | null; // optional custom name; display falls back to the game
+  created_at: string;
+}
+
+export interface SquadMember {
+  squad_id: string;
+  user_id: string;
+  is_captain: boolean;
+  created_at: string;
+}
+
 export interface TrialVote {
   trial_id: string;
   juror_id: string;

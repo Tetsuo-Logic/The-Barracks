@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   GamepadIcon,
+  FlagIcon,
   CalendarIcon,
   TrophyIcon,
   RadarIcon,
@@ -12,6 +13,12 @@ import {
 
 const TABS = [
   { href: "/", label: "Games", Icon: GamepadIcon, match: (p: string) => p === "/" },
+  {
+    href: "/squads",
+    label: "Squads",
+    Icon: FlagIcon,
+    match: (p: string) => p.startsWith("/squads"),
+  },
   {
     href: "/calendar",
     label: "Calendar",

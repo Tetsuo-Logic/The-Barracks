@@ -13,6 +13,8 @@ import type {
   Result,
   Rsvp,
   Score,
+  Squad,
+  SquadMember,
   Trial,
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
@@ -535,6 +537,42 @@ export async function getServiceRoster(): Promise<{ profile: Profile; service: S
     profile: p,
     service: computeService(byPlayer.get(p.id) ?? [], allComps),
   }));
+}
+
+export type SquadView = {
+  squad: Squad;
+  members: { profile: Profile; is_captain: boolean }[];
+  captainId: string | null;
+  mine: boolean;
+};
+
+/** Every squad in the caller's Barracks, with members + captain. */
+export async function getSquads(currentUserId: string): Promise<SquadView[]> {
+  const supabase = await createClient();
+  const [{ data: squads }, { data: members }, { data: profiles }] = await Promise.all([
+    supabase.from("squads").select("*").order("created_at", { ascending: true }),
+    supabase.from("squad_members").select("*"),
+    supabase.from("profiles").select("*"),
+  ]);
+  const profById = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
+  const bySquad = new Map<string, SquadMember[]>();
+  for (const m of (members ?? []) as SquadMember[]) {
+    const arr = bySquad.get(m.squad_id) ?? [];
+    arr.push(m);
+    bySquad.set(m.squad_id, arr);
+  }
+  return ((squads ?? []) as Squad[]).map((sq) => {
+    const mems = bySquad.get(sq.id) ?? [];
+    const captain = mems.find((m) => m.is_captain);
+    return {
+      squad: sq,
+      members: mems
+        .map((m) => ({ profile: profById.get(m.user_id), is_captain: m.is_captain }))
+        .filter((x): x is { profile: Profile; is_captain: boolean } => x.profile != null),
+      captainId: captain?.user_id ?? null,
+      mine: mems.some((m) => m.user_id === currentUserId),
+    };
+  });
 }
 
 export type CompetitionDetail = {
