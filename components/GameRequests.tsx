@@ -162,25 +162,21 @@ export function GameRequests({
           )}
 
           <label className="label mb-1 mt-4 block">When are you free? (optional)</label>
-          <div className="flex items-center gap-2">
-            <span className="w-9 shrink-0 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">From</span>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full min-w-0 rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
-            />
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="w-9 shrink-0 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">To</span>
-            <input
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full min-w-0 rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
-            />
-          </div>
+          <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">From</span>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="mb-3 block w-full max-w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
+          <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">To</span>
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+            className="block w-full max-w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+          />
 
           <label className="label mb-1 mt-4 block">Players (optional)</label>
           <div className="grid grid-cols-2 gap-2">

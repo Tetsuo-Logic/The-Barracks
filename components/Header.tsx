@@ -20,7 +20,7 @@ export function Header({
           className="h-1.5 w-1.5 rounded-full bg-moss [box-shadow:0_0_8px_1px_var(--color-moss)]"
           aria-hidden
         />
-        <span className="font-mono text-[16px] font-bold uppercase tracking-[0.08em] text-ink">
+        <span className="font-mono text-[18px] font-bold uppercase tracking-[0.05em] text-ink">
           BARRACKS
         </span>
       </Link>
