@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { canRule, effectiveAdmin } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { ComplaintBoard } from "@/components/ComplaintBoard";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
@@ -38,8 +39,8 @@ export default async function BoardPage() {
         complaints={(complaints ?? []) as Complaint[]}
         profiles={allProfiles}
         currentUserId={profile.id}
-        canRule={(profile.is_president || profile.is_admin) && !preview}
-        isAdmin={profile.is_admin && !preview}
+        canRule={canRule(profile, preview)}
+        isAdmin={effectiveAdmin(profile, preview)}
       />
     </div>
   );

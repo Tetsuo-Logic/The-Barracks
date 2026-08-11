@@ -1,5 +1,6 @@
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { effectiveAdmin } from "@/lib/permissions";
 import { getInbox } from "@/lib/queries";
 import { Header } from "@/components/Header";
 import { TabBar } from "@/components/TabBar";
@@ -16,7 +17,7 @@ export default async function AppLayout({
 }) {
   const profile = await requireProfile();
   const preview = await previewingAsPlayer();
-  const isAdmin = profile.is_admin && !preview;
+  const isAdmin = effectiveAdmin(profile, preview);
   const { total: pendingCount } = await getInbox(profile);
 
   return (

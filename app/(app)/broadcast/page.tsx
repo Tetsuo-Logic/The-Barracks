@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { effectiveAdmin } from "@/lib/permissions";
 import { getActivityFeed } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { BroadcastCompose } from "@/components/BroadcastCompose";
@@ -15,7 +16,7 @@ import type { Profile } from "@/lib/types";
 // (/activity).
 export default async function BroadcastPage() {
   const profile = await requireProfile();
-  if (!profile.is_admin || (await previewingAsPlayer())) redirect("/activity");
+  if (!effectiveAdmin(profile, await previewingAsPlayer())) redirect("/activity");
 
   const supabase = await createClient();
   const [{ data: candidateRows }, activity] = await Promise.all([

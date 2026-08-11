@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { effectiveAdmin } from "@/lib/permissions";
 import { getCompetitionDetail } from "@/lib/queries";
 import { CompDetail } from "@/components/CompDetail";
 
@@ -28,7 +29,7 @@ export default async function CompPage({
       <CompDetail
         detail={detail}
         currentUserId={profile.id}
-        isAdmin={profile.is_admin && !(await previewingAsPlayer())}
+        isAdmin={effectiveAdmin(profile, await previewingAsPlayer())}
       />
     </div>
   );

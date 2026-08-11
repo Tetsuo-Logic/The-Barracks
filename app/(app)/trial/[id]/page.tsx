@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { canRule } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { TrialView } from "@/components/TrialView";
 import type { Profile, Trial, TrialVote } from "@/lib/types";
@@ -34,7 +35,7 @@ export default async function TrialPage({
         votes={(votes ?? []) as TrialVote[]}
         profiles={(profiles ?? []) as Profile[]}
         currentUserId={profile.id}
-        canRule={(profile.is_president || profile.is_admin) && !preview}
+        canRule={canRule(profile, preview)}
       />
     </div>
   );

@@ -10,12 +10,13 @@ import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { MegaphoneIcon } from "@/components/Icons";
 import { getGames } from "@/lib/queries";
 import { previewingAsPlayer } from "@/lib/preview";
+import { effectiveAdmin } from "@/lib/permissions";
 import type { Profile, Strike, Warning } from "@/lib/types";
 
 // The organiser's control room. Admin only.
 export default async function AdminPage() {
   const profile = await requireProfile();
-  if (!profile.is_admin || (await previewingAsPlayer())) redirect("/");
+  if (!effectiveAdmin(profile, await previewingAsPlayer())) redirect("/");
 
   const supabase = await createClient();
   const [{ data: profiles }, { data: strikes }, { data: warnings }, games] = await Promise.all([

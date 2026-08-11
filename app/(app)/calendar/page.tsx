@@ -1,5 +1,6 @@
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
+import { effectiveAdmin } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { CalendarView, type RadarRelease } from "@/components/CalendarView";
 import { AddDateButton } from "@/components/AddDateButton";
@@ -18,7 +19,7 @@ export default async function CalendarPage() {
     .filter((r) => r.release_date)
     .map((r) => ({ id: r.id, title: r.title, date: r.release_date as string }));
 
-  const isAdmin = profile.is_admin && !(await previewingAsPlayer());
+  const isAdmin = effectiveAdmin(profile, await previewingAsPlayer());
   const now = new Date();
 
   return (
