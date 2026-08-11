@@ -10,11 +10,13 @@ import type {
   Profile,
   RadarGame,
   RadarInterest,
+  Result,
   Rsvp,
   Score,
   Trial,
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
+import { computeRankings, type RankRow } from "@/lib/rankings";
 import type { PhotoWithUrl } from "@/components/Photos";
 
 export type RsvpWithPlayer = Rsvp & { player: Profile | null };
@@ -513,6 +515,7 @@ export type CompetitionDetail = {
   profiles: Profile[];
   rsvps: RsvpWithPlayer[];
   scores: Score[];
+  results: Result[];
   comments: Comment[];
   photos: PhotoWithUrl[];
 };
@@ -533,12 +536,14 @@ export async function getCompetitionDetail(
     { data: profiles },
     { data: rsvps },
     { data: scores },
+    { data: resultRows },
     { data: comments },
     { data: photos },
   ] = await Promise.all([
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
     supabase.from("rsvps").select("*").eq("competition_id", id),
     supabase.from("scores").select("*").eq("competition_id", id),
+    supabase.from("results").select("*").eq("competition_id", id),
     supabase.from("comments").select("*").eq("competition_id", id).order("created_at", { ascending: true }),
     supabase.from("photos").select("*").eq("competition_id", id).order("created_at", { ascending: false }),
   ]);
@@ -570,7 +575,24 @@ export async function getCompetitionDetail(
       player: profileById.get(r.player_id) ?? null,
     })),
     scores: (scores ?? []) as Score[],
+    results: (resultRows ?? []) as Result[],
     comments: (comments ?? []) as Comment[],
     photos: photosWithUrl,
   };
+}
+
+/** The Barracks leaderboard — computed from results across all fixtures the
+ *  caller can see (RLS scopes it to their group). */
+export async function getRankings(): Promise<RankRow[]> {
+  const supabase = await createClient();
+  const [{ data: resultRows }, { data: comps }, { data: profiles }] = await Promise.all([
+    supabase.from("results").select("*"),
+    supabase.from("competitions").select("*"),
+    supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+  ]);
+  return computeRankings(
+    (resultRows ?? []) as Result[],
+    (comps ?? []) as Competition[],
+    (profiles ?? []) as Profile[],
+  );
 }

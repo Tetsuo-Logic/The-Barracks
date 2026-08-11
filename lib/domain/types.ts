@@ -125,6 +125,22 @@ export interface PlayerNote {
   created_at: string;
 }
 
+// Universal result — one row per entrant per event, for every game (0031).
+// Only ever attached to a real competition, so official rankings come only from
+// recognised Barracks fixtures.
+export interface Result {
+  competition_id: string;
+  player_id: string;
+  score: number | null;
+  placement: number | null;
+  points: number | null;
+  metrics: Record<string, unknown> | null;
+  confirmed: boolean;
+  recorded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TrialVote {
   trial_id: string;
   juror_id: string;

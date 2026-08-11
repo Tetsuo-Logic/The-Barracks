@@ -8,6 +8,7 @@ import { Scorecard } from "@/components/Scorecard";
 import { EditableScorecard } from "@/components/EditableScorecard";
 import { Chat } from "@/components/Chat";
 import { Photos } from "@/components/Photos";
+import { RecordResult } from "@/components/RecordResult";
 import { ConveneTrial } from "@/components/ConveneTrial";
 import { heroDate, isToday, shortTime, formatLabel } from "@/lib/dates";
 import { gameById, compHeading } from "@/lib/games";
@@ -16,7 +17,7 @@ import { isLocked } from "@/lib/rsvp";
 import type { CompetitionDetail } from "@/lib/queries";
 import type { RsvpStatus } from "@/lib/types";
 
-type Tab = "details" | "card" | "photos";
+type Tab = "details" | "card" | "result" | "photos";
 
 const STATUS_TEXT: Record<RsvpStatus, string> = { in: "In", out: "Out", maybe: "Maybe" };
 const STATUS_COLOUR: Record<RsvpStatus, string> = {
@@ -34,14 +35,14 @@ export function CompDetail({
   currentUserId: string;
   isAdmin: boolean;
 }) {
-  const { comp, profiles, rsvps, scores, comments, photos } = detail;
+  const { comp, profiles, rsvps, scores, results, comments, photos } = detail;
   const game = gameById(comp.game);
   const isGolf = game.hasScorecard;
   const heading = compHeading(comp);
-  // Non-golf ops skip the scorecard tab entirely.
+  // Golf keeps its scorecard; other games record a finishing-order result.
   const tabs: Tab[] = isGolf
     ? ["details", "card", "photos"]
-    : ["details", "photos"];
+    : ["details", "result", "photos"];
   const [tab, setTab] = useState<Tab>("details");
   const [entering, setEntering] = useState(false);
 
@@ -254,6 +255,15 @@ export function CompDetail({
               </>
             )}
           </div>
+        )}
+
+        {tab === "result" && (
+          <RecordResult
+            competitionId={comp.id}
+            profiles={profiles}
+            results={results}
+            canEdit={comp.status !== "cancelled"}
+          />
         )}
 
         {tab === "photos" && (
