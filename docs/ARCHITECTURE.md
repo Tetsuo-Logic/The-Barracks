@@ -22,7 +22,26 @@ They are different **views of one system** — same users, groups, memberships, 
 
 ---
 
-## 1. Milestones
+## 1. Ambitious surface, disciplined core
+
+**Barracks is allowed to become extremely feature-rich and experimental — but the underlying platform must stay clean, fast, reliable and coherent.** Depth on the surface; discipline underneath.
+
+Features are never added merely because they look impressive. Even deliberately silly or theatrical features must earn their place by doing one of two things:
+
+1. make organising or playing together **easier**, or
+2. make being part of a Barracks **meaningfully more fun**.
+
+Court, elections, live Operation Rooms, team sheets, Race Control, medals, match reports, presence, structured chat, voice, streaming / room viewing, score capture, AI-assisted stat extraction — all intentionally playful, but each must behave like a **real, useful system**, not a decorative gimmick.
+
+The architecture must allow experimentation **without contaminating the core**. Where appropriate, future capabilities are **modular or feature-gated** so they can be enabled or disabled without forking the application.
+
+**Judging rule — do not reject a feature merely because it is ambitious.** Judge it on **product fit, usefulness, UX quality and architectural cleanliness**.
+
+> These are not commitments to build any of these features now. They are constraints on *how* we design the platform, so we never unnecessarily block them.
+
+---
+
+## 2. Milestones
 
 1. **Current private Barracks** — keep improving what exists (one group, works today).
 2. **Multi-tenant Barracks platform** — independent friend groups create their own Barracks and invite members. Complete isolation between groups; they don't interact yet.
@@ -33,7 +52,7 @@ Multi-tenancy (milestone 2) is required the moment real independent groups use i
 
 ---
 
-## 2. Core principles
+## 3. Core principles
 
 - **Neutral engine, Barracks presentation.** The data model never encodes military vocabulary. Core concepts are generic; "Barracks" is a skin. This preserves future product modes (e.g. The Locker Room) without an engine rewrite.
 - **Share meaning, not presentation.** Data, types, permissions, scoring and scheduling are shared across clients. Components, shells and navigation are deliberately *not* shared.
@@ -59,7 +78,7 @@ Multi-tenancy (milestone 2) is required the moment real independent groups use i
 
 ---
 
-## 3. What is shared vs. not
+## 4. What is shared vs. not
 
 **Shared (meaning):** the backend (DB, RLS, Supabase clients, auth/session); domain types; the read layer (queries); the write **commands** (pure logic beneath Server Actions); permissions predicates; scoring & scheduling engines; notifications (push, later Discord); design tokens.
 
@@ -69,7 +88,7 @@ Multi-tenancy (milestone 2) is required the moment real independent groups use i
 
 ---
 
-## 4. Module architecture
+## 5. Module architecture
 
 ### Near-term (inside the current single app — no workspace tooling yet)
 
@@ -102,7 +121,7 @@ Both clients are **Next** (shared tooling/tokens); mobile = the PWA, web = a wid
 
 ---
 
-## 5. Database naming/relationships to evolve
+## 6. Database naming/relationships to evolve
 
 | Today | Problem | Neutral target |
 |---|---|---|
@@ -120,7 +139,7 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 
 ---
 
-## 6. Migration sequence (app works throughout)
+## 7. Migration sequence (app works throughout)
 
 | Phase | What | Risk | Behaviour change |
 |---|---|---|---|
@@ -136,8 +155,9 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 
 ---
 
-## 7. Status log
+## 8. Status log
 
 - **2026-08-11 — Phase 0** complete. `v1` tag = commit `8da2038`. `experiments` branch created.
 - **2026-08-11 — Phase 1** complete (on `experiments`). Zero behaviour change. Established `lib/domain`, `lib/permissions`, `lib/data/{queries,commands}`; migrated the `radar`, `requests` and `trials` Server Actions to thin wrappers over shared commands; adopted permission predicates across 10 pages. Build/typecheck/lint green. **Remaining actions still hold their own logic — to be migrated to the command pattern incrementally (same mechanical transform).**
+- **2026-08-11 — Principle added:** "Ambitious surface, disciplined core" (§1) recorded as a permanent product/architecture constraint.
 - **Next:** review Phase 1, then discuss Phase 2 **before** applying any database migrations.
