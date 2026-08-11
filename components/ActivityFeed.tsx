@@ -59,7 +59,7 @@ type FilterKey = "all" | "requests" | "messages" | "court";
 // proposed muster, a squad-formation request). Only the CO/Captain ever receive
 // them (getActivityFeed scopes the items), so a member's feed has none.
 const isRequest = (i: ActivityItem) =>
-  i.kind === "night" || i.kind === "squadReq" || (i.kind === "muster" && i.muster.status === "proposed");
+  i.kind === "night" || i.kind === "squadReq" || (i.kind === "muster" && i.asRequest);
 const isCourt = (i: ActivityItem) => i.kind === "trial";
 const isMessage = (i: ActivityItem) => !isRequest(i) && !isCourt(i);
 

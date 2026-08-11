@@ -293,8 +293,9 @@ export type ActivityItem =
   | { kind: "result"; at: string; comp: Competition }
   | { kind: "comment"; at: string; comment: Comment; comp: Competition; authorName: string }
   // Squad events (Sq): a called/proposed muster, a member's night nudge, a
-  // squad-formation request. Musters when open = message, proposed = request.
-  | { kind: "muster"; at: string; muster: Muster; squadName: string }
+  // squad-formation request. `asRequest` is per-viewer: a muster reads as a
+  // Request for the CO / the squad's Captain, but a Message for a plain member.
+  | { kind: "muster"; at: string; muster: Muster; squadName: string; asRequest: boolean }
   | { kind: "night"; at: string; night: SquadNightRequest; requesterName: string; squadName: string }
   | { kind: "squadReq"; at: string; request: SquadRequest; requesterName: string };
 
@@ -427,6 +428,7 @@ export async function getActivityFeed(playerId: string, isAdmin = false): Promis
       at: mu.created_at,
       muster: mu,
       squadName: squadNameById.get(mu.squad_id) ?? "Squad",
+      asRequest: canSeeSquadRequest(mu.squad_id),
     });
   }
 
