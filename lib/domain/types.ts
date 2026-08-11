@@ -164,6 +164,33 @@ export interface SquadMember {
   created_at: string;
 }
 
+export type MusterStatus = "open" | "proposed" | "approved" | "cancelled";
+
+// The Captain's pre-week arrangement: candidate nights the squad votes on, then
+// a chosen night proposed up to the President to deploy.
+export interface Muster {
+  id: string;
+  squad_id: string;
+  group_id: string;
+  game: string;
+  created_by: string | null;
+  status: MusterStatus;
+  dates: string[]; // candidate nights, 'YYYY-MM-DD'
+  times: string[]; // proposed start times, 'HH:MM'
+  note: string | null;
+  chosen_date: string | null; // set when the Captain proposes
+  chosen_time: string | null;
+  competition_id: string | null; // set on approval
+  created_at: string;
+}
+
+export interface MusterResponse {
+  muster_id: string;
+  user_id: string;
+  available_dates: string[];
+  updated_at: string;
+}
+
 // A squad member's nudge to their Captain to sort a night (pre-Muster).
 export interface SquadNightRequest {
   id: string;

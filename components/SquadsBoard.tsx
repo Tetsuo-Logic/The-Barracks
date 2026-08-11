@@ -17,6 +17,7 @@ import {
   clearNightRequest,
 } from "@/app/actions/squads";
 import { Avatar } from "@/components/Avatar";
+import { Muster } from "@/components/Muster";
 import { useAnnounce } from "@/components/Announce";
 import { gameById, type Game } from "@/lib/games";
 import type { SquadView, SquadRequestView } from "@/lib/queries";
@@ -202,7 +203,7 @@ export function SquadsBoard({
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-4">
-          {squads.map(({ squad, members, captainId, mine, nightRequests }) => {
+          {squads.map(({ squad, members, captainId, mine, nightRequests, muster }) => {
             const g = gameById(squad.game);
             const iAmCaptain = captainId === currentUserId;
             const canManageTag = isAdmin || iAmCaptain;
@@ -325,6 +326,16 @@ export function SquadsBoard({
                   </ul>
                 )}
 
+                {/* The Muster — pre-week arrangement (Captain calls it, squad answers) */}
+                <Muster
+                  squadId={squad.id}
+                  muster={muster}
+                  iAmCaptain={iAmCaptain}
+                  isAdmin={isAdmin}
+                  mine={mine}
+                  memberCount={members.length}
+                />
+
                 {/* Night nudges — the Captain / CO see who wants a game on */}
                 {seesNights && nightRequests.length > 0 && (
                   <div className="mt-3 rounded-[3px] border border-sand/40 bg-sand/5 p-3">
@@ -349,8 +360,8 @@ export function SquadsBoard({
                   </div>
                 )}
 
-                {/* Member nudge — poke the Captain to sort a night */}
-                {mine && !iAmCaptain &&
+                {/* Member nudge — poke the Captain, only when no muster's running */}
+                {mine && !iAmCaptain && !muster &&
                   (nightFor === squad.id ? (
                     <div className="mt-3 rounded-[3px] border border-rule bg-paper p-3">
                       <label className="label mb-1 block">Poke your Captain</label>

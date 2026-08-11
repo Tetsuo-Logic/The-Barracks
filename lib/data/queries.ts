@@ -17,6 +17,8 @@ import type {
   SquadMember,
   SquadRequest,
   SquadNightRequest,
+  Muster,
+  MusterResponse,
   Trial,
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
@@ -548,22 +550,38 @@ export type SquadNightRequestView = {
   created_at: string;
 };
 
+export type MusterView = {
+  muster: Muster;
+  responses: { user_id: string; available_dates: string[] }[];
+  myResponse: string[] | null; // the caller's ticked nights, if they've answered
+};
+
 export type SquadView = {
   squad: Squad;
   members: { profile: Profile; is_captain: boolean }[];
   captainId: string | null;
   mine: boolean;
   nightRequests: SquadNightRequestView[]; // members' nudges to the Captain
+  muster: MusterView | null; // the active muster (open or proposed), if any
 };
 
-/** Every squad in the caller's Barracks, with members + captain + night nudges. */
+/** Every squad in the caller's Barracks, with members, captain, nudges + muster. */
 export async function getSquads(currentUserId: string): Promise<SquadView[]> {
   const supabase = await createClient();
-  const [{ data: squads }, { data: members }, { data: profiles }, { data: nights }] = await Promise.all([
+  const [
+    { data: squads },
+    { data: members },
+    { data: profiles },
+    { data: nights },
+    { data: musters },
+    { data: musterResponses },
+  ] = await Promise.all([
     supabase.from("squads").select("*").order("created_at", { ascending: true }),
     supabase.from("squad_members").select("*"),
     supabase.from("profiles").select("*"),
     supabase.from("squad_night_requests").select("*").order("created_at", { ascending: true }),
+    supabase.from("musters").select("*").in("status", ["open", "proposed"]).order("created_at", { ascending: false }),
+    supabase.from("muster_responses").select("*"),
   ]);
   const profById = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
   const bySquad = new Map<string, SquadMember[]>();
@@ -583,9 +601,32 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
     });
     nightsBySquad.set(n.squad_id, arr);
   }
+
+  // The active muster per squad (most recent open/proposed — one at a time), and
+  // its responses.
+  const musterBySquad = new Map<string, Muster>();
+  for (const mu of (musters ?? []) as Muster[]) {
+    if (!musterBySquad.has(mu.squad_id)) musterBySquad.set(mu.squad_id, mu); // first = newest
+  }
+  const responsesByMuster = new Map<string, MusterResponse[]>();
+  for (const r of (musterResponses ?? []) as MusterResponse[]) {
+    const arr = responsesByMuster.get(r.muster_id) ?? [];
+    arr.push(r);
+    responsesByMuster.set(r.muster_id, arr);
+  }
+
   return ((squads ?? []) as Squad[]).map((sq) => {
     const mems = bySquad.get(sq.id) ?? [];
     const captain = mems.find((m) => m.is_captain);
+    const mu = musterBySquad.get(sq.id) ?? null;
+    const muResponses = mu ? responsesByMuster.get(mu.id) ?? [] : [];
+    const musterView: MusterView | null = mu
+      ? {
+          muster: mu,
+          responses: muResponses.map((r) => ({ user_id: r.user_id, available_dates: r.available_dates })),
+          myResponse: muResponses.find((r) => r.user_id === currentUserId)?.available_dates ?? null,
+        }
+      : null;
     return {
       squad: sq,
       members: mems
@@ -594,6 +635,7 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
       captainId: captain?.user_id ?? null,
       mine: mems.some((m) => m.user_id === currentUserId),
       nightRequests: nightsBySquad.get(sq.id) ?? [],
+      muster: musterView,
     };
   });
 }
