@@ -96,13 +96,13 @@ export function CommandBanner({
 
         {/* wordmark, typed out */}
         <h1
-          className={`display mt-3 text-[40px] font-bold uppercase leading-[0.92] tracking-[0.01em] text-ink [text-shadow:0_0_22px_rgba(245,182,61,0.22)] ${done ? "signal" : ""}`}
+          className={`display mt-3 text-[clamp(2.9rem,13.5vw,3.6rem)] font-bold uppercase leading-[0.9] tracking-[-0.01em] text-ink [text-shadow:0_0_22px_rgba(245,182,61,0.22)] ${done ? "signal" : ""}`}
           aria-label="The Barracks"
         >
           <span aria-hidden>{typed || " "}</span>
           {!done && (
             <span
-              className="cursor ml-1 inline-block h-[34px] w-[10px] translate-y-[3px] bg-sand align-baseline"
+              className="cursor ml-1 inline-block h-[42px] w-[11px] translate-y-[5px] bg-sand align-baseline"
               aria-hidden
             />
           )}

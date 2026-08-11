@@ -68,7 +68,6 @@ export function Photos({
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         multiple
         onChange={onPick}
         className="hidden"

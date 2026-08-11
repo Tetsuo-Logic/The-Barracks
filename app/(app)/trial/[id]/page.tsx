@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
+import { previewingAsPlayer } from "@/lib/preview";
 import { createClient } from "@/lib/supabase/server";
 import { TrialView } from "@/components/TrialView";
 import type { Profile, Trial, TrialVote } from "@/lib/types";
@@ -12,6 +13,7 @@ export default async function TrialPage({
 }) {
   const { id } = await params;
   const profile = await requireProfile();
+  const preview = await previewingAsPlayer();
   const supabase = await createClient();
 
   const { data: trial } = await supabase.from("trials").select("*").eq("id", id).single();
@@ -32,7 +34,7 @@ export default async function TrialPage({
         votes={(votes ?? []) as TrialVote[]}
         profiles={(profiles ?? []) as Profile[]}
         currentUserId={profile.id}
-        isAdmin={profile.is_admin}
+        canRule={(profile.is_president || profile.is_admin) && !preview}
       />
     </div>
   );

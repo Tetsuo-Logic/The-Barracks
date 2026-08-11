@@ -26,20 +26,24 @@ async function ensureGameInList(id: string, name: string): Promise<void> {
 
 // Any player floats a game they fancy. A custom name (not in the list yet) is
 // auto-formatted and added to the games list. It pings the CO to organise it.
-export async function requestGame(
-  game: string,
-  note?: string,
-  customName?: string,
-): Promise<Result> {
+export async function requestGame(input: {
+  game: string;
+  note?: string;
+  customName?: string;
+  availableFrom?: string;
+  availableTo?: string;
+  minPlayers?: number;
+  maxPlayers?: number;
+}): Promise<Result> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  let gameId = game;
+  let gameId = input.game;
   let name: string;
-  const custom = customName?.trim();
+  const custom = input.customName?.trim();
   if (custom) {
     gameId = gameIdFromName(custom);
     if (!gameId) return { ok: false, error: "That name won't work — try letters and numbers." };
@@ -50,10 +54,15 @@ export async function requestGame(
     name = gameById(gameId).name;
   }
 
+  const note = input.note?.trim();
   const { error } = await supabase.from("game_requests").insert({
     requested_by: user.id,
     game: gameId,
-    note: note?.trim() || null,
+    note: note || null,
+    available_from: input.availableFrom || null,
+    available_to: input.availableTo || null,
+    min_players: input.minPlayers ?? null,
+    max_players: input.maxPlayers ?? null,
   });
   if (error) return { ok: false, error: "Couldn't send the request." };
 
@@ -75,7 +84,7 @@ export async function requestGame(
     "new_comp",
     {
       title: `🎮 Game request${custom ? " (new game)" : ""}`,
-      body: `${who} wants ${name}${note?.trim() ? ` — “${note.trim()}”` : ""}. Rally the squad?`,
+      body: `${who} wants ${name}${note ? ` — “${note}”` : ""}. Rally the squad?`,
       url: custom ? "/admin" : "/",
       tag: "game-request",
     },

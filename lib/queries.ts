@@ -423,6 +423,7 @@ export type PlayerRecord = {
   played: number; // non-cancelled games this player committed to
   warnings: number;
   strikes: number;
+  notes: { id: string; note: string; created_at: string }[];
   lastRounds: LastRound[];
   photos: PhotoWithUrl[];
 };
@@ -444,6 +445,7 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     { data: myRsvps },
     { data: myWarnings },
     { data: myStrikes },
+    { data: myNotes },
   ] = await Promise.all([
     supabase.from("competitions").select("*"),
     supabase.from("scores").select("*"),
@@ -451,6 +453,11 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     supabase.from("rsvps").select("competition_id").eq("player_id", id).eq("status", "in"),
     supabase.from("warnings").select("id").eq("player_id", id),
     supabase.from("strikes").select("id").eq("player_id", id),
+    supabase
+      .from("player_notes")
+      .select("id, note, created_at")
+      .eq("player_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const { toPar } = await import("@/lib/scoring");
@@ -464,6 +471,7 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
   }).length;
   const warnings = (myWarnings ?? []).length;
   const strikes = (myStrikes ?? []).length;
+  const notes = (myNotes ?? []) as { id: string; note: string; created_at: string }[];
   const lastRounds: LastRound[] = [];
   for (const s of (scores ?? []) as Score[]) {
     if (s.player_id !== id) continue;
@@ -494,6 +502,7 @@ export async function getPlayerRecord(id: string): Promise<PlayerRecord | null> 
     played,
     warnings,
     strikes,
+    notes,
     lastRounds,
     photos,
   };

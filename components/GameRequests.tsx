@@ -9,7 +9,22 @@ import {
 } from "@/app/actions/requests";
 import { gameById, DEFAULT_GAME, type Game } from "@/lib/games";
 import { useAnnounce } from "@/components/Announce";
+import { shortDate } from "@/lib/dates";
 import type { GameRequestWithPlayer } from "@/lib/queries";
+
+// Human-readable availability window + squad-size, for the request cards.
+function windowText(from: string | null, to: string | null): string | null {
+  if (from && to) return `${shortDate(from)} – ${shortDate(to)}`;
+  if (from) return `From ${shortDate(from)}`;
+  if (to) return `Until ${shortDate(to)}`;
+  return null;
+}
+function playersText(min: number | null, max: number | null): string | null {
+  if (min && max) return `${min}–${max} players`;
+  if (min) return `${min}+ players`;
+  if (max) return `Up to ${max} players`;
+  return null;
+}
 
 // Player-initiated "request a game" entry point + the open-requests board. Any
 // player can float a game; the CO turns a request into a poll (existing
@@ -32,6 +47,10 @@ export function GameRequests({
   const [game, setGame] = useState<string>(firstGame);
   const [customName, setCustomName] = useState("");
   const [note, setNote] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [minP, setMinP] = useState("");
+  const [maxP, setMaxP] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isOther = game === "__other__";
@@ -41,13 +60,21 @@ export function GameRequests({
       setError("Type the game's name.");
       return;
     }
+    if (to && from && to < from) {
+      setError("The end of your window is before the start.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const res = await requestGame(
-      isOther ? "" : game,
+    const res = await requestGame({
+      game: isOther ? "" : game,
       note,
-      isOther ? customName : undefined,
-    );
+      customName: isOther ? customName : undefined,
+      availableFrom: from || undefined,
+      availableTo: to || undefined,
+      minPlayers: minP ? Number(minP) : undefined,
+      maxPlayers: maxP ? Number(maxP) : undefined,
+    });
     if (!res.ok) {
       setError(res.error);
       setBusy(false);
@@ -56,6 +83,10 @@ export function GameRequests({
     const label = isOther ? customName.trim() : gameById(game).name;
     setNote("");
     setCustomName("");
+    setFrom("");
+    setTo("");
+    setMinP("");
+    setMaxP("");
     setGame(firstGame);
     setComposing(false);
     setBusy(false);
@@ -130,6 +161,57 @@ export function GameRequests({
             </>
           )}
 
+          <label className="label mb-1 mt-4 block">When are you free? (optional)</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">From</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="w-full rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
+              />
+            </div>
+            <div>
+              <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">To</span>
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+                className="w-full rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
+              />
+            </div>
+          </div>
+
+          <label className="label mb-1 mt-4 block">Players (optional)</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">Min</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={minP}
+                onChange={(e) => setMinP(e.target.value)}
+                placeholder="2"
+                className="w-full rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
+              />
+            </div>
+            <div>
+              <span className="mb-1 block font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">Max</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={minP || 1}
+                value={maxP}
+                onChange={(e) => setMaxP(e.target.value)}
+                placeholder="4"
+                className="w-full rounded-[3px] border border-rule bg-paper px-3 py-3 text-ink outline-none focus:border-ink"
+              />
+            </div>
+          </div>
+
           <label className="label mb-1 mt-4 block">Note (optional)</label>
           <input
             value={note}
@@ -179,6 +261,19 @@ export function GameRequests({
                         · {r.requester?.name ?? "Someone"}
                       </span>
                     </p>
+                    {(windowText(r.available_from, r.available_to) ||
+                      playersText(r.min_players, r.max_players)) && (
+                      <p className="mt-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+                        {[
+                          windowText(r.available_from, r.available_to) &&
+                            `📅 ${windowText(r.available_from, r.available_to)}`,
+                          playersText(r.min_players, r.max_players) &&
+                            `👥 ${playersText(r.min_players, r.max_players)}`,
+                        ]
+                          .filter(Boolean)
+                          .join("  ·  ")}
+                      </p>
+                    )}
                     {r.note && (
                       <p className="mt-0.5 truncate text-sm text-ink-soft">
                         “{r.note}”

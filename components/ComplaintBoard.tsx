@@ -33,6 +33,7 @@ export function ComplaintBoard({
   const byId = new Map(profiles.map((p) => [p.id, p]));
 
   const [composing, setComposing] = useState(false);
+  const [tab, setTab] = useState<"active" | "previous">("active");
   const [reason, setReason] = useState("");
   const [action, setAction] = useState("");
   const [comment, setComment] = useState("");
@@ -148,41 +149,67 @@ export function ComplaintBoard({
         </div>
       )}
 
-      {/* open complaints — the board lands on its actual state */}
-      <div className="mt-4">
-        {open.length === 0 ? (
-          <p className="py-6 text-center text-ink-soft">Nothing outstanding. A peaceful reign.</p>
-        ) : (
-          open.map((c) => (
-            <ComplaintCard
-              key={c.id}
-              c={c}
-              byId={byId}
-              others={others}
-              currentUserId={currentUserId}
-              canRule={canRule}
-              isAdmin={isAdmin}
-            />
-          ))
-        )}
+      {/* Active / Previous — keep the board on current cases; archive below */}
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => setTab("active")}
+          className="rounded-[3px] border py-2 font-narrow text-sm font-semibold uppercase tracking-[0.06em] transition-colors"
+          style={{
+            backgroundColor: tab === "active" ? "var(--color-ink)" : "transparent",
+            borderColor: tab === "active" ? "var(--color-ink)" : "var(--color-rule)",
+            color: tab === "active" ? "var(--color-paper)" : "var(--color-ink-soft)",
+          }}
+        >
+          Active{open.length > 0 ? ` · ${open.length}` : ""}
+        </button>
+        <button
+          onClick={() => setTab("previous")}
+          className="rounded-[3px] border py-2 font-narrow text-sm font-semibold uppercase tracking-[0.06em] transition-colors"
+          style={{
+            backgroundColor: tab === "previous" ? "var(--color-ink)" : "transparent",
+            borderColor: tab === "previous" ? "var(--color-ink)" : "var(--color-rule)",
+            color: tab === "previous" ? "var(--color-paper)" : "var(--color-ink-soft)",
+          }}
+        >
+          Previous{closed.length > 0 ? ` · ${closed.length}` : ""}
+        </button>
       </div>
 
-      {/* ruled on */}
-      {closed.length > 0 && (
-        <div className="mt-8">
-          <p className="label mb-1">Ruled on</p>
-          <hr className="rule mb-2" />
-          {closed.map((c) => (
-            <ComplaintCard
-              key={c.id}
-              c={c}
-              byId={byId}
-              others={others}
-              currentUserId={currentUserId}
-              canRule={false}
-              isAdmin={false}
-            />
-          ))}
+      {tab === "active" ? (
+        <div className="mt-3">
+          {open.length === 0 ? (
+            <p className="py-6 text-center text-ink-soft">Nothing outstanding. A peaceful reign.</p>
+          ) : (
+            open.map((c) => (
+              <ComplaintCard
+                key={c.id}
+                c={c}
+                byId={byId}
+                others={others}
+                currentUserId={currentUserId}
+                canRule={canRule}
+                isAdmin={isAdmin}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="mt-3">
+          {closed.length === 0 ? (
+            <p className="py-6 text-center text-ink-soft">Nothing ruled on yet.</p>
+          ) : (
+            closed.map((c) => (
+              <ComplaintCard
+                key={c.id}
+                c={c}
+                byId={byId}
+                others={others}
+                currentUserId={currentUserId}
+                canRule={false}
+                isAdmin={false}
+              />
+            ))
+          )}
         </div>
       )}
     </div>

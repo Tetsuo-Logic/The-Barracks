@@ -6,7 +6,7 @@ import type { PlayerRecord } from "@/lib/queries";
 
 // Read-only profile: identity, record, last five rounds as thin bars, photos.
 export function ProfileView({ record }: { record: PlayerRecord }) {
-  const { profile, played, warnings, strikes, lastRounds, photos } = record;
+  const { profile, played, warnings, strikes, notes, lastRounds, photos } = record;
 
   return (
     <div>
@@ -29,6 +29,23 @@ export function ProfileView({ record }: { record: PlayerRecord }) {
         <Stat label="Warnings" value={warnings} border />
         <Stat label="Strikes" value={strikes} border />
       </div>
+
+      {/* player notes — behaviour logged from the Courtroom (not guilty, noted) */}
+      {notes.length > 0 && (
+        <div className="mt-6">
+          <p className="label mb-2">On the record</p>
+          <ul className="flex flex-col gap-2">
+            {notes.map((n) => (
+              <li key={n.id} className="rounded-[3px] border-l-2 border-sand bg-card px-3 py-2">
+                <p className="text-sm text-ink">{n.note}</p>
+                <p className="mt-0.5 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">
+                  {shortDate(n.created_at)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* last five */}
       {lastRounds.length > 0 && (

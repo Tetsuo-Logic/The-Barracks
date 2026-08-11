@@ -6,8 +6,10 @@ import { sendToPlayers } from "@/lib/push";
 import type { Penalty, Profile, Verdict } from "@/lib/types";
 
 type Result = { ok: true; id: string } | { ok: false; error: string };
+type Ok = { ok: true } | { ok: false; error: string };
 
-// Organiser convenes a trial against a flake.
+// Organiser convenes a trial against a flake. The accused enters a defence;
+// then it's presented to the President to rule on.
 export async function createTrial(input: {
   defendantId: string;
   charge: string;
@@ -40,10 +42,10 @@ export async function createTrial(input: {
     .single();
   if (error || !data) return { ok: false, error: "Couldn't convene it." };
 
-  // Summon the accused and the jury.
+  // Summon the accused; put everyone else on notice that a case is in session.
   const { data: everyone } = await supabase.from("profiles").select("id");
   const defendant = input.defendantId;
-  const jurors = ((everyone ?? []) as Pick<Profile, "id">[])
+  const others = ((everyone ?? []) as Pick<Profile, "id">[])
     .map((p) => p.id)
     .filter((id) => id !== defendant);
 
@@ -53,9 +55,9 @@ export async function createTrial(input: {
     url: `/trial/${data.id}`,
     tag: `trial-${data.id}`,
   });
-  await sendToPlayers(jurors, "new_comp", {
+  await sendToPlayers(others, "new_comp", {
     title: "The Courtroom is in session",
-    body: `${charge}. Your verdict is needed.`,
+    body: `${charge}. The President will hear it.`,
     url: `/trial/${data.id}`,
     tag: `trial-${data.id}`,
   });
@@ -64,60 +66,8 @@ export async function createTrial(input: {
   return { ok: true, id: data.id as string };
 }
 
-// The CO throws the case out — closed, no verdict, no penalty. The real-court
-// term: case dismissed.
-export async function dismissTrial(
-  trialId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Not signed in." };
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-  if (!me?.is_admin) return { ok: false, error: "Only the CO can dismiss a case." };
-
-  const { error } = await supabase
-    .from("trials")
-    .update({ status: "closed", verdict: null, penalty: null })
-    .eq("id", trialId);
-  if (error) return { ok: false, error: "Couldn't dismiss the case." };
-
-  // Tell everyone the case is thrown out.
-  const { data: trial } = await supabase
-    .from("trials")
-    .select("defendant_id, charge")
-    .eq("id", trialId)
-    .single();
-  const tx = trial as { defendant_id?: string; charge?: string } | null;
-  const { data: everyone } = await supabase.from("profiles").select("id, name");
-  const people = (everyone ?? []) as (Pick<Profile, "id"> & { name: string })[];
-  const name = people.find((p) => p.id === tx?.defendant_id)?.name ?? "The accused";
-  await sendToPlayers(
-    people.map((p) => p.id),
-    "results",
-    {
-      title: "⚖️ Case dismissed",
-      body: `${name} walks — the CO threw it out.`,
-      url: `/trial/${trialId}`,
-      tag: `trial-${trialId}`,
-    },
-  );
-
-  revalidatePath(`/trial/${trialId}`);
-  revalidatePath("/trial");
-  return { ok: true };
-}
-
 // The accused states their case.
-export async function submitDefence(
-  trialId: string,
-  defence: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function submitDefence(trialId: string, defence: string): Promise<Ok> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -135,14 +85,48 @@ export async function submitDefence(
   return { ok: true };
 }
 
-// A juror votes; when the last juror votes, the verdict lands (and a strike if
-// unanimous guilty), handled by the finalize_trial function.
+// The President opens the floor to the jury — everyone gives a guilty /
+// not-guilty steer. It's advisory: the President still rules.
+export async function openJury(trialId: string): Promise<Ok> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { data: trial, error } = await supabase
+    .from("trials")
+    .update({ jury_opened: true })
+    .eq("id", trialId)
+    .eq("status", "open")
+    .select("defendant_id, charge")
+    .single();
+  if (error || !trial) return { ok: false, error: "Couldn't open the floor. Are you the President?" };
+
+  const tx = trial as { defendant_id: string; charge: string };
+  const { data: everyone } = await supabase.from("profiles").select("id");
+  const jurors = ((everyone ?? []) as Pick<Profile, "id">[])
+    .map((p) => p.id)
+    .filter((id) => id !== tx.defendant_id);
+
+  await sendToPlayers(jurors, "new_comp", {
+    title: "The jury is called",
+    body: `${tx.charge}. Guilty or not — the President wants your steer.`,
+    url: `/trial/${trialId}`,
+    tag: `trial-${trialId}`,
+  });
+
+  revalidatePath(`/trial/${trialId}`);
+  return { ok: true };
+}
+
+// A juror gives their advisory steer: guilty or not guilty. No penalty — that's
+// the President's call. Never auto-closes the case.
 export async function castVote(
   trialId: string,
   vote: Verdict,
-  penalty?: Penalty,
   comment?: string,
-): Promise<{ ok: true; verdict: string | null } | { ok: false; error: string }> {
+): Promise<Ok> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -154,45 +138,69 @@ export async function castVote(
       trial_id: trialId,
       juror_id: user.id,
       vote,
-      penalty: vote === "guilty" ? (penalty ?? "warning") : null,
+      penalty: null,
       comment: comment?.trim() || null,
       created_at: new Date().toISOString(),
     },
     { onConflict: "trial_id,juror_id" },
   );
-  if (error) return { ok: false, error: "Couldn't cast your vote." };
-
-  const { data: verdict } = await supabase.rpc("finalize_trial", { p_trial: trialId });
-
-  if (verdict === "guilty" || verdict === "not_guilty") {
-    const { data: trial } = await supabase
-      .from("trials")
-      .select("defendant_id, charge, penalty")
-      .eq("id", trialId)
-      .single();
-    const tx = trial as { defendant_id?: string; penalty?: Penalty | null } | null;
-    const { data: everyone } = await supabase.from("profiles").select("id, name");
-    const people = (everyone ?? []) as (Pick<Profile, "id"> & { name: string })[];
-    const defendant = people.find((p) => p.id === tx?.defendant_id);
-    const name = defendant?.name ?? "The accused";
-    await sendToPlayers(
-      people.map((p) => p.id),
-      "results",
-      {
-        title: verdict === "guilty" ? "Verdict: guilty" : "Verdict: not guilty",
-        body:
-          verdict !== "guilty"
-            ? `${name} walks free.`
-            : tx?.penalty === "strike"
-              ? `${name} takes a strike.`
-              : `${name} gets a warning.`,
-        url: `/trial/${trialId}`,
-        tag: `trial-${trialId}`,
-      },
-    );
-  }
+  if (error) return { ok: false, error: "Couldn't record your steer." };
 
   revalidatePath(`/trial/${trialId}`);
+  return { ok: true };
+}
+
+// The President rules — the final call. Guilty (warning or strike), or not
+// guilty (case dismissed, or the behaviour noted on the player's record).
+export async function rulePresident(
+  trialId: string,
+  input: { verdict: Verdict; penalty?: Penalty; note?: string },
+): Promise<Ok> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { data: verdict, error } = await supabase.rpc("president_rule", {
+    p_trial: trialId,
+    p_verdict: input.verdict,
+    p_penalty: input.verdict === "guilty" ? input.penalty ?? "warning" : null,
+    p_note: input.note?.trim() || null,
+  });
+  if (error) return { ok: false, error: "Couldn't record the ruling. Are you the President?" };
+
+  // Announce the outcome to the whole squad.
+  const { data: trial } = await supabase
+    .from("trials")
+    .select("defendant_id, penalty, note")
+    .eq("id", trialId)
+    .single();
+  const tx = trial as { defendant_id?: string; penalty?: Penalty | null; note?: string | null } | null;
+  const { data: everyone } = await supabase.from("profiles").select("id, name");
+  const people = (everyone ?? []) as (Pick<Profile, "id"> & { name: string })[];
+  const name = people.find((p) => p.id === tx?.defendant_id)?.name ?? "The accused";
+
+  let title: string;
+  let body: string;
+  if (verdict === "guilty") {
+    title = "Verdict: guilty";
+    body = tx?.penalty === "strike" ? `${name} takes a strike.` : `${name} gets a warning.`;
+  } else if (tx?.note) {
+    title = "Verdict: not guilty";
+    body = `${name} walks — but it's noted.`;
+  } else {
+    title = "⚖️ Case dismissed";
+    body = `${name} walks free.`;
+  }
+  await sendToPlayers(
+    people.map((p) => p.id),
+    "results",
+    { title, body, url: `/trial/${trialId}`, tag: `trial-${trialId}` },
+  );
+
+  revalidatePath(`/trial/${trialId}`);
+  revalidatePath("/trial");
   revalidatePath("/standings");
-  return { ok: true, verdict: (verdict as string) ?? null };
+  return { ok: true };
 }

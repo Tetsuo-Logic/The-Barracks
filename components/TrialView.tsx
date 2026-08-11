@@ -2,38 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { submitDefence, castVote, dismissTrial } from "@/app/actions/trials";
+import { submitDefence, castVote, openJury, rulePresident } from "@/app/actions/trials";
 import { Avatar } from "@/components/Avatar";
 import { useAnnounce } from "@/components/Announce";
 import type { Penalty, Profile, Trial, TrialVote, Verdict } from "@/lib/types";
 
-// The three ways a juror can land: acquit, warn, or strike.
-const CHOICES: { key: string; vote: Verdict; penalty?: Penalty; label: string; colour: string }[] = [
-  { key: "not_guilty", vote: "not_guilty", label: "Not guilty", colour: "var(--color-moss)" },
-  { key: "warning", vote: "guilty", penalty: "warning", label: "Warning", colour: "var(--color-sand)" },
-  { key: "strike", vote: "guilty", penalty: "strike", label: "Strike", colour: "var(--color-flag)" },
-];
-
-function labelFor(v: TrialVote): { text: string; colour: string } {
-  if (v.vote !== "guilty") return { text: "Not guilty", colour: "var(--color-moss)" };
-  if (v.penalty === "strike") return { text: "Guilty · strike", colour: "var(--color-flag)" };
-  return { text: "Guilty · warning", colour: "var(--color-sand)" };
-}
-
-// The Courtroom. The accused files a defence; the jury (everyone else) votes
-// guilty or not. Unanimous guilty adds a strike — decided server-side.
+// The Courtroom, restructured: the accuser states the charge, the accused enters
+// a plea, then the President rules — Guilty (warning or strike) or Not guilty
+// (case dismissed, or noted). The jury is optional and advisory.
 export function TrialView({
   trial,
   votes,
   profiles,
   currentUserId,
-  isAdmin = false,
+  canRule = false,
 }: {
   trial: Trial;
   votes: TrialVote[];
   profiles: Profile[];
   currentUserId: string;
-  isAdmin?: boolean;
+  canRule?: boolean;
 }) {
   const router = useRouter();
   const announce = useAnnounce();
@@ -42,28 +30,20 @@ export function TrialView({
   const voteByJuror = new Map(votes.map((v) => [v.juror_id, v]));
   const isDefendant = currentUserId === trial.defendant_id;
   const myVote = voteByJuror.get(currentUserId) ?? null;
-  const closed = trial.status === "closed";
-  // Closed with no verdict = the CO threw it out.
-  const dismissed = closed && trial.verdict == null;
+  const open = trial.status === "open";
+  const closed = !open;
+  const guiltyCount = votes.filter((v) => v.vote === "guilty").length;
+  const notGuiltyCount = votes.filter((v) => v.vote === "not_guilty").length;
 
   const [defence, setDefence] = useState(trial.defence ?? "");
   const [comment, setComment] = useState(myVote?.comment ?? "");
+  // President's ruling flow: pick a verdict, then the follow-up.
+  const [stage, setStage] = useState<null | "guilty" | "not_guilty">(null);
+  const [penalty, setPenalty] = useState<Penalty | null>(null);
+  const [resolution, setResolution] = useState<null | "dismissed" | "noted">(null);
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function dismiss() {
-    if (!confirm("Dismiss this case? It's thrown out with no verdict.")) return;
-    setBusy(true);
-    setError(null);
-    const res = await dismissTrial(trial.id);
-    setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    announce("Case dismissed · thrown out");
-    router.refresh();
-  }
 
   async function fileDefence() {
     setBusy(true);
@@ -74,12 +54,43 @@ export function TrialView({
     router.refresh();
   }
 
-  async function vote(v: Verdict, penalty?: Penalty) {
+  async function steer(v: Verdict) {
     setBusy(true);
     setError(null);
-    const res = await castVote(trial.id, v, penalty, comment);
+    const res = await castVote(trial.id, v, comment);
     if (!res.ok) setError(res.error);
     setBusy(false);
+    router.refresh();
+  }
+
+  async function callJury() {
+    setBusy(true);
+    setError(null);
+    const res = await openJury(trial.id);
+    if (!res.ok) setError(res.error);
+    setBusy(false);
+    if (res.ok) {
+      announce("Jury called · steers requested");
+      router.refresh();
+    }
+  }
+
+  async function rule(input: { verdict: Verdict; penalty?: Penalty; note?: string }) {
+    setBusy(true);
+    setError(null);
+    const res = await rulePresident(trial.id, input);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    announce(
+      input.verdict === "guilty"
+        ? `Verdict · guilty, ${input.penalty ?? "warning"}`
+        : input.note
+          ? "Verdict · not guilty, noted"
+          : "Case dismissed",
+    );
     router.refresh();
   }
 
@@ -99,50 +110,47 @@ export function TrialView({
 
       {/* verdict banner */}
       {closed && (
-        <div
-          className="mt-4 rounded-[3px] p-4 text-center font-narrow text-[20px] font-bold uppercase tracking-[0.08em]"
-          style={{
-            backgroundColor: dismissed
-              ? "var(--color-ink-soft)"
-              : trial.verdict === "guilty"
-                ? trial.penalty === "strike"
-                  ? "var(--color-flag)"
-                  : "var(--color-sand)"
-                : "var(--color-moss)",
-            color: "var(--color-paper)",
-          }}
-        >
-          {dismissed
-            ? "Case dismissed"
-            : trial.verdict === "guilty"
+        <div className="mt-4">
+          <div
+            className="rounded-[3px] p-4 text-center font-narrow text-[20px] font-bold uppercase tracking-[0.08em]"
+            style={{
+              backgroundColor:
+                trial.verdict === "guilty"
+                  ? trial.penalty === "strike"
+                    ? "var(--color-flag)"
+                    : "var(--color-sand)"
+                  : trial.note
+                    ? "var(--color-moss)"
+                    : "var(--color-ink-soft)",
+              color: "var(--color-paper)",
+            }}
+          >
+            {trial.verdict === "guilty"
               ? trial.penalty === "strike"
                 ? "Guilty — strike added"
                 : "Guilty — warning"
-              : "Not guilty"}
+              : trial.note
+                ? "Not guilty — noted"
+                : "Case dismissed"}
+          </div>
+          {trial.note && (
+            <p className="mt-2 rounded-[3px] border-l-2 border-rule bg-card px-3 py-2 text-sm text-ink-soft">
+              <span className="label">On the record:</span> {trial.note}
+            </p>
+          )}
         </div>
       )}
 
-      {/* CO: dismiss the case (throw it out, no verdict) */}
-      {isAdmin && !closed && (
-        <button
-          onClick={dismiss}
-          disabled={busy}
-          className="mt-4 w-full rounded-[4px] border border-ink-soft/60 py-2.5 font-mono text-sm font-semibold uppercase tracking-[0.12em] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink disabled:opacity-50"
-        >
-          ⚖️ Dismiss case
-        </button>
-      )}
-
-      {/* defence */}
+      {/* defence / plea */}
       <div className="mt-6">
         <p className="label mb-2">The defence</p>
-        {isDefendant && !closed ? (
+        {isDefendant && open ? (
           <div className="rounded-[3px] border border-rule bg-card p-4">
             <textarea
               value={defence}
               onChange={(e) => setDefence(e.target.value)}
               rows={3}
-              placeholder="Plead your case…"
+              placeholder="Enter your plea…"
               className="w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
             />
             <button
@@ -150,87 +158,244 @@ export function TrialView({
               disabled={busy}
               className="mt-2 rounded-[3px] bg-ink px-5 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-60"
             >
-              {trial.defence ? "Update defence" : "File defence"}
+              {trial.defence ? "Update plea" : "Enter plea"}
             </button>
           </div>
         ) : trial.defence ? (
           <p className="rounded-[3px] border border-rule bg-card p-4 text-ink">“{trial.defence}”</p>
         ) : (
-          <p className="text-ink-soft">No defence entered yet.</p>
+          <p className="text-ink-soft">No plea entered yet.</p>
         )}
       </div>
 
-      {/* jury box */}
-      <div className="mt-6">
-        <p className="label mb-2">The jury</p>
+      {/* President's ruling — the final call */}
+      {canRule && !isDefendant && open && (
+        <div className="mt-6">
+          <p className="label mb-2" style={{ color: "var(--color-flag)" }}>The President rules</p>
+          <div className="rounded-[3px] border border-flag/50 bg-card p-4">
+            {/* step 1 — guilty or not */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  setStage("guilty");
+                  setResolution(null);
+                }}
+                disabled={busy}
+                className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                style={{
+                  backgroundColor: stage === "guilty" ? "var(--color-flag)" : "transparent",
+                  borderColor: stage === "guilty" ? "var(--color-flag)" : "var(--color-rule)",
+                  color: stage === "guilty" ? "var(--color-paper)" : "var(--color-ink)",
+                }}
+              >
+                Guilty
+              </button>
+              <button
+                onClick={() => {
+                  setStage("not_guilty");
+                  setPenalty(null);
+                }}
+                disabled={busy}
+                className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                style={{
+                  backgroundColor: stage === "not_guilty" ? "var(--color-moss)" : "transparent",
+                  borderColor: stage === "not_guilty" ? "var(--color-moss)" : "var(--color-rule)",
+                  color: stage === "not_guilty" ? "var(--color-paper)" : "var(--color-ink)",
+                }}
+              >
+                Not guilty
+              </button>
+            </div>
 
-        {!isDefendant && !closed && (
-          <div className="mb-4 rounded-[3px] border border-rule bg-card p-4">
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={2}
-              placeholder="Your remarks (optional)"
-              className="mb-3 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-            />
-            <div className="grid grid-cols-3 gap-2">
-              {CHOICES.map((ch) => {
-                const active =
-                  myVote?.vote === ch.vote &&
-                  (ch.vote !== "guilty" || (myVote?.penalty ?? "warning") === ch.penalty);
-                return (
+            {/* step 2a — guilty → warning or strike */}
+            {stage === "guilty" && (
+              <div className="mt-3">
+                <p className="label mb-2">The penalty</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["warning", "strike"] as Penalty[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPenalty(p)}
+                      disabled={busy}
+                      className="rounded-[3px] border py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.06em] capitalize"
+                      style={{
+                        backgroundColor:
+                          penalty === p ? (p === "strike" ? "var(--color-flag)" : "var(--color-sand)") : "transparent",
+                        borderColor:
+                          penalty === p ? (p === "strike" ? "var(--color-flag)" : "var(--color-sand)") : "var(--color-rule)",
+                        color: penalty === p ? "var(--color-paper)" : "var(--color-ink)",
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Three warnings add up to a strike.
+                </p>
+                <button
+                  onClick={() => rule({ verdict: "guilty", penalty: penalty ?? "warning" })}
+                  disabled={busy || !penalty}
+                  className="mt-3 w-full rounded-[3px] bg-ink px-5 py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+                >
+                  {busy ? "Recording" : `Deliver verdict — guilty, ${penalty ?? "…"}`}
+                </button>
+              </div>
+            )}
+
+            {/* step 2b — not guilty → dismissed or noted */}
+            {stage === "not_guilty" && (
+              <div className="mt-3">
+                <p className="label mb-2">The outcome</p>
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    key={ch.key}
-                    onClick={() => vote(ch.vote, ch.penalty)}
+                    onClick={() => setResolution("dismissed")}
                     disabled={busy}
-                    className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                    className="rounded-[3px] border py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
                     style={{
-                      backgroundColor: active ? ch.colour : "transparent",
-                      borderColor: active ? ch.colour : "var(--color-rule)",
-                      color: active ? "var(--color-paper)" : "var(--color-ink)",
+                      backgroundColor: resolution === "dismissed" ? "var(--color-ink)" : "transparent",
+                      borderColor: resolution === "dismissed" ? "var(--color-ink)" : "var(--color-rule)",
+                      color: resolution === "dismissed" ? "var(--color-paper)" : "var(--color-ink)",
                     }}
                   >
-                    {ch.label}
+                    Case dismissed
                   </button>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-xs text-ink-soft">
-              A strike needs both of you. If either picks warning, it&apos;s a warning. Three warnings add up to a strike.
-            </p>
-            {myVote && <p className="mt-1 text-sm text-ink-soft">Vote cast. You can change it until the last juror votes.</p>}
-          </div>
-        )}
-
-        <ul className="flex flex-col gap-3">
-          {jurors.map((j) => {
-            const v = voteByJuror.get(j.id);
-            return (
-              <li key={j.id} className="flex items-start gap-2">
-                <Avatar name={j.name} avatarUrl={j.avatar_url} colour={j.colour} size={26} />
-                <div className="flex-1">
-                  <p className="flex items-center gap-2">
-                    <span className="text-ink">{j.id === currentUserId ? "You" : j.name}</span>
-                    {v ? (
-                      <span
-                        className="font-narrow text-xs font-semibold uppercase tracking-[0.08em]"
-                        style={{ color: labelFor(v).colour }}
-                      >
-                        {labelFor(v).text}
-                      </span>
-                    ) : (
-                      <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-rule">
-                        Undecided
-                      </span>
-                    )}
-                  </p>
-                  {v?.comment && <p className="text-ink-soft">“{v.comment}”</p>}
+                  <button
+                    onClick={() => setResolution("noted")}
+                    disabled={busy}
+                    className="rounded-[3px] border py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                    style={{
+                      backgroundColor: resolution === "noted" ? "var(--color-sand)" : "transparent",
+                      borderColor: resolution === "noted" ? "var(--color-sand)" : "var(--color-rule)",
+                      color: resolution === "noted" ? "var(--color-paper)" : "var(--color-ink)",
+                    }}
+                  >
+                    Note it
+                  </button>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+
+                {resolution === "noted" && (
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder={`Goes on ${defendant?.name ?? "the player"}'s record…`}
+                    className="mt-3 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+                  />
+                )}
+
+                <button
+                  onClick={() =>
+                    rule(
+                      resolution === "noted"
+                        ? { verdict: "not_guilty", note: note.trim() || trial.charge }
+                        : { verdict: "not_guilty" },
+                    )
+                  }
+                  disabled={busy || !resolution}
+                  className="mt-3 w-full rounded-[3px] bg-ink px-5 py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+                >
+                  {busy
+                    ? "Recording"
+                    : resolution === "noted"
+                      ? "Not guilty — add the note"
+                      : "Dismiss the case"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* optional: consult the jury */}
+          {!trial.jury_opened && (
+            <button
+              onClick={callJury}
+              disabled={busy}
+              className="mt-3 w-full rounded-[3px] border border-rule py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink disabled:opacity-50"
+            >
+              👥 Ask the jury first (guilty / not guilty)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* the jury — only once the President calls it. Advisory guilty/not-guilty. */}
+      {trial.jury_opened && (
+        <div className="mt-6">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="label">The jury</p>
+            <p className="font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+              <span style={{ color: "var(--color-flag)" }}>{guiltyCount} guilty</span>
+              {"  ·  "}
+              <span style={{ color: "var(--color-moss)" }}>{notGuiltyCount} not</span>
+            </p>
+          </div>
+
+          {!isDefendant && open && (
+            <div className="mb-4 rounded-[3px] border border-rule bg-card p-4">
+              <p className="mb-2 text-sm text-ink-soft">Your steer — the President decides the rest.</p>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={2}
+                placeholder="Your remarks (optional)"
+                className="mb-3 w-full resize-none rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => steer("guilty")}
+                  disabled={busy}
+                  className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                  style={{
+                    backgroundColor: myVote?.vote === "guilty" ? "var(--color-flag)" : "transparent",
+                    borderColor: myVote?.vote === "guilty" ? "var(--color-flag)" : "var(--color-rule)",
+                    color: myVote?.vote === "guilty" ? "var(--color-paper)" : "var(--color-ink)",
+                  }}
+                >
+                  Guilty
+                </button>
+                <button
+                  onClick={() => steer("not_guilty")}
+                  disabled={busy}
+                  className="rounded-[3px] border py-3 font-narrow text-sm font-semibold uppercase tracking-[0.06em]"
+                  style={{
+                    backgroundColor: myVote?.vote === "not_guilty" ? "var(--color-moss)" : "transparent",
+                    borderColor: myVote?.vote === "not_guilty" ? "var(--color-moss)" : "var(--color-rule)",
+                    color: myVote?.vote === "not_guilty" ? "var(--color-paper)" : "var(--color-ink)",
+                  }}
+                >
+                  Not guilty
+                </button>
+              </div>
+              {myVote && <p className="mt-2 text-sm text-ink-soft">Steer logged. Change it any time before the ruling.</p>}
+            </div>
+          )}
+
+          <ul className="flex flex-col gap-3">
+            {jurors.map((j) => {
+              const v = voteByJuror.get(j.id);
+              const colour = !v
+                ? "var(--color-rule)"
+                : v.vote === "guilty"
+                  ? "var(--color-flag)"
+                  : "var(--color-moss)";
+              return (
+                <li key={j.id} className="flex items-start gap-2">
+                  <Avatar name={j.name} avatarUrl={j.avatar_url} colour={j.colour} size={26} />
+                  <div className="flex-1">
+                    <p className="flex items-center gap-2">
+                      <span className="text-ink">{j.id === currentUserId ? "You" : j.name}</span>
+                      <span className="font-narrow text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: colour }}>
+                        {!v ? "Undecided" : v.vote === "guilty" ? "Guilty" : "Not guilty"}
+                      </span>
+                    </p>
+                    {v?.comment && <p className="text-ink-soft">“{v.comment}”</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {error && <p className="mt-4 text-sm text-flag">{error}</p>}
     </div>

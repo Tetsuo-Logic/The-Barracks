@@ -65,17 +65,36 @@
     color: var(--color-ink);
   }
 
-  /* Native date/time inputs can report an intrinsic width wider than their box
-     on iOS — clamp them so they never spill. */
+  /* Native date/time inputs report an intrinsic width wider than their box on
+     mobile — the calendar icon spills off the right edge. Pin them to the box. */
   input[type="date"],
-  input[type="time"] {
+  input[type="time"],
+  input[type="datetime-local"] {
+    width: 100%;
     max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
   }
 
-  /* Render native controls (the date/time picker icon, spinners, scrollbars)
-     for the active theme — this is what makes the calendar icon visible on dark
-     and dark on light. Applied at the root so the browser picks the right set. */
+  /* The webkit calendar-picker indicator: force it to match the theme's ink
+     regardless of what colour-scheme renders it. brightness(0) flattens the
+     glyph to black, then invert(1) lifts it to white for the dark UI. */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+    cursor: pointer;
+  }
+  :root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+  :root[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator,
+  :root[data-theme="light"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: brightness(0);
+    opacity: 0.65;
+  }
+
+  /* Render native controls (the picker popups, spinners, scrollbars) for the
+     active theme. Applied at the root so the browser picks the right set. */
   :root {
     color-scheme: dark;
   }

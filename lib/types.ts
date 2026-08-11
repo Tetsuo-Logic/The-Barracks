@@ -110,6 +110,17 @@ export interface Trial {
   status: TrialStatus;
   verdict: Verdict | null;
   penalty: Penalty | null; // the outcome when guilty
+  jury_opened: boolean; // did the President consult the jury
+  note: string | null; // behaviour note / verdict caption
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface PlayerNote {
+  id: string;
+  player_id: string;
+  note: string;
+  trial_id: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -148,6 +159,10 @@ export interface GameRequest {
   requested_by: string | null;
   game: string; // a game id from lib/games.ts
   note: string | null;
+  available_from: string | null; // 'YYYY-MM-DD' — when they're free from
+  available_to: string | null; // 'YYYY-MM-DD' — …to
+  min_players: number | null;
+  max_players: number | null;
   status: GameRequestStatus;
   created_at: string;
 }
