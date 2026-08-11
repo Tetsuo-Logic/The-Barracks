@@ -59,8 +59,7 @@ export function Muster({
   // Call-a-muster form
   const [calling, setCalling] = useState(false);
   const [pickDates, setPickDates] = useState<Set<string>>(new Set(nextDays(7)));
-  const [times, setTimes] = useState<string[]>([]);
-  const [timeInput, setTimeInput] = useState("");
+  const [time, setTime] = useState("");
   const [note, setNote] = useState("");
 
   // Member response
@@ -91,18 +90,22 @@ export function Muster({
     if (!canRun) return null;
     if (!calling) {
       return (
-        <button
-          onClick={() => {
-            setPickDates(new Set(nextDays(7)));
-            setTimes([]);
-            setTimeInput("");
-            setNote("");
-            setCalling(true);
-          }}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-[3px] border border-sand/50 px-3 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-sand transition-colors hover:bg-sand/10"
-        >
-          📆 Call a Muster
-        </button>
+        <div className="mt-3">
+          <button
+            onClick={() => {
+              setPickDates(new Set(nextDays(7)));
+              setTime("");
+              setNote("");
+              setCalling(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-[3px] border border-sand/50 px-3 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-sand transition-colors hover:bg-sand/10"
+          >
+            📆 Call a Muster
+          </button>
+          <p className="mt-1 text-xs text-ink-soft">
+            Set up this week&apos;s night — pick the nights, the squad says when they&apos;re free.
+          </p>
+        </div>
       );
     }
     const week = nextDays(7);
@@ -141,42 +144,21 @@ export function Muster({
         </div>
 
         <p className="mb-1 mt-3 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">
-          Proposed times (optional)
+          Proposed time (optional)
         </p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {times.map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center gap-1 rounded-[3px] border border-rule bg-card px-2 py-1 font-narrow text-xs font-semibold text-ink"
-            >
-              {shortTime(t)}
-              <button onClick={() => setTimes((ts) => ts.filter((x) => x !== t))} className="text-ink-soft hover:text-flag">
-                ✕
-              </button>
-            </span>
-          ))}
-          <input
-            type="time"
-            value={timeInput}
-            onChange={(e) => setTimeInput(e.target.value)}
-            className="rounded-[3px] border border-rule bg-card px-2 py-1 text-sm text-ink outline-none focus:border-ink"
-          />
-          <button
-            onClick={() => {
-              if (timeInput && !times.includes(timeInput)) setTimes((ts) => [...ts, timeInput].sort());
-              setTimeInput("");
-            }}
-            className="rounded-[3px] border border-rule px-2.5 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft"
-          >
-            + Add
-          </button>
-        </div>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+        />
 
+        <p className="mb-1 mt-3 font-narrow text-[11px] uppercase tracking-[0.06em] text-ink-soft">Note (optional)</p>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Note (optional) — stake, mode…"
-          className="mt-3 w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+          placeholder="Stake, mode…"
+          className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
         />
 
         <div className="mt-3 flex gap-2">
@@ -187,7 +169,7 @@ export function Muster({
             onClick={() => {
               const dates = [...pickDates].sort();
               run(
-                () => openMuster({ squadId, dates, times, note }),
+                () => openMuster({ squadId, dates, times: time ? [time] : [], note }),
                 "Muster called · squad notified 📆",
               ).then(() => setCalling(false));
             }}
