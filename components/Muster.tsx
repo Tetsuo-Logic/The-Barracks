@@ -42,6 +42,7 @@ export function Muster({
   muster,
   iAmCaptain,
   isAdmin,
+  canCall,
   mine,
   memberCount,
 }: {
@@ -49,6 +50,7 @@ export function Muster({
   muster: MusterView | null;
   iAmCaptain: boolean;
   isAdmin: boolean;
+  canCall: boolean; // may start a muster — the Captain, or the CO if there's no Captain
   mine: boolean;
   memberCount: number;
 }) {
@@ -87,7 +89,7 @@ export function Muster({
 
   // ── No active muster ───────────────────────────────────────────────────────
   if (!muster) {
-    if (!canRun) return null;
+    if (!canCall) return null;
     if (!calling) {
       return (
         <div className="mt-3">

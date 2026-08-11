@@ -332,6 +332,7 @@ export function SquadsBoard({
                   muster={muster}
                   iAmCaptain={iAmCaptain}
                   isAdmin={isAdmin}
+                  canCall={iAmCaptain || (isAdmin && captainId == null)}
                   mine={mine}
                   memberCount={members.length}
                 />
