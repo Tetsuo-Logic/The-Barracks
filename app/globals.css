@@ -65,17 +65,38 @@
     color: var(--color-ink);
   }
 
-  /* Native date/time inputs can report an intrinsic width wider than their box
-     on iOS — clamp them so they never spill. */
+  /* Date/time inputs — tamed for iOS. Left native, iOS Safari ignores width:100%
+     (so the box spills wider than its siblings) and paints a low-contrast
+     calendar glyph you can't see on the dark UI. So: strip the native
+     appearance (now it respects the box width), hide the native picker button
+     (kept clickable), and paint our own themed calendar glyph on the right.
+     Tapping the field opens the picker on every browser. */
   input[type="date"],
-  input[type="time"] {
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
     max-width: 100%;
     box-sizing: border-box;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23aebbb1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' x2='16' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='2' y2='6'/%3E%3Cline x1='3' x2='21' y1='10' y2='10'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.15rem 1.15rem;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+  }
+  /* Light theme: darker glyph for contrast on the tan canvas. */
+  :root[data-theme="light"] input[type="date"],
+  :root[data-theme="light"] input[type="time"],
+  :root[data-theme="light"] input[type="datetime-local"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235c6654' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' x2='16' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='2' y2='6'/%3E%3Cline x1='3' x2='21' y1='10' y2='10'/%3E%3C/svg%3E");
   }
 
-  /* Render native controls (the date/time picker icon, spinners, scrollbars)
-     for the active theme — this is what makes the calendar icon visible on dark
-     and dark on light. Applied at the root so the browser picks the right set. */
+  /* Render native popups/spinners/scrollbars for the active theme. */
   :root {
     color-scheme: dark;
   }
