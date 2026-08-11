@@ -162,6 +162,14 @@ The `results` table (0031) survives as the generic store; `metrics`/`confirmed` 
 - **Role:** **CO = the current organiser / President** for now; becomes the **Squad Captain** for a Squad's Operation once Squads exist — same concept, no rename.
 - **Not in Op-1 (later):** richer presence, automatic game detection, **Battle rooms** (cross-group, own entity + access rule), voice/media.
 
+**Squads — Sq-1 scope (confirmed 2026-08-11).** A Barracks holds game-specific squads:
+- **One game per squad, hard-locked** (`unique(group_id, game)`) — the game *is* the squad's identity ("plan games, not players"). Change = delete & rebuild.
+- **`squad_members`** many-to-many; **one Captain** (`is_captain`), set by the CO, changeable later (courts). The Captain is CO for that squad's Operations.
+- **Acting Captain per event:** the Captain may appoint an acting Captain for a *single* Operation (`competitions.acting_captain_id`) — a mini RoleGrant (role · scope = event · that event only).
+- **Join:** members **self-join**; the **Captain (or CO) can remove** members.
+- **Operations belong to a squad** (`competitions.squad_id`, nullable) → squad-scoped roster + notifications (only ping people who play that game — the original day-1 problem).
+- Order: **Sq-1** data (`0034`) → Sq-2 management + views → Sq-3 squad Operations (picker, scoped notifications, Captain-as-CO, acting Captain) → Sq-4 squad pages + home/calendar filter. Single-group; fits the foundation.
+
 **The single-tenant linchpin:** every RLS read policy is `using (auth.uid() is not null)` — any signed-in user sees every row. Multi-tenancy replaces this with *"you're a member of this row's group"* via `is_member(group_id)` / `has_role(group_id, role)`.
 
 **Group deletion is never a hard cascade.** Domain tables reference `groups` with `on delete no action`, so deletion is *blocked* while history exists. Deleting a Barracks must eventually be a **soft-delete / archive** workflow (mark inactive, retain the record) — never a `delete group` that vaporises years of operations, court cases and results. `memberships` may cascade from `groups`; the domain tables must not.
@@ -219,4 +227,6 @@ None are bugs today (one user, one group); they're the transition checklist for 
 - **2026-08-11 — Direction change: no universal player ranking.** Retired the "best player" leaderboard. Model is now **Event { Operation | Battle }** (§3): Operation = participation/history → **Service Record**; Battle = participation + competitive **team** result (cross-group). Phase 4b's individual rankings (`lib/rankings.ts` + Ranks page) are **superseded/shelved** — the page repurposes to a Service Record view; the `results` store + AI-capture design survive.
 - **2026-08-11 — Operation Room scoped + Op-1 built.** Decisions locked: CO = current organiser (→ Squad Captain later), attendance via `rsvps.attended`, live room on Supabase Realtime. `0032` (Op-1: `started_at`/`finished_at`/`games_count`, `rsvps.attended`, `advance_games` compare-and-set, Realtime on `competitions`+`rsvps`) written — additive, **staging-first**, not yet run.
 - **2026-08-11 — Operation Room complete (Op-1→Op-4), live.** `0032`+`0033` run; the live room (start → realtime games-count → roll call → close/archive with correctable total) and the **Service Record** (participation): profile Service Record + the Ranks page repurposed to **Service Records** (participation, not a ladder). The individual leaderboard is **retired** — `rankings.ts` / `RankingsTable` / `RecordResult` now unused. Build/typecheck/lint green.
-- **Next:** the Operation arc is done and live. Remaining mobile polish is optional; the big future is **Battles** (cross-group + AI evidence) — a Headquarters build.
+- **2026-08-11 — RSVP lock fixed.** Once an operation starts or closes, RSVP is locked (UI hidden + server-side reject) — no post-close flip-flopping. Recent + Calendar serve as read-only history.
+- **2026-08-11 — Squads scoped + Sq-1 built.** Decisions: one game/squad (hard-locked), one Captain (+ acting Captain per event), self-join + Captain-removes. `0034` (`squads`, `squad_members`, `is_squad_captain`, `competitions.squad_id`+`acting_captain_id`) written — additive, staging-first, not yet run.
+- **Next:** run `0034` (staging → prod), then Sq-2 (squad management + views), Sq-3 (squad Operations), Sq-4 (filters). Battles remain the big cross-group / Headquarters future.
