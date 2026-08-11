@@ -39,6 +39,8 @@ The architecture must allow experimentation **without contaminating the core**. 
 
 > These are not commitments to build any of these features now. They are constraints on *how* we design the platform, so we never unnecessarily block them.
 
+**On live/media features specifically:** we will **not** build our own voice/streaming infrastructure now — Discord remains the practical voice/conversation layer initially. But "voice must be external" is **not** a permanent architectural constraint: **Live Operation Rooms are designed so native voice/media could be added later** if we deliberately choose to explore it. This does not change the current build sequence.
+
 ---
 
 ## 2. Milestones
@@ -59,6 +61,7 @@ Multi-tenancy (milestone 2) is required the moment real independent groups use i
 - **Multi-tenant data model before multi-tenant UX.** Shape the database for many groups while the app still behaves as one — everything additive, v1 stays alive at every step.
 - **Modular monolith → monorepo, only when earned.** No microservices, no seventeen repos. A clean modular core with separate clients goes a very long way. Split when there's a real reason.
 - **Code is reversible; the database is not.** DB changes are additive so the seed group keeps working; risky RLS changes are done table-by-table and verified.
+- **RLS isolates tenants; the app permissions layer authorizes actions.** Row-Level Security enforces the *coarse, hard* boundary — you only ever see rows for groups you belong to (defense-in-depth, auditable). The *rich* rules (can this acting captain edit this squad during their date window?) live in `lib/permissions` as testable code, enforced because all writes go through server commands. Do **not** encode role/scope/date logic as RLS predicates — it becomes untestable SQL subquery soup.
 
 ### Neutral vocabulary
 
@@ -133,7 +136,7 @@ Both clients are **Next** (shared tooling/tokens); mobile = the PWA, web = a wid
 | `player_id` / "player" everywhere | golf legacy (cosmetic) | `user_id` / member — alias, don't rush |
 | `handle_new_user()` hardcodes an email → auto-crowns | single-owner assumption | group-join logic |
 
-The two worth planning deliberately: `competitions → events` and `scores → results`. The rest can alias.
+**The generic `Result` model is a first-class milestone (§7, Phase 4), not an afterthought.** The whole "game-independent" premise rests on it, and Squads, rankings and AI score-capture all depend on it — so the neutral result shape (event · entrant · `metrics jsonb` · placement) is designed **before** anything is built on the golf-shaped `scores`; golf becomes template #1. (`competitions → events` travels with it.) The rest of the table can alias.
 
 **The single-tenant linchpin:** every RLS read policy is `using (auth.uid() is not null)` — any signed-in user sees every row. Multi-tenancy replaces this with *"you're a member of this row's group"* via `is_member(group_id)` / `has_role(group_id, role)`.
 
@@ -148,12 +151,17 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 | **0** ✅ | v1 tagged, `experiments` branch | none | none |
 | **1** ✅ | Internal refactor: `domain/data/permissions`; actions → thin wrappers | low (pure move) | **zero** |
 | **2** | Additive multi-tenant model: `groups` + `memberships`, seed group, `group_id` everywhere, backfill | medium (DB, additive) | none — resolves the one group |
-| **3** | Roles → membership; group-scoped RLS, table by table, dual-run then drop globals | **high (security)** | none if done right — test with 2 dummy groups |
-| **4** | Neutral extraction: `events` / `results` / `role_grants`; Squads + squad memberships | medium | new features, additive |
-| **5** | Stand up `apps/web` (Headquarters); promote `lib → packages`; add workspaces | medium | new client |
-| **6** | Network layer: vs-Barracks challenges linking two groups | high | new milestone |
+| **3** | Roles → membership; group-scoped RLS, table by table, dual-run then drop globals **(prereqs below)** | **high (security)** | none if done right |
+| **4** | **Generic `Result` model (first-class)** + `events` + `role_grants` — design the neutral result shape **before** anything depends on golf-shaped `scores`; golf becomes template #1 | medium | additive |
+| **5** | Squads + squad memberships (built on the Result model) | medium | new features, additive |
+| **6** | Stand up `apps/web` (Headquarters); promote `lib → packages`; add workspaces | medium | new client |
+| **7** | Network layer: vs-Barracks challenges linking two groups | high | new milestone |
 
 `main` stays v1; experiments happen on the branch with a Vercel preview; a phase merges to `main` only when proven. **Phase 3 is the delicate one** — a wrong RLS predicate could leak one group's data into another.
+
+**Phase 3 prerequisites (non-negotiable):**
+1. **A separate staging Supabase project.** The live app and the `experiments` branch currently share one database, so an RLS change would hit production instantly. All RLS work happens on staging first; only proven policies reach the live DB.
+2. **A minimal cross-tenant integration test.** Seed two groups and assert group A cannot read group B's rows — before flipping any read policy. (The codebase has no tests today; this is the one place they're mandatory.)
 
 **Migration safety at scale.** Adding a column with a *constant* default is metadata-only (fast) in Postgres 11+, but `UPDATE` backfills (`ROW EXCLUSIVE`) and especially `SET NOT NULL` (a full-table scan under `ACCESS EXCLUSIVE`) can lock large tables. When a table is large: backfill in batches, and enforce NOT NULL via a `NOT VALID` check constraint + `VALIDATE` rather than a blocking scan. Always add the query indexes (`group_id`, membership `user_id`) while tables are small. At today's size all of this is instantaneous and moot.
 
@@ -165,4 +173,5 @@ The two worth planning deliberately: `competitions → events` and `scores → r
 - **2026-08-11 — Phase 1** complete (on `experiments`). Zero behaviour change. Established `lib/domain`, `lib/permissions`, `lib/data/{queries,commands}`; migrated the `radar`, `requests` and `trials` Server Actions to thin wrappers over shared commands; adopted permission predicates across 10 pages. Build/typecheck/lint green. **Remaining actions still hold their own logic — to be migrated to the command pattern incrementally (same mechanical transform).**
 - **2026-08-11 — Principle added:** "Ambitious surface, disciplined core" (§1) recorded as a permanent product/architecture constraint.
 - **2026-08-11 — Phase 2 designed & reviewed.** Additive `groups` + `memberships` + `group_id` on 9 group-scoped tables (three-class split), seeded + backfilled, with indexes on `group_id` and membership `user_id`. RLS, roles and app all unchanged. Group deletion recorded as a future soft-delete workflow. **Migration `0029_multitenant_model.sql` written on `experiments`; awaiting the Supabase run.**
-- **Next:** run the Phase 2 migration in Supabase, verify, then design Phase 3 (group-scoped RLS + roles→memberships) for review before applying.
+- **2026-08-11 — Plan updated (design review incorporated):** staging Supabase project required before Phase 3; **"RLS isolates tenants; the app layer authorizes actions"** added as a core principle (§3); generic `Result` model promoted to a first-class milestone (§7 Phase 4) ahead of Squads; minimal cross-tenant integration test required before Phase 3; live/media clarified (§1 — Discord initially, native voice possible later, not a permanent constraint). **None of this changes the Phase 2 SQL.**
+- **Next:** run the (unchanged) Phase 2 migration `0029` in Supabase, verify, then design Phase 3 for review before applying.
