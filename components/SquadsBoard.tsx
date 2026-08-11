@@ -411,12 +411,9 @@ export function SquadsBoard({
                   ))}
 
                 {isAdmin && (
-                  <div className="mt-4 flex items-center justify-between gap-2 rounded-[3px] border border-rule/70 bg-paper px-3 py-2">
-                    <span className="font-narrow text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
-                      Danger zone
-                    </span>
+                  <div className="mt-4 flex justify-end">
                     {confirmDel === squad.id ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 rounded-[3px] border border-flag/50 bg-paper px-3 py-2">
                         <span className="text-xs text-flag">Sure?</span>
                         <button
                           onClick={() => {
@@ -436,7 +433,7 @@ export function SquadsBoard({
                       <button
                         onClick={() => setConfirmDel(squad.id)}
                         disabled={busy}
-                        className="font-mono text-xs uppercase tracking-[0.08em] text-ink-soft transition-colors hover:text-flag"
+                        className="rounded-[3px] border border-rule/70 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.08em] text-ink-soft transition-colors hover:border-flag hover:text-flag"
                       >
                         Disband squad
                       </button>
