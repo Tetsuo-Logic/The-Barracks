@@ -20,11 +20,8 @@ export function Header({
           className="h-1.5 w-1.5 rounded-full bg-moss [box-shadow:0_0_8px_1px_var(--color-moss)]"
           aria-hidden
         />
-        <span className="font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-ink">
+        <span className="font-mono text-[16px] font-bold uppercase tracking-[0.08em] text-ink">
           BARRACKS
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-          🪖
         </span>
       </Link>
       <div className="flex items-center gap-3">
