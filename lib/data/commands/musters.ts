@@ -13,18 +13,16 @@ async function squadMemberIds(db: Db, squadId: string, exclude?: string): Promis
   return ((data ?? []) as { user_id: string }[]).map((m) => m.user_id).filter((id) => id !== exclude);
 }
 
-// Push AND persist to the inbox feed, so the event is clickable later (not just
-// a fleeting on-screen push). Used for muster events that have no derived inbox
-// entry of their own.
+// Push a muster event. The persistent, clickable record lives in the derived
+// Activity feed (getActivityFeed reads the muster/night tables directly), so we
+// only need the on-screen push here.
 async function pushAndStore(
   db: Db,
   userIds: string[],
   p: { title: string; body: string; url: string; tag: string },
 ): Promise<void> {
+  void db;
   await sendToPlayers(userIds, "new_comp", p);
-  if (userIds.length) {
-    await db.rpc("notify", { p_users: userIds, p_title: p.title, p_body: p.body, p_url: p.url });
-  }
 }
 
 // Captain calls a muster: candidate nights + proposed times for the week ahead.

@@ -183,17 +183,14 @@ export async function requestNight(db: Db, squadId: string, note?: string): Prom
   }
   const trimmed = note?.trim();
   const label = squad.name || gameById(squad.game).name;
-  const payload = {
+  // The persistent, clickable record lives in the Activity feed (derived from
+  // squad_night_requests); here we just fire the on-screen push.
+  await sendToPlayers(targets, "new_comp", {
     title: `📣 ${label}: night wanted`,
     body: `${who} wants a game${trimmed ? ` — “${trimmed}”` : ""}. Muster the squad?`,
     url: "/squads",
     tag: `night-${squadId}`,
-  };
-  await sendToPlayers(targets, "new_comp", payload);
-  if (targets.length) {
-    // Persist to the inbox feed too, so it's clickable — not just a push.
-    await db.rpc("notify", { p_users: targets, p_title: payload.title, p_body: payload.body, p_url: payload.url });
-  }
+  });
   return { ok: true };
 }
 

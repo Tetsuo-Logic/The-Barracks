@@ -21,7 +21,7 @@ import type {
   MusterResponse,
   Trial,
 } from "@/lib/types";
-import { GAMES, type Game } from "@/lib/games";
+import { GAMES, gameById, type Game } from "@/lib/games";
 import { computeRankings, type RankRow } from "@/lib/rankings";
 import { computeService, type Service } from "@/lib/service";
 import type { PhotoWithUrl } from "@/components/Photos";
@@ -178,14 +178,12 @@ export async function getOpenGameRequests(): Promise<GameRequestWithPlayer[]> {
 
 export type NewComment = { comment: Comment; comp: Competition };
 export type NewAnswer = { broadcast: Broadcast; count: number };
-export type AppNotification = { id: string; title: string; body: string | null; url: string | null; created_at: string };
 
 export type Inbox = {
   asks: Broadcast[]; // questions put to you that you haven't answered
   rsvpNeeded: Competition[]; // upcoming rounds you haven't said in/out/maybe to
   newComments: NewComment[]; // comments by others since you last opened the inbox
   newAnswers: NewAnswer[]; // replies to your own polls since you last looked
-  notifications: AppNotification[]; // stored event feed (musters, nudges…) unread
   total: number; // badge count
 };
 
@@ -207,7 +205,6 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     { data: comments },
     { data: myBroadcasts },
     { data: respToMine },
-    { data: notifs },
   ] = await Promise.all([
     supabase
       .from("broadcasts")
@@ -239,13 +236,6 @@ export async function getInbox(player: Profile): Promise<Inbox> {
       .from("broadcast_responses")
       .select("broadcast_id, player_id, created_at")
       .neq("player_id", player.id),
-    supabase
-      .from("notifications")
-      .select("id, title, body, url, created_at")
-      .eq("user_id", player.id)
-      .is("read_at", null)
-      .order("created_at", { ascending: false })
-      .limit(30),
   ]);
 
   const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
@@ -279,16 +269,12 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     count,
   }));
 
-  const notifications = (notifs ?? []) as AppNotification[];
-
   return {
     asks,
     rsvpNeeded,
     newComments,
     newAnswers,
-    notifications,
-    total:
-      asks.length + rsvpNeeded.length + newComments.length + newAnswers.length + notifications.length,
+    total: asks.length + rsvpNeeded.length + newComments.length + newAnswers.length,
   };
 }
 
@@ -305,13 +291,19 @@ export type ActivityItem =
   | { kind: "trial"; at: string; trial: Trial }
   | { kind: "round"; at: string; comp: Competition }
   | { kind: "result"; at: string; comp: Competition }
-  | { kind: "comment"; at: string; comment: Comment; comp: Competition; authorName: string };
+  | { kind: "comment"; at: string; comment: Comment; comp: Competition; authorName: string }
+  // Squad events (Sq): a called/proposed muster, a member's night nudge, a
+  // squad-formation request. Musters when open = message, proposed = request.
+  | { kind: "muster"; at: string; muster: Muster; squadName: string }
+  | { kind: "night"; at: string; night: SquadNightRequest; requesterName: string; squadName: string }
+  | { kind: "squadReq"; at: string; request: SquadRequest; requesterName: string };
 
 export type Activity = {
   items: ActivityItem[];
   profiles: Profile[];
   totalPlayers: number;
   clearedBefore: string | null; // history cutoff, if the organiser set one
+  showRequests: boolean; // caller sees the Requests tab (CO or a Captain)
 };
 
 /**
@@ -319,7 +311,7 @@ export type Activity = {
  * added, results posted, comments, and courtroom trials. Read-only history that
  * everyone can browse, so a missed push is never lost for good.
  */
-export async function getActivityFeed(playerId: string): Promise<Activity> {
+export async function getActivityFeed(playerId: string, isAdmin = false): Promise<Activity> {
   const supabase = await createClient();
 
   const [
@@ -331,6 +323,11 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     { data: scores },
     { data: profiles },
     { data: settings },
+    { data: musters },
+    { data: nightReqs },
+    { data: squadReqs },
+    { data: squadRows },
+    { data: squadMems },
   ] = await Promise.all([
     supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
     supabase.from("broadcast_responses").select("*"),
@@ -340,6 +337,11 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     supabase.from("scores").select("competition_id, updated_at"),
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
     supabase.from("app_settings").select("activity_cleared_before").eq("id", 1).maybeSingle(),
+    supabase.from("musters").select("*").in("status", ["open", "proposed"]),
+    supabase.from("squad_night_requests").select("*"),
+    supabase.from("squad_requests").select("*").eq("status", "open"),
+    supabase.from("squads").select("id, game, name"),
+    supabase.from("squad_members").select("squad_id, user_id, is_captain"),
   ]);
 
   const clearedBefore =
@@ -402,6 +404,53 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     });
   }
 
+  // ── Squad events — musters, night nudges, squad-formation requests ──────────
+  const squadNameById = new Map(
+    ((squadRows ?? []) as { id: string; game: string; name: string | null }[]).map((s) => [
+      s.id,
+      s.name || gameById(s.game).name,
+    ]),
+  );
+  const captainSquadIds = new Set(
+    ((squadMems ?? []) as { squad_id: string; user_id: string; is_captain: boolean }[])
+      .filter((m) => m.user_id === playerId && m.is_captain)
+      .map((m) => m.squad_id),
+  );
+  // A request (night nudge, proposed muster) is seen only by the CO or the
+  // squad's Captain — not the whole squad.
+  const canSeeSquadRequest = (squadId: string) => isAdmin || captainSquadIds.has(squadId);
+
+  for (const mu of (musters ?? []) as Muster[]) {
+    if (mu.status === "proposed" && !canSeeSquadRequest(mu.squad_id)) continue;
+    items.push({
+      kind: "muster",
+      at: mu.created_at,
+      muster: mu,
+      squadName: squadNameById.get(mu.squad_id) ?? "Squad",
+    });
+  }
+
+  for (const n of (nightReqs ?? []) as SquadNightRequest[]) {
+    if (!canSeeSquadRequest(n.squad_id)) continue;
+    items.push({
+      kind: "night",
+      at: n.created_at,
+      night: n,
+      requesterName: (n.requested_by && nameById.get(n.requested_by)) || "Someone",
+      squadName: squadNameById.get(n.squad_id) ?? "Squad",
+    });
+  }
+
+  for (const r of (squadReqs ?? []) as SquadRequest[]) {
+    if (!isAdmin) continue; // squad-formation requests are the President's call
+    items.push({
+      kind: "squadReq",
+      at: r.created_at,
+      request: r,
+      requesterName: (r.requested_by && nameById.get(r.requested_by)) || "Someone",
+    });
+  }
+
   const visible = clearedMs
     ? items.filter((i) => new Date(i.at).getTime() > clearedMs)
     : items;
@@ -412,6 +461,7 @@ export async function getActivityFeed(playerId: string): Promise<Activity> {
     profiles: allProfiles,
     totalPlayers: allProfiles.length,
     clearedBefore,
+    showRequests: isAdmin || captainSquadIds.size > 0,
   };
 }
 

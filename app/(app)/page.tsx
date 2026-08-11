@@ -4,7 +4,6 @@ import { effectiveAdmin } from "@/lib/permissions";
 import {
   getFixturesData,
   getCompetition,
-  getInbox,
   getGames,
   getSquadOptions,
 } from "@/lib/queries";
@@ -14,7 +13,6 @@ import { CompListRow } from "@/components/CompListRow";
 import { AddDateButton } from "@/components/AddDateButton";
 import { CompSheet } from "@/components/CompSheet";
 import { CommandBanner } from "@/components/CommandBanner";
-import { Inbox } from "@/components/Inbox";
 
 // / — Fixtures (home). Next-up hero, upcoming + recent lists, add/edit sheet.
 export default async function FixturesPage({
@@ -28,8 +26,7 @@ export default async function FixturesPage({
     searchParams,
   ]);
   const { profiles, next, upcoming, recent, rsvpsByComp } = data;
-  const [inbox, games, squads] = await Promise.all([
-    getInbox(profile),
+  const [games, squads] = await Promise.all([
     getGames(),
     getSquadOptions(),
   ]);
@@ -53,8 +50,6 @@ export default async function FixturesPage({
   return (
     <div>
       <CommandBanner operators={profiles.length} callsign={profile.nickname} />
-
-      <Inbox inbox={inbox} />
 
       {next ? (
         <NextUpCard

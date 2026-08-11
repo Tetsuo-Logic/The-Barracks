@@ -26,6 +26,12 @@ function rowKey(item: ActivityItem): string {
       return `res-${item.comp.id}`;
     case "comment":
       return `c-${item.comment.id}`;
+    case "muster":
+      return `m-${item.muster.id}`;
+    case "night":
+      return `n-${item.night.id}`;
+    case "squadReq":
+      return `sq-${item.request.id}`;
   }
 }
 
@@ -40,16 +46,28 @@ function deleteTarget(item: ActivityItem): { kind: DeletableKind; id: string } |
     case "comment":
       return { kind: "comment", id: item.comment.id };
     case "result":
+    case "muster":
+    case "night":
+    case "squadReq":
       return null;
   }
 }
 
-type FilterKey = "all" | "messages" | "court";
+type FilterKey = "all" | "requests" | "messages" | "court";
+
+// Asks that flow upward (a member → Captain night nudge, a Captain → President
+// proposed muster, a squad-formation request). Only the CO/Captain ever receive
+// them (getActivityFeed scopes the items), so a member's feed has none.
+const isRequest = (i: ActivityItem) =>
+  i.kind === "night" || i.kind === "squadReq" || (i.kind === "muster" && i.muster.status === "proposed");
+const isCourt = (i: ActivityItem) => i.kind === "trial";
+const isMessage = (i: ActivityItem) => !isRequest(i) && !isCourt(i);
 
 const FILTERS: { key: FilterKey; label: string; match: (i: ActivityItem) => boolean }[] = [
   { key: "all", label: "All", match: () => true },
-  { key: "messages", label: "Messages", match: (i) => i.kind === "broadcast" },
-  { key: "court", label: "Court", match: (i) => i.kind === "trial" },
+  { key: "requests", label: "Requests", match: isRequest },
+  { key: "messages", label: "Messages", match: isMessage },
+  { key: "court", label: "Court", match: isCourt },
 ];
 
 // The shared, read-only history: every broadcast, round, result, comment and
@@ -58,14 +76,17 @@ export function ActivityFeed({
   activity,
   currentUserId,
   isAdmin = false,
+  showRequests = false,
 }: {
   activity: Activity;
   currentUserId: string;
   isAdmin?: boolean;
+  showRequests?: boolean; // the Requests tab — Captains & the President only
 }) {
   const router = useRouter();
   const { items, profiles, totalPlayers } = activity;
   const byId = new Map(profiles.map((p) => [p.id, p]));
+  const filters = FILTERS.filter((f) => f.key !== "requests" || showRequests);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -73,7 +94,7 @@ export function ActivityFeed({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const active = filters.find((f) => f.key === filter) ?? filters[0];
   const shown = items.filter(active.match);
 
   function toggle(key: string) {
@@ -165,7 +186,7 @@ export function ActivityFeed({
       {error && <p className="mb-2 text-sm text-flag">{error}</p>}
 
       <div className="mb-3 flex overflow-hidden rounded-[3px] border border-rule">
-        {FILTERS.map((f, i) => {
+        {filters.map((f, i) => {
           const on = f.key === filter;
           return (
             <button
@@ -314,6 +335,58 @@ function renderItem(
         </Link>
       );
     }
+    case "muster": {
+      const proposed = item.muster.status === "proposed";
+      return (
+        <Link key={`m-${item.muster.id}`} href="/squads" className="block border-b border-rule py-3">
+          <div className="flex items-center justify-between">
+            <span className="label" style={{ color: proposed ? "var(--color-sand)" : "var(--color-moss)" }}>
+              {proposed ? "⚑ Night proposed" : "📆 Muster called"}
+            </span>
+            <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
+          </div>
+          <p className="mt-1 text-ink">
+            <span className="font-semibold">{item.squadName}</span>
+            <span className="text-ink-soft">
+              {" · "}
+              {proposed
+                ? `proposed ${item.muster.chosen_date ? shortDate(item.muster.chosen_date) : "a night"} — approve to deploy`
+                : "mark the nights you can play"}
+            </span>
+          </p>
+        </Link>
+      );
+    }
+    case "night":
+      return (
+        <Link key={`n-${item.night.id}`} href="/squads" className="block border-b border-rule py-3">
+          <div className="flex items-center justify-between">
+            <span className="label" style={{ color: "var(--color-sand)" }}>📣 Night wanted</span>
+            <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
+          </div>
+          <p className="mt-1 text-ink">
+            <span className="font-semibold">{item.squadName}</span>
+            <span className="text-ink-soft">
+              {" · "}
+              {item.requesterName}
+              {item.night.note ? ` — “${item.night.note}”` : " wants a game on"}
+            </span>
+          </p>
+        </Link>
+      );
+    case "squadReq":
+      return (
+        <Link key={`sq-${item.request.id}`} href="/squads" className="block border-b border-rule py-3">
+          <div className="flex items-center justify-between">
+            <span className="label" style={{ color: "var(--color-sand)" }}>🪖 New squad requested</span>
+            <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
+          </div>
+          <p className="mt-1 text-ink">
+            <span className="font-semibold">{item.request.name || item.request.game}</span>
+            <span className="text-ink-soft"> · {item.requesterName} — approve in Squads</span>
+          </p>
+        </Link>
+      );
   }
 }
 

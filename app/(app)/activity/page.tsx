@@ -17,7 +17,7 @@ export default async function ActivityPage() {
 
   const [inbox, activity] = await Promise.all([
     getInbox(profile),
-    getActivityFeed(profile.id),
+    getActivityFeed(profile.id, isAdmin),
   ]);
 
   return (
@@ -32,7 +32,12 @@ export default async function ActivityPage() {
 
       <p className="label mb-1">History</p>
       <hr className="rule" />
-      <ActivityFeed activity={activity} currentUserId={profile.id} isAdmin={isAdmin} />
+      <ActivityFeed
+        activity={activity}
+        currentUserId={profile.id}
+        isAdmin={isAdmin}
+        showRequests={activity.showRequests}
+      />
 
       {isAdmin && <ClearHistory clearedBefore={activity.clearedBefore} />}
     </div>

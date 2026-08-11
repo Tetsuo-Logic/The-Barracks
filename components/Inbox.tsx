@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { MarkInboxSeen } from "@/components/MarkInboxSeen";
-import { MarkNotificationsSeen } from "@/components/MarkNotificationsSeen";
 import { shortDate } from "@/lib/dates";
 import { compHeading } from "@/lib/games";
 import type { Inbox as InboxData } from "@/lib/queries";
@@ -9,7 +8,7 @@ import type { Inbox as InboxData } from "@/lib/queries";
 // rounds that still need your RSVP, and new comments — so a missed push
 // notification never means a missed thing. Mirrors the header bell count.
 export function Inbox({ inbox }: { inbox: InboxData }) {
-  const { asks, rsvpNeeded, newComments, newAnswers, notifications, total } = inbox;
+  const { asks, rsvpNeeded, newComments, newAnswers, total } = inbox;
   if (total === 0) return null;
 
   return (
@@ -18,28 +17,11 @@ export function Inbox({ inbox }: { inbox: InboxData }) {
       className="mb-6 scroll-mt-20 rounded-[3px] border border-flag/50 bg-card p-4"
     >
       <MarkInboxSeen when={newComments.length > 0 || newAnswers.length > 0} />
-      <MarkNotificationsSeen when={notifications.length > 0} />
       <p className="label mb-2" style={{ color: "var(--color-flag)" }}>
         Waiting on you
       </p>
 
       <ul className="flex flex-col divide-y divide-rule">
-        {notifications.map((n) => (
-          <li key={`notif-${n.id}`}>
-            <Link
-              href={n.url || "/"}
-              className="flex items-center justify-between gap-3 py-2.5"
-            >
-              <span className="min-w-0 flex-1 truncate text-ink">
-                <span className="font-semibold">{n.title}</span>
-                {n.body ? <span className="text-ink-soft"> · {n.body}</span> : null}
-              </span>
-              <span className="shrink-0 rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper">
-                Open
-              </span>
-            </Link>
-          </li>
-        ))}
 
         {asks.map((b) => (
           <li key={`ask-${b.id}`}>
