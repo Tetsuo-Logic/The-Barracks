@@ -7,8 +7,32 @@ import * as squads from "@/lib/data/commands/squads";
 // Thin Server Action wrappers around @/lib/data/commands/squads.
 const rev = () => revalidatePath("/squads");
 
-export async function createSquad(game: string, name?: string) {
-  const res = await squads.createSquad(await createClient(), game, name);
+export async function createSquad(game: string, name?: string, clanTag?: string) {
+  const res = await squads.createSquad(await createClient(), game, name, clanTag);
+  if (res.ok) rev();
+  return res;
+}
+
+export async function requestSquad(input: { game: string; name?: string; clanTag?: string }) {
+  const res = await squads.requestSquad(await createClient(), input);
+  if (res.ok) rev();
+  return res;
+}
+
+export async function approveRequest(requestId: string) {
+  const res = await squads.approveRequest(await createClient(), requestId);
+  if (res.ok) rev();
+  return res;
+}
+
+export async function declineRequest(requestId: string) {
+  const res = await squads.declineRequest(await createClient(), requestId);
+  if (res.ok) rev();
+  return res;
+}
+
+export async function setClanTag(squadId: string, tag: string) {
+  const res = await squads.setClanTag(await createClient(), squadId, tag);
   if (res.ok) rev();
   return res;
 }

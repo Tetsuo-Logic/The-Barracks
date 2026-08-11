@@ -15,6 +15,7 @@ import type {
   Score,
   Squad,
   SquadMember,
+  SquadRequest,
   Trial,
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
@@ -573,6 +574,22 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
       mine: mems.some((m) => m.user_id === currentUserId),
     };
   });
+}
+
+export type SquadRequestView = SquadRequest & { requester: Profile | null };
+
+/** Open squad requests awaiting the President's approval. */
+export async function getSquadRequests(): Promise<SquadRequestView[]> {
+  const supabase = await createClient();
+  const [{ data: reqs }, { data: profiles }] = await Promise.all([
+    supabase.from("squad_requests").select("*").eq("status", "open").order("created_at", { ascending: false }),
+    supabase.from("profiles").select("*"),
+  ]);
+  const byId = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
+  return ((reqs ?? []) as SquadRequest[]).map((r) => ({
+    ...r,
+    requester: r.requested_by ? byId.get(r.requested_by) ?? null : null,
+  }));
 }
 
 export type CompetitionDetail = {

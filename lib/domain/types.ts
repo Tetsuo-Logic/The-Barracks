@@ -151,6 +151,7 @@ export interface Squad {
   group_id: string;
   game: string; // the squad's fixed identity (a game id from lib/games)
   name: string | null; // optional custom name; display falls back to the game
+  clan_tag: string | null; // e.g. [TAG] — editable by Captain or CO
   created_at: string;
 }
 
@@ -158,6 +159,19 @@ export interface SquadMember {
   squad_id: string;
   user_id: string;
   is_captain: boolean;
+  created_at: string;
+}
+
+export type SquadRequestStatus = "open" | "approved" | "declined";
+
+export interface SquadRequest {
+  id: string;
+  group_id: string;
+  game: string;
+  name: string | null;
+  clan_tag: string | null;
+  requested_by: string | null;
+  status: SquadRequestStatus;
   created_at: string;
 }
 

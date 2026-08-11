@@ -1,4 +1,5 @@
 import type { Db, Result } from "./types";
+import type { SquadRequest } from "@/lib/domain";
 
 // Squad commands. Membership writes are self-service (RLS enforces self-join /
 // captain-or-CO removal); creating squads + moving the captaincy is CO-only.
@@ -12,11 +13,16 @@ async function currentGroup(db: Db): Promise<string | null> {
   return (data as { group_id?: string } | null)?.group_id ?? null;
 }
 
-export async function createSquad(db: Db, game: string, name?: string): Promise<Result> {
+export async function createSquad(db: Db, game: string, name?: string, clanTag?: string): Promise<Result> {
   const groupId = await currentGroup(db);
   if (!groupId) return { ok: false, error: "No Barracks found." };
   if (!game) return { ok: false, error: "Pick a game." };
-  const { error } = await db.from("squads").insert({ group_id: groupId, game, name: name?.trim() || null });
+  const { error } = await db.from("squads").insert({
+    group_id: groupId,
+    game,
+    name: name?.trim() || null,
+    clan_tag: clanTag?.trim() || null,
+  });
   if (error) {
     return {
       ok: false,
@@ -77,5 +83,63 @@ export async function setCaptain(db: Db, squadId: string, userId: string): Promi
     .eq("squad_id", squadId)
     .eq("user_id", userId);
   if (e2) return { ok: false, error: "Couldn't set the captain." };
+  return { ok: true };
+}
+
+// A member proposes a squad — it goes to the President to approve.
+export async function requestSquad(
+  db: Db,
+  input: { game: string; name?: string; clanTag?: string },
+): Promise<Result> {
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  if (!input.game) return { ok: false, error: "Pick a game." };
+  const groupId = await currentGroup(db);
+  if (!groupId) return { ok: false, error: "No Barracks found." };
+
+  const { error } = await db.from("squad_requests").insert({
+    group_id: groupId,
+    game: input.game,
+    name: input.name?.trim() || null,
+    clan_tag: input.clanTag?.trim() || null,
+    requested_by: user.id,
+  });
+  if (error) return { ok: false, error: "Couldn't send the request." };
+  return { ok: true };
+}
+
+// President approves a squad request → forms the squad.
+export async function approveRequest(db: Db, requestId: string): Promise<Result> {
+  const { data: req } = await db.from("squad_requests").select("*").eq("id", requestId).single();
+  if (!req) return { ok: false, error: "Request not found." };
+  const r = req as SquadRequest;
+
+  const { error: sErr } = await db.from("squads").insert({
+    group_id: r.group_id,
+    game: r.game,
+    name: r.name,
+    clan_tag: r.clan_tag,
+  });
+  if (sErr && !/duplicate|unique/i.test(sErr.message)) {
+    return { ok: false, error: "Couldn't form the squad. Are you the President?" };
+  }
+
+  const { error } = await db.from("squad_requests").update({ status: "approved" }).eq("id", requestId);
+  if (error) return { ok: false, error: "Couldn't approve the request." };
+  return { ok: true };
+}
+
+export async function declineRequest(db: Db, requestId: string): Promise<Result> {
+  const { error } = await db.from("squad_requests").update({ status: "declined" }).eq("id", requestId);
+  if (error) return { ok: false, error: "Couldn't decline the request." };
+  return { ok: true };
+}
+
+// Captain or CO sets/edits the clan tag.
+export async function setClanTag(db: Db, squadId: string, tag: string): Promise<Result> {
+  const { error } = await db.rpc("set_clan_tag", { p_squad: squadId, p_tag: tag });
+  if (error) return { ok: false, error: "Couldn't set the clan tag." };
   return { ok: true };
 }

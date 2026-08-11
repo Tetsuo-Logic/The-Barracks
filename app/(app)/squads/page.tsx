@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { previewingAsPlayer } from "@/lib/preview";
 import { effectiveAdmin } from "@/lib/permissions";
-import { getSquads, getGames } from "@/lib/queries";
+import { getSquads, getSquadRequests, getGames } from "@/lib/queries";
 import { SquadsBoard } from "@/components/SquadsBoard";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 
@@ -10,7 +10,11 @@ import { ConsoleHeader } from "@/components/ConsoleHeader";
 export default async function SquadsPage() {
   const profile = await requireProfile();
   const isAdmin = effectiveAdmin(profile, await previewingAsPlayer());
-  const [squads, games] = await Promise.all([getSquads(profile.id), getGames()]);
+  const [squads, requests, games] = await Promise.all([
+    getSquads(profile.id),
+    getSquadRequests(),
+    getGames(),
+  ]);
 
   return (
     <div>
@@ -19,7 +23,13 @@ export default async function SquadsPage() {
         tag="🪖 By game"
         right={<Link href="/" className="label text-ink-soft">← Games</Link>}
       />
-      <SquadsBoard squads={squads} games={games} currentUserId={profile.id} isAdmin={isAdmin} />
+      <SquadsBoard
+        squads={squads}
+        requests={requests}
+        games={games}
+        currentUserId={profile.id}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
