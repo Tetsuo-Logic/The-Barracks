@@ -13,6 +13,8 @@ import {
   removeMember,
   setCaptain,
   setClanTag,
+  requestNight,
+  clearNightRequest,
 } from "@/app/actions/squads";
 import { Avatar } from "@/components/Avatar";
 import { useAnnounce } from "@/components/Announce";
@@ -44,6 +46,8 @@ export function SquadsBoard({
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [tagVal, setTagVal] = useState("");
+  const [nightFor, setNightFor] = useState<string | null>(null);
+  const [nightNote, setNightNote] = useState("");
 
   // Games that don't already have a squad or an open request.
   const taken = new Set([...squads.map((s) => s.squad.game), ...requests.map((r) => r.game)]);
@@ -198,10 +202,11 @@ export function SquadsBoard({
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-4">
-          {squads.map(({ squad, members, captainId, mine }) => {
+          {squads.map(({ squad, members, captainId, mine, nightRequests }) => {
             const g = gameById(squad.game);
             const iAmCaptain = captainId === currentUserId;
             const canManageTag = isAdmin || iAmCaptain;
+            const seesNights = isAdmin || iAmCaptain;
             return (
               <div key={squad.id} className="rounded-[3px] border border-rule bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -319,6 +324,77 @@ export function SquadsBoard({
                     ))}
                   </ul>
                 )}
+
+                {/* Night nudges — the Captain / CO see who wants a game on */}
+                {seesNights && nightRequests.length > 0 && (
+                  <div className="mt-3 rounded-[3px] border border-sand/40 bg-sand/5 p-3">
+                    <p className="label mb-2" style={{ color: "var(--color-sand)" }}>
+                      📣 Squad wants a night
+                    </p>
+                    <ul className="flex flex-col gap-1.5">
+                      {nightRequests.map((nr) => (
+                        <li key={nr.id} className="flex items-center gap-2 text-sm">
+                          <span className="shrink-0 text-ink">{nr.requester?.name ?? "Someone"}</span>
+                          {nr.note && <span className="min-w-0 truncate text-ink-soft">“{nr.note}”</span>}
+                          <button
+                            onClick={() => run(() => clearNightRequest(nr.id))}
+                            disabled={busy}
+                            className="ml-auto shrink-0 font-mono text-xs uppercase tracking-[0.06em] text-ink-soft hover:text-ink"
+                          >
+                            Clear
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Member nudge — poke the Captain to sort a night */}
+                {mine && !iAmCaptain &&
+                  (nightFor === squad.id ? (
+                    <div className="mt-3 rounded-[3px] border border-rule bg-paper p-3">
+                      <label className="label mb-1 block">Poke your Captain</label>
+                      <input
+                        value={nightNote}
+                        onChange={(e) => setNightNote(e.target.value)}
+                        placeholder="Note (optional) — e.g. free most nights this week"
+                        className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => {
+                            const note = nightNote;
+                            setNightFor(null);
+                            setNightNote("");
+                            run(() => requestNight(squad.id, note), "Sent to your Captain 📣");
+                          }}
+                          disabled={busy}
+                          className="rounded-[3px] bg-ink px-4 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+                        >
+                          Send
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNightFor(null);
+                            setNightNote("");
+                          }}
+                          className="rounded-[3px] border border-rule px-3 py-2 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setNightNote("");
+                        setNightFor(squad.id);
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-[3px] border border-rule px-3 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink hover:bg-card"
+                    >
+                      📣 Request a night
+                    </button>
+                  ))}
 
                 {isAdmin &&
                   (confirmDel === squad.id ? (

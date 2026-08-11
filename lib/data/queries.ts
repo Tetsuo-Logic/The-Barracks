@@ -16,6 +16,7 @@ import type {
   Squad,
   SquadMember,
   SquadRequest,
+  SquadNightRequest,
   Trial,
 } from "@/lib/types";
 import { GAMES, type Game } from "@/lib/games";
@@ -540,20 +541,29 @@ export async function getServiceRoster(): Promise<{ profile: Profile; service: S
   }));
 }
 
+export type SquadNightRequestView = {
+  id: string;
+  requester: Profile | null;
+  note: string | null;
+  created_at: string;
+};
+
 export type SquadView = {
   squad: Squad;
   members: { profile: Profile; is_captain: boolean }[];
   captainId: string | null;
   mine: boolean;
+  nightRequests: SquadNightRequestView[]; // members' nudges to the Captain
 };
 
-/** Every squad in the caller's Barracks, with members + captain. */
+/** Every squad in the caller's Barracks, with members + captain + night nudges. */
 export async function getSquads(currentUserId: string): Promise<SquadView[]> {
   const supabase = await createClient();
-  const [{ data: squads }, { data: members }, { data: profiles }] = await Promise.all([
+  const [{ data: squads }, { data: members }, { data: profiles }, { data: nights }] = await Promise.all([
     supabase.from("squads").select("*").order("created_at", { ascending: true }),
     supabase.from("squad_members").select("*"),
     supabase.from("profiles").select("*"),
+    supabase.from("squad_night_requests").select("*").order("created_at", { ascending: true }),
   ]);
   const profById = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
   const bySquad = new Map<string, SquadMember[]>();
@@ -561,6 +571,17 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
     const arr = bySquad.get(m.squad_id) ?? [];
     arr.push(m);
     bySquad.set(m.squad_id, arr);
+  }
+  const nightsBySquad = new Map<string, SquadNightRequestView[]>();
+  for (const n of (nights ?? []) as SquadNightRequest[]) {
+    const arr = nightsBySquad.get(n.squad_id) ?? [];
+    arr.push({
+      id: n.id,
+      requester: n.requested_by ? profById.get(n.requested_by) ?? null : null,
+      note: n.note,
+      created_at: n.created_at,
+    });
+    nightsBySquad.set(n.squad_id, arr);
   }
   return ((squads ?? []) as Squad[]).map((sq) => {
     const mems = bySquad.get(sq.id) ?? [];
@@ -572,6 +593,7 @@ export async function getSquads(currentUserId: string): Promise<SquadView[]> {
         .filter((x): x is { profile: Profile; is_captain: boolean } => x.profile != null),
       captainId: captain?.user_id ?? null,
       mine: mems.some((m) => m.user_id === currentUserId),
+      nightRequests: nightsBySquad.get(sq.id) ?? [],
     };
   });
 }

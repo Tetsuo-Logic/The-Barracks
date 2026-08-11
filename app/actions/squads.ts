@@ -66,3 +66,15 @@ export async function setCaptain(squadId: string, userId: string) {
   if (res.ok) rev();
   return res;
 }
+
+export async function requestNight(squadId: string, note?: string) {
+  const res = await squads.requestNight(await createClient(), squadId, note);
+  if (res.ok) rev();
+  return res;
+}
+
+export async function clearNightRequest(id: string) {
+  const res = await squads.clearNightRequest(await createClient(), id);
+  if (res.ok) rev();
+  return res;
+}

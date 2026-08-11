@@ -164,6 +164,16 @@ export interface SquadMember {
   created_at: string;
 }
 
+// A squad member's nudge to their Captain to sort a night (pre-Muster).
+export interface SquadNightRequest {
+  id: string;
+  squad_id: string;
+  group_id: string;
+  requested_by: string | null;
+  note: string | null;
+  created_at: string;
+}
+
 export type SquadRequestStatus = "open" | "approved" | "declined";
 
 export interface SquadRequest {

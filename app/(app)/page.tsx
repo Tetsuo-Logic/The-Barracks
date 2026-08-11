@@ -5,7 +5,6 @@ import {
   getFixturesData,
   getCompetition,
   getInbox,
-  getOpenGameRequests,
   getGames,
   getSquadOptions,
 } from "@/lib/queries";
@@ -14,7 +13,6 @@ import { NextUpCard } from "@/components/NextUpCard";
 import { CompListRow } from "@/components/CompListRow";
 import { AddDateButton } from "@/components/AddDateButton";
 import { CompSheet } from "@/components/CompSheet";
-import { GameRequests } from "@/components/GameRequests";
 import { CommandBanner } from "@/components/CommandBanner";
 import { Inbox } from "@/components/Inbox";
 
@@ -30,9 +28,8 @@ export default async function FixturesPage({
     searchParams,
   ]);
   const { profiles, next, upcoming, recent, rsvpsByComp } = data;
-  const [inbox, gameRequests, games, squads] = await Promise.all([
+  const [inbox, games, squads] = await Promise.all([
     getInbox(profile),
-    getOpenGameRequests(),
     getGames(),
     getSquadOptions(),
   ]);
@@ -72,8 +69,8 @@ export default async function FixturesPage({
           <p className="label mb-2" style={{ color: "var(--color-sand)" }}>▸ Next up</p>
           <EmptyState action={isAdmin ? <AddDateButton /> : undefined}>
             {isAdmin
-              ? "No games on the board. Deploy one, or put a request in below. 🎮"
-              : "No games on the board yet — put a request in below. 🎮"}
+              ? "No games on the board. Deploy one to get things rolling. 🎮"
+              : "No games on the board yet — your squad Captain sorts the nights. 🎮"}
           </EmptyState>
         </>
       )}
@@ -89,14 +86,6 @@ export default async function FixturesPage({
           </div>
         </section>
       )}
-
-      {/* Player-initiated game requests — anyone can float a game */}
-      <GameRequests
-        requests={gameRequests}
-        isAdmin={isAdmin}
-        currentUserId={profile.id}
-        games={games}
-      />
 
       {recent.length > 0 && (
         <section className="mt-8">

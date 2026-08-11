@@ -1,5 +1,7 @@
 import type { Db, Result } from "./types";
 import type { SquadRequest } from "@/lib/domain";
+import { sendToPlayers } from "@/lib/push";
+import { gameById } from "@/lib/games";
 
 // Squad commands. Membership writes are self-service (RLS enforces self-join /
 // captain-or-CO removal); creating squads + moving the captaincy is CO-only.
@@ -143,5 +145,56 @@ export async function declineRequest(db: Db, requestId: string): Promise<Result>
 export async function setClanTag(db: Db, squadId: string, tag: string): Promise<Result> {
   const { error } = await db.rpc("set_clan_tag", { p_squad: squadId, p_tag: tag });
   if (error) return { ok: false, error: "Couldn't set the clan tag." };
+  return { ok: true };
+}
+
+// A squad member nudges their Captain to sort a night. Persisted + pings the
+// Captain (or the CO if the squad has no Captain yet).
+export async function requestNight(db: Db, squadId: string, note?: string): Promise<Result> {
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { data: sq } = await db.from("squads").select("group_id, game, name").eq("id", squadId).maybeSingle();
+  if (!sq) return { ok: false, error: "Squad not found." };
+  const squad = sq as { group_id: string; game: string; name: string | null };
+
+  const { error } = await db.from("squad_night_requests").insert({
+    squad_id: squadId,
+    group_id: squad.group_id,
+    requested_by: user.id,
+    note: note?.trim() || null,
+  });
+  if (error) return { ok: false, error: "Couldn't send the request. Are you in the squad?" };
+
+  const { data: me } = await db.from("profiles").select("name").eq("id", user.id).single();
+  const who = (me as { name?: string })?.name ?? "Someone";
+  const { data: caps } = await db
+    .from("squad_members")
+    .select("user_id")
+    .eq("squad_id", squadId)
+    .eq("is_captain", true);
+  let targets = ((caps ?? []) as { user_id: string }[]).map((c) => c.user_id).filter((id) => id !== user.id);
+  if (targets.length === 0) {
+    // No Captain yet — let the CO(s) know instead.
+    const { data: admins } = await db.from("profiles").select("id").eq("is_admin", true).neq("id", user.id);
+    targets = ((admins ?? []) as { id: string }[]).map((a) => a.id);
+  }
+  const trimmed = note?.trim();
+  const label = squad.name || gameById(squad.game).name;
+  await sendToPlayers(targets, "new_comp", {
+    title: `📣 ${label}: night wanted`,
+    body: `${who} wants a game${trimmed ? ` — “${trimmed}”` : ""}. Muster the squad?`,
+    url: "/squads",
+    tag: `night-${squadId}`,
+  });
+  return { ok: true };
+}
+
+// The filer, the Captain, or the CO clears a night nudge.
+export async function clearNightRequest(db: Db, id: string): Promise<Result> {
+  const { error } = await db.from("squad_night_requests").delete().eq("id", id);
+  if (error) return { ok: false, error: "Couldn't clear it." };
   return { ok: true };
 }
