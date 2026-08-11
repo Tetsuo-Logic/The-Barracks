@@ -61,6 +61,9 @@ export async function openMuster(
   });
   if (error) return { ok: false, error: "Couldn't call the muster. Are you the Captain?" };
 
+  // Calling a muster answers any outstanding "request a night" nudges — clear them.
+  await db.from("squad_night_requests").delete().eq("squad_id", input.squadId);
+
   const label = squad.name || gameById(squad.game).name;
   await pushAndStore(db, await squadMemberIds(db, input.squadId, user.id), {
     title: `📆 ${label}: muster called`,

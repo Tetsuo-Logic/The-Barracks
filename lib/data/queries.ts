@@ -205,6 +205,11 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     { data: comments },
     { data: myBroadcasts },
     { data: respToMine },
+    { data: mySquadMems },
+    { data: liveMusters },
+    { data: myMusterResps },
+    { data: nightReqsData },
+    { data: openSquadReqs },
   ] = await Promise.all([
     supabase
       .from("broadcasts")
@@ -236,6 +241,11 @@ export async function getInbox(player: Profile): Promise<Inbox> {
       .from("broadcast_responses")
       .select("broadcast_id, player_id, created_at")
       .neq("player_id", player.id),
+    supabase.from("squad_members").select("squad_id, is_captain").eq("user_id", player.id),
+    supabase.from("musters").select("id, squad_id, status").in("status", ["open", "proposed"]),
+    supabase.from("muster_responses").select("muster_id").eq("user_id", player.id),
+    supabase.from("squad_night_requests").select("squad_id"),
+    supabase.from("squad_requests").select("id").eq("status", "open"),
   ]);
 
   const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
@@ -269,12 +279,30 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     count,
   }));
 
+  // Actionable squad items — they self-clear when you act (respond / open a
+  // muster / approve / decline), so the bell reflects "still on you".
+  const squadMems = (mySquadMems ?? []) as { squad_id: string; is_captain: boolean }[];
+  const mySquadIds = new Set(squadMems.map((m) => m.squad_id));
+  const myCaptainIds = new Set(squadMems.filter((m) => m.is_captain).map((m) => m.squad_id));
+  const answeredMusters = new Set(((myMusterResps ?? []) as { muster_id: string }[]).map((r) => r.muster_id));
+  const musters = (liveMusters ?? []) as { id: string; squad_id: string; status: string }[];
+
+  const musterAsks = musters.filter(
+    (mu) => mu.status === "open" && mySquadIds.has(mu.squad_id) && !answeredMusters.has(mu.id),
+  ).length;
+  const nightNudges = ((nightReqsData ?? []) as { squad_id: string }[]).filter((n) =>
+    myCaptainIds.has(n.squad_id),
+  ).length;
+  const proposalsToApprove = player.is_admin ? musters.filter((mu) => mu.status === "proposed").length : 0;
+  const squadReqsToRule = player.is_admin ? ((openSquadReqs ?? []) as { id: string }[]).length : 0;
+  const squadCount = musterAsks + nightNudges + proposalsToApprove + squadReqsToRule;
+
   return {
     asks,
     rsvpNeeded,
     newComments,
     newAnswers,
-    total: asks.length + rsvpNeeded.length + newComments.length + newAnswers.length,
+    total: asks.length + rsvpNeeded.length + newComments.length + newAnswers.length + squadCount,
   };
 }
 
