@@ -59,14 +59,18 @@ export interface Competition {
   status: CompetitionStatus;
   cancel_reason: string | null; // why it was cancelled, if it was
   for_cup: boolean; // counts toward the Threeball Cup, vs a casual round
+  started_at: string | null; // Operation Room: went live
+  finished_at: string | null; // Operation Room: closed / archived
+  games_count: number; // Operation Room: games played this session
   created_at: string;
 }
 
 export interface Rsvp {
   competition_id: string;
   player_id: string;
-  status: RsvpStatus;
+  status: RsvpStatus; // intent: were you expected?
   note: string | null;
+  attended: boolean | null; // roll call: null = unrolled · true = present · false = no-show
   updated_at: string;
 }
 

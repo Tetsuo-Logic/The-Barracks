@@ -8,7 +8,7 @@ import { Scorecard } from "@/components/Scorecard";
 import { EditableScorecard } from "@/components/EditableScorecard";
 import { Chat } from "@/components/Chat";
 import { Photos } from "@/components/Photos";
-import { RecordResult } from "@/components/RecordResult";
+import { OperationRoom } from "@/components/OperationRoom";
 import { ConveneTrial } from "@/components/ConveneTrial";
 import { heroDate, isToday, shortTime, formatLabel } from "@/lib/dates";
 import { gameById, compHeading } from "@/lib/games";
@@ -17,7 +17,7 @@ import { isLocked } from "@/lib/rsvp";
 import type { CompetitionDetail } from "@/lib/queries";
 import type { RsvpStatus } from "@/lib/types";
 
-type Tab = "details" | "card" | "result" | "photos";
+type Tab = "details" | "room" | "card" | "photos";
 
 const STATUS_TEXT: Record<RsvpStatus, string> = { in: "In", out: "Out", maybe: "Maybe" };
 const STATUS_COLOUR: Record<RsvpStatus, string> = {
@@ -35,14 +35,14 @@ export function CompDetail({
   currentUserId: string;
   isAdmin: boolean;
 }) {
-  const { comp, profiles, rsvps, scores, results, comments, photos } = detail;
+  const { comp, profiles, rsvps, scores, comments, photos } = detail;
   const game = gameById(comp.game);
   const isGolf = game.hasScorecard;
   const heading = compHeading(comp);
-  // Golf keeps its scorecard; other games record a finishing-order result.
+  // Every event has an Operation Room; golf additionally keeps its scorecard.
   const tabs: Tab[] = isGolf
-    ? ["details", "card", "photos"]
-    : ["details", "result", "photos"];
+    ? ["details", "room", "card", "photos"]
+    : ["details", "room", "photos"];
   const [tab, setTab] = useState<Tab>("details");
   const [entering, setEntering] = useState(false);
 
@@ -257,12 +257,13 @@ export function CompDetail({
           </div>
         )}
 
-        {tab === "result" && (
-          <RecordResult
-            competitionId={comp.id}
+        {tab === "room" && (
+          <OperationRoom
+            comp={comp}
+            rsvps={rsvps}
             profiles={profiles}
-            results={results}
-            canEdit={comp.status !== "cancelled"}
+            currentUserId={currentUserId}
+            isCO={isAdmin}
           />
         )}
 
