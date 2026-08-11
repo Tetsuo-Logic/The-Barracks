@@ -206,10 +206,16 @@ export function SquadsBoard({
               <div key={squad.id} className="rounded-[3px] border border-rule bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-ink">
-                      <span className="mr-1">{g.emoji}</span>
-                      {squad.name || `${g.name} Squad`}
-                      {squad.clan_tag && <span className="ml-1 font-mono text-xs text-ink-soft">[{squad.clan_tag}]</span>}
+                    <p className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
+                      <span>
+                        <span className="mr-1">{g.emoji}</span>
+                        {squad.name || `${g.name} Squad`}
+                      </span>
+                      {squad.clan_tag && (
+                        <span className="rounded-[3px] border border-sand/40 bg-sand/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none text-sand">
+                          [{squad.clan_tag}]
+                        </span>
+                      )}
                     </p>
                     <p className="mt-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
                       {members.length} {members.length === 1 ? "operative" : "operatives"}
@@ -234,29 +240,37 @@ export function SquadsBoard({
                   </button>
                 </div>
 
-                {/* Clan tag edit */}
+                {/* Clan tag — a clear, tappable control (Captain / CO only) */}
                 {canManageTag &&
                   (editingTag === squad.id ? (
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        value={tagVal}
-                        onChange={(e) => setTagVal(e.target.value)}
-                        placeholder="Clan tag"
-                        className="w-28 rounded-[3px] border border-rule bg-paper px-2 py-1 text-sm text-ink outline-none focus:border-ink"
-                      />
-                      <button
-                        onClick={() => {
-                          setEditingTag(null);
-                          run(() => setClanTag(squad.id, tagVal), "Clan tag updated");
-                        }}
-                        disabled={busy}
-                        className="font-mono text-xs uppercase tracking-[0.06em] text-ink-soft hover:text-ink"
-                      >
-                        Save
-                      </button>
-                      <button onClick={() => setEditingTag(null)} className="font-mono text-xs uppercase tracking-[0.06em] text-ink-soft">
-                        Cancel
-                      </button>
+                    <div className="mt-3 rounded-[3px] border border-rule bg-paper p-3">
+                      <label className="label mb-1 block">Clan tag</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={tagVal}
+                          onChange={(e) => setTagVal(e.target.value)}
+                          placeholder="TAG"
+                          autoFocus
+                          maxLength={8}
+                          className="w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+                        />
+                        <button
+                          onClick={() => {
+                            setEditingTag(null);
+                            run(() => setClanTag(squad.id, tagVal), "Clan tag updated");
+                          }}
+                          disabled={busy}
+                          className="shrink-0 rounded-[3px] bg-ink px-4 py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingTag(null)}
+                          className="shrink-0 rounded-[3px] border border-rule px-3 py-2.5 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-ink-soft"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -264,9 +278,9 @@ export function SquadsBoard({
                         setTagVal(squad.clan_tag ?? "");
                         setEditingTag(squad.id);
                       }}
-                      className="mt-1 font-mono text-xs uppercase tracking-[0.06em] text-ink-soft transition-colors hover:text-ink"
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-[3px] border border-rule px-3 py-1.5 font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink hover:bg-card"
                     >
-                      {squad.clan_tag ? "Edit clan tag" : "+ Clan tag"}
+                      🏷 {squad.clan_tag ? "Edit clan tag" : "Add clan tag"}
                     </button>
                   ))}
 
