@@ -150,8 +150,8 @@ Both clients are **Next** (shared tooling/tokens); mobile = the PWA, web = a wid
 |---|---|---|---|
 | **0** ✅ | v1 tagged, `experiments` branch | none | none |
 | **1** ✅ | Internal refactor: `domain/data/permissions`; actions → thin wrappers | low (pure move) | **zero** |
-| **2** | Additive multi-tenant model: `groups` + `memberships`, seed group, `group_id` everywhere, backfill | medium (DB, additive) | none — resolves the one group |
-| **3** | Roles → membership; group-scoped RLS, table by table, dual-run then drop globals **(prereqs below)** | **high (security)** | none if done right |
+| **2** ✅ | Additive multi-tenant model: `groups` + `memberships`, seed group, `group_id` everywhere, backfill | medium (DB, additive) | none — resolves the one group |
+| **3** ✅ | Roles → membership; group-scoped RLS, table by table, dual-run then drop globals **(prereqs below)** | **high (security)** | none if done right |
 | **4** | **Generic `Result` model (first-class)** + `events` + `role_grants` — design the neutral result shape **before** anything depends on golf-shaped `scores`; golf becomes template #1 | medium | additive |
 | **5** | Squads + squad memberships (built on the Result model) | medium | new features, additive |
 | **6** | Stand up `apps/web` (Headquarters); promote `lib → packages`; add workspaces | medium | new client |
@@ -177,4 +177,6 @@ Both clients are **Next** (shared tooling/tokens); mobile = the PWA, web = a wid
 - **2026-08-11 — Plan updated (design review incorporated):** staging Supabase project required before Phase 3; **"RLS isolates tenants; the app layer authorizes actions"** added as a core principle (§3); generic `Result` model promoted to a first-class milestone (§7 Phase 4) ahead of Squads; minimal cross-tenant integration test required before Phase 3; live/media clarified (§1 — Discord initially, native voice possible later, not a permanent constraint). **None of this changes the Phase 2 SQL.**
 - **2026-08-11 — Phase 2 complete & verified.** `0029` run on the Barracks DB; 1 player = 1 membership, 0 rows missing group. Data model is now multi-tenant-shaped; app behaviour unchanged.
 - **2026-08-11 — Phase 3 built & staging-verified.** Staging Supabase project stood up; `0030` (group-aware helpers, every policy group-scoped, roles on `memberships` via a profiles→memberships sync trigger, group-scoped `president_rule`, new-user enrolment) applied cleanly; the two-group isolation test **passed** (A sees only the seed group, B sees only Group B). DB-only — no app changes needed (the app still reads `profiles`, kept in sync). **Not yet on production.**
-- **Next:** production cutover — run `0030` on the live DB + smoke-test (break-glass ready), then Phase 4 (first-class `Result` model).
+- **2026-08-11 — Phase 3 complete & LIVE.** `0030` applied to production; live app smoke-tested, behaving normally. Group-scoped RLS + per-group roles are in production. **The multi-tenant foundation (Phases 1–3) is done.**
+- **Housekeeping:** `main` still holds v1 *code*; the Phase 1 refactor + the `0029`/`0030` migration files live on `experiments`. Production DB is through `0030`. Merge `experiments → main` when ready to make `main` current (deploys the zero-behaviour Phase 1 refactor); `v1` tag remains the fallback.
+- **Next:** Phase 4 — the first-class **`Result`** model (the highest-leverage piece), whenever you want it.
