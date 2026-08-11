@@ -37,7 +37,9 @@ export function LoginForm() {
       setError(
         /already/i.test(signUp.error.message)
           ? "That email's taken — check your password."
-          : "Couldn't sign you in. Check your details and try again.",
+          : // Surface the real reason (signups off, weak password, etc.) so it's
+            // diagnosable instead of a dead-end "try again".
+            `Couldn't sign you in: ${signUp.error.message}`,
       );
       return;
     }
