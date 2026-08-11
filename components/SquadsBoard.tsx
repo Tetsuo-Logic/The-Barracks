@@ -206,7 +206,9 @@ export function SquadsBoard({
           {squads.map(({ squad, members, captainId, mine, nightRequests, muster }) => {
             const g = gameById(squad.game);
             const iAmCaptain = captainId === currentUserId;
-            const canManageTag = isAdmin || iAmCaptain;
+            // The Captain owns the clan tag; the CO only steps in when a squad
+            // has no Captain yet.
+            const canManageTag = iAmCaptain || (isAdmin && captainId == null);
             const seesNights = isAdmin || iAmCaptain;
             return (
               <div key={squad.id} className="rounded-[3px] border border-rule bg-card p-4">
@@ -408,33 +410,39 @@ export function SquadsBoard({
                     </button>
                   ))}
 
-                {isAdmin &&
-                  (confirmDel === squad.id ? (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-xs text-flag">Disband this squad?</span>
+                {isAdmin && (
+                  <div className="mt-4 flex items-center justify-between gap-2 rounded-[3px] border border-rule/70 bg-paper px-3 py-2">
+                    <span className="font-narrow text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
+                      Danger zone
+                    </span>
+                    {confirmDel === squad.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-flag">Sure?</span>
+                        <button
+                          onClick={() => {
+                            setConfirmDel(null);
+                            run(() => deleteSquad(squad.id), "Squad disbanded");
+                          }}
+                          disabled={busy}
+                          className="rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper"
+                        >
+                          Disband
+                        </button>
+                        <button onClick={() => setConfirmDel(null)} className="font-mono text-xs uppercase tracking-[0.06em] text-ink-soft">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => {
-                          setConfirmDel(null);
-                          run(() => deleteSquad(squad.id), "Squad disbanded");
-                        }}
+                        onClick={() => setConfirmDel(squad.id)}
                         disabled={busy}
-                        className="rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper"
+                        className="font-mono text-xs uppercase tracking-[0.08em] text-ink-soft transition-colors hover:text-flag"
                       >
-                        Disband
+                        Disband squad
                       </button>
-                      <button onClick={() => setConfirmDel(null)} className="font-mono text-xs uppercase tracking-[0.06em] text-ink-soft">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDel(squad.id)}
-                      disabled={busy}
-                      className="mt-3 font-mono text-xs uppercase tracking-[0.08em] text-ink-soft transition-colors hover:text-flag"
-                    >
-                      Disband squad
-                    </button>
-                  ))}
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
