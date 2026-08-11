@@ -178,12 +178,14 @@ export async function getOpenGameRequests(): Promise<GameRequestWithPlayer[]> {
 
 export type NewComment = { comment: Comment; comp: Competition };
 export type NewAnswer = { broadcast: Broadcast; count: number };
+export type AppNotification = { id: string; title: string; body: string | null; url: string | null; created_at: string };
 
 export type Inbox = {
   asks: Broadcast[]; // questions put to you that you haven't answered
   rsvpNeeded: Competition[]; // upcoming rounds you haven't said in/out/maybe to
   newComments: NewComment[]; // comments by others since you last opened the inbox
   newAnswers: NewAnswer[]; // replies to your own polls since you last looked
+  notifications: AppNotification[]; // stored event feed (musters, nudges…) unread
   total: number; // badge count
 };
 
@@ -205,6 +207,7 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     { data: comments },
     { data: myBroadcasts },
     { data: respToMine },
+    { data: notifs },
   ] = await Promise.all([
     supabase
       .from("broadcasts")
@@ -236,6 +239,13 @@ export async function getInbox(player: Profile): Promise<Inbox> {
       .from("broadcast_responses")
       .select("broadcast_id, player_id, created_at")
       .neq("player_id", player.id),
+    supabase
+      .from("notifications")
+      .select("id, title, body, url, created_at")
+      .eq("user_id", player.id)
+      .is("read_at", null)
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
 
   const answered = new Set((myResp ?? []).map((r) => r.broadcast_id));
@@ -269,12 +279,16 @@ export async function getInbox(player: Profile): Promise<Inbox> {
     count,
   }));
 
+  const notifications = (notifs ?? []) as AppNotification[];
+
   return {
     asks,
     rsvpNeeded,
     newComments,
     newAnswers,
-    total: asks.length + rsvpNeeded.length + newComments.length + newAnswers.length,
+    notifications,
+    total:
+      asks.length + rsvpNeeded.length + newComments.length + newAnswers.length + notifications.length,
   };
 }
 

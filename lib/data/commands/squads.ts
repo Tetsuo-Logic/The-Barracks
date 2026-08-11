@@ -183,12 +183,17 @@ export async function requestNight(db: Db, squadId: string, note?: string): Prom
   }
   const trimmed = note?.trim();
   const label = squad.name || gameById(squad.game).name;
-  await sendToPlayers(targets, "new_comp", {
+  const payload = {
     title: `📣 ${label}: night wanted`,
     body: `${who} wants a game${trimmed ? ` — “${trimmed}”` : ""}. Muster the squad?`,
     url: "/squads",
     tag: `night-${squadId}`,
-  });
+  };
+  await sendToPlayers(targets, "new_comp", payload);
+  if (targets.length) {
+    // Persist to the inbox feed too, so it's clickable — not just a push.
+    await db.rpc("notify", { p_users: targets, p_title: payload.title, p_body: payload.body, p_url: payload.url });
+  }
   return { ok: true };
 }
 

@@ -22,6 +22,25 @@ export async function markInboxSeen(): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+// Mark the stored notification feed read once it's been shown, so those items
+// stop counting toward the bell badge (mirrors markInboxSeen for the feed).
+export async function markNotificationsSeen(): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false };
+
+  await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("read_at", null);
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 // Organiser sets (or clears) the activity-history cutoff. `before` is an ISO
 // timestamp — the feed hides anything older, for everyone; null shows it all
 // again. Non-destructive: nothing is deleted, just filtered from the feed.

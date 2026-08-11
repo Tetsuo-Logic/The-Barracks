@@ -13,6 +13,20 @@ async function squadMemberIds(db: Db, squadId: string, exclude?: string): Promis
   return ((data ?? []) as { user_id: string }[]).map((m) => m.user_id).filter((id) => id !== exclude);
 }
 
+// Push AND persist to the inbox feed, so the event is clickable later (not just
+// a fleeting on-screen push). Used for muster events that have no derived inbox
+// entry of their own.
+async function pushAndStore(
+  db: Db,
+  userIds: string[],
+  p: { title: string; body: string; url: string; tag: string },
+): Promise<void> {
+  await sendToPlayers(userIds, "new_comp", p);
+  if (userIds.length) {
+    await db.rpc("notify", { p_users: userIds, p_title: p.title, p_body: p.body, p_url: p.url });
+  }
+}
+
 // Captain calls a muster: candidate nights + proposed times for the week ahead.
 export async function openMuster(
   db: Db,
@@ -49,7 +63,7 @@ export async function openMuster(
   if (error) return { ok: false, error: "Couldn't call the muster. Are you the Captain?" };
 
   const label = squad.name || gameById(squad.game).name;
-  await sendToPlayers(await squadMemberIds(db, input.squadId, user.id), "new_comp", {
+  await pushAndStore(db, await squadMemberIds(db, input.squadId, user.id), {
     title: `📆 ${label}: muster called`,
     body: "Mark the nights you can play this week.",
     url: "/squads",
@@ -101,7 +115,7 @@ export async function proposeMuster(
 
   const label = gameById((mu as { game: string }).game).name;
   const { data: admins } = await db.from("profiles").select("id").eq("is_admin", true).neq("id", user.id);
-  await sendToPlayers(((admins ?? []) as { id: string }[]).map((a) => a.id), "new_comp", {
+  await pushAndStore(db, ((admins ?? []) as { id: string }[]).map((a) => a.id), {
     title: `⚑ ${label}: night proposed`,
     body: `The Captain proposes ${shortDate(chosenDate)}${chosenTime ? ` · ${chosenTime}` : ""}. Approve to deploy.`,
     url: "/squads",
@@ -171,7 +185,7 @@ export async function sendBackMuster(db: Db, musterId: string): Promise<Result> 
 
   const m = mu as { game: string; created_by: string | null } | null;
   if (m?.created_by) {
-    await sendToPlayers([m.created_by], "new_comp", {
+    await pushAndStore(db, [m.created_by], {
       title: `↩ ${gameById(m.game).name}: sent back`,
       body: "The President wants another look — pick the night again.",
       url: "/squads",
