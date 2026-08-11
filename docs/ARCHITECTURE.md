@@ -160,7 +160,7 @@ Both clients are **Next** (shared tooling/tokens); mobile = the PWA, web = a wid
 `main` stays v1; experiments happen on the branch with a Vercel preview; a phase merges to `main` only when proven. **Phase 3 is the delicate one** — a wrong RLS predicate could leak one group's data into another.
 
 **Phase 3 prerequisites (non-negotiable):**
-1. **A separate staging Supabase project.** The live app and the `experiments` branch currently share one database, so an RLS change would hit production instantly. All RLS work happens on staging first; only proven policies reach the live DB.
+1. **A separate staging Supabase project.** The live app and the `experiments` branch currently share one database, so an RLS change would hit production instantly. All RLS work happens on staging first; only proven policies reach the live DB. **Staging is used via its SQL editor ONLY — never put staging's keys in Vercel.** (On 2026-08-11 they did, which pointed the live app at the empty staging DB; fixed by restoring the live-Barracks keys + redeploy.)
 2. **A minimal cross-tenant integration test.** Seed two groups and assert group A cannot read group B's rows — before flipping any read policy. (The codebase has no tests today; this is the one place they're mandatory.)
 3. **New-user enrolment.** `handle_new_user()` creates a profile but **no membership**, so a new signup currently has no group. Before RLS goes group-scoped, new users must be enrolled into a group (via the trigger or the onboarding flow) or they'd be locked out. Harmless today (reads are still global); mandatory before Phase 3.
 
