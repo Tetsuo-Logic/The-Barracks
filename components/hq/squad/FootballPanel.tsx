@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Panel, Row, Tag, Dot, Nil, Proto } from "@/components/hq/Kit";
+import { Panel, Row, Tag, Dot, Proto } from "@/components/hq/Kit";
 import { Terminal } from "@/components/hq/squad/Terminal";
 import { callsign, FORMATION_4231, TACTICS, squadRecord } from "@/components/hq/squad/proto";
 import { compHeading } from "@/lib/games";

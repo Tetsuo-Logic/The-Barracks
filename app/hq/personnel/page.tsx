@@ -216,7 +216,7 @@ export default async function PersonnelPage({
             <HeadCell label="N/S" k="noshows" active={key} right />
             <HeadCell label="Conduct" k="marks" active={key} right />
             <span className="hq-label text-right">
-              Presence <Proto>P</Proto>
+              Presence <Proto>Sim</Proto>
             </span>
           </div>
 

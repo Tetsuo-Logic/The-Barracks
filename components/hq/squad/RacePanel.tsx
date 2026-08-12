@@ -218,7 +218,7 @@ export function RacePanel({
                     <td className="px-2 py-1.5">
                       <span className="flex items-center gap-1.5">
                         <span
-                          className="flex h-4.5 w-4.5 items-center justify-center rounded-full text-[9px] font-bold"
+                          className="flex items-center justify-center rounded-full text-[9px] font-bold"
                           style={{
                             border: `1px solid ${TYRE_COLOUR[r.tyre]}`,
                             color: TYRE_COLOUR[r.tyre],
