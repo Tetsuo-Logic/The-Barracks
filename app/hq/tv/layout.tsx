@@ -14,6 +14,11 @@ export const metadata = { title: "Barracks TV" };
 // irritation on a dashboard).
 
 const TV_CSS = `
+/* The HQ page underneath is still a scrolling document, which leaves a
+   scrollbar gutter down the side of the display. Lock it while TV is mounted —
+   :has() keeps this pure CSS, so the route needs no client component. */
+html:has(.hq-tv), body:has(.hq-tv) { overflow: hidden !important; }
+
 .hq-tv {
   position: fixed;
   inset: 0;

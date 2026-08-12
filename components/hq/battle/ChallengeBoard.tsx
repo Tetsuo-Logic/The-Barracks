@@ -22,6 +22,7 @@ type Local = {
   stage: ChallengeStage;
   slots: SlotProposal[];
   agreed: string | null; // `${day} ${time}`
+  declined: boolean;
 };
 
 const btn =
@@ -42,7 +43,7 @@ export function ChallengeBoard({
     Object.fromEntries(
       challenges.map((c) => [
         c.id,
-        { stage: c.stage, slots: c.slots ?? [], agreed: null } satisfies Local,
+        { stage: c.stage, slots: c.slots ?? [], agreed: null, declined: false } satisfies Local,
       ]),
     ),
   );
@@ -81,8 +82,18 @@ export function ChallengeBoard({
                 <p className="mt-1 text-[13px] text-ink-soft">{c.note}</p>
               </div>
 
-              <div className="flex shrink-0 flex-wrap gap-1.5">
-                {!answered ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                {l.declined ? (
+                  <>
+                    <Tag tone="alert" solid>Declined</Tag>
+                    <button
+                      onClick={() => set(c.id, { declined: false })}
+                      className={`${btn} border-rule text-ink-soft hover:text-ink`}
+                    >
+                      Undo
+                    </button>
+                  </>
+                ) : !answered ? (
                   <>
                     <button
                       onClick={() => set(c.id, { stage: "accepted" })}
@@ -92,7 +103,7 @@ export function ChallengeBoard({
                       Accept challenge
                     </button>
                     <button
-                      onClick={() => set(c.id, { stage: "archived" })}
+                      onClick={() => set(c.id, { declined: true })}
                       className={`${btn} border-rule text-ink-soft hover:border-flag hover:text-flag`}
                     >
                       Decline
@@ -117,7 +128,7 @@ export function ChallengeBoard({
             <div className="mt-3">
               <Stepper stage={l.stage} compact />
               <p className="hq-mono mt-1.5 text-[10px] uppercase tracking-[0.08em] text-ink-soft">
-                {STAGE_BLURB[l.stage]}
+                {l.declined ? "Declined. The challenge is closed — they may issue another." : STAGE_BLURB[l.stage]}
               </p>
             </div>
 

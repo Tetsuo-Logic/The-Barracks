@@ -619,7 +619,7 @@ export function BattleConsole({
       </div>
 
       {/* ── Final confirmation ───────────────────────────────────────────── */}
-      {(decided || !interactive) && (
+      {(decided || baseIdx >= stageIndex("result_pending")) && (
         <Panel
           i={4}
           label="Final confirmation"

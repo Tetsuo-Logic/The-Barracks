@@ -64,7 +64,7 @@ export function NavRail({ actions }: { actions: number }) {
   const path = usePathname();
 
   return (
-    <nav className="flex h-full flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav className="flex h-full flex-col gap-5 overflow-y-auto px-3 pb-5 pt-4">
       {NAV.map((g) => (
         <div key={g.title}>
           <p className="hq-label mb-1.5 px-3 opacity-60">{g.title}</p>

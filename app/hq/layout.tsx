@@ -46,15 +46,19 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
 
       <div className="flex" style={{ minHeight: "calc(100dvh - var(--hq-bar))" }}>
         <aside
-          className="sticky shrink-0 border-r border-rule"
+          className="sticky flex shrink-0 flex-col border-r border-rule"
           style={{
             width: "var(--hq-rail)",
             top: "var(--hq-bar)",
             height: "calc(100dvh - var(--hq-bar))",
           }}
         >
-          <NavRail actions={0} />
-          <div className="absolute inset-x-0 bottom-0 border-t border-rule bg-[rgba(8,12,10,0.9)] px-4 py-3">
+          {/* min-h-0 lets the nav actually scroll inside the flex column instead
+              of pushing the status block off the bottom of the rail. */}
+          <div className="min-h-0 flex-1">
+            <NavRail actions={0} />
+          </div>
+          <div className="shrink-0 border-t border-rule bg-[rgba(8,12,10,0.9)] px-4 py-3">
             <p className="hq-label flex items-center gap-1.5">
               <span className="hq-dot hq-dot-live" style={{ backgroundColor: "var(--color-moss)" }} />
               System online
@@ -62,8 +66,11 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
             <p className="hq-mono mt-1 text-[10px] text-ink-soft">
               {roster.length} operatives · {squadCount ?? 0} squads
             </p>
-            <Link href="/hq/settings" className="hq-label mt-2 block opacity-50 hover:opacity-100">
-              Barracks HQ v0.1 · experimental
+            <Link
+              href="/hq/settings"
+              className="hq-mono mt-1.5 block text-[9px] uppercase tracking-[0.1em] opacity-45 hover:opacity-100"
+            >
+              HQ v0.1 · experimental
             </Link>
           </div>
         </aside>
