@@ -20,6 +20,8 @@ import type {
   Muster,
   MusterResponse,
   Trial,
+  Complaint,
+  Mutiny,
 } from "@/lib/types";
 import { GAMES, gameById, type Game } from "@/lib/games";
 import { computeRankings, type RankRow } from "@/lib/rankings";
@@ -324,6 +326,9 @@ export type ActivityItem =
   // squad-formation request. `asRequest` is per-viewer: a muster reads as a
   // Request for the CO / the squad's Captain, but a Message for a plain member.
   | { kind: "muster"; at: string; muster: Muster; squadName: string; asRequest: boolean }
+  // Court: a filed complaint, and a mutiny (only ever the ones RLS lets you see).
+  | { kind: "complaint"; at: string; complaint: Complaint; filerName: string; againstName: string | null }
+  | { kind: "mutiny"; at: string; mutiny: Mutiny; raiserName: string; targetName: string | null }
   | { kind: "night"; at: string; night: SquadNightRequest; requesterName: string; squadName: string }
   | { kind: "squadReq"; at: string; request: SquadRequest; requesterName: string };
 
@@ -357,6 +362,8 @@ export async function getActivityFeed(playerId: string, isAdmin = false): Promis
     { data: squadReqs },
     { data: squadRows },
     { data: squadMems },
+    { data: complaintRows },
+    { data: mutinyRows },
   ] = await Promise.all([
     supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
     supabase.from("broadcast_responses").select("*"),
@@ -371,6 +378,10 @@ export async function getActivityFeed(playerId: string, isAdmin = false): Promis
     supabase.from("squad_requests").select("*").eq("status", "open"),
     supabase.from("squads").select("id, game, name"),
     supabase.from("squad_members").select("squad_id, user_id, is_captain"),
+    // RLS already hides a live mutiny from the President it targets, so whatever
+    // comes back here is safe to show this caller.
+    supabase.from("complaints").select("*").order("created_at", { ascending: false }),
+    supabase.from("mutinies").select("*").order("created_at", { ascending: false }),
   ]);
 
   const clearedBefore =
@@ -468,6 +479,27 @@ export async function getActivityFeed(playerId: string, isAdmin = false): Promis
       night: n,
       requesterName: (n.requested_by && nameById.get(n.requested_by)) || "Someone",
       squadName: squadNameById.get(n.squad_id) ?? "Squad",
+    });
+  }
+
+  // ── Court: complaints + mutinies ───────────────────────────────────────────
+  for (const cx of (complaintRows ?? []) as Complaint[]) {
+    items.push({
+      kind: "complaint",
+      at: cx.created_at,
+      complaint: cx,
+      filerName: (cx.filed_by && nameById.get(cx.filed_by)) || "Someone",
+      againstName: cx.against_id ? (nameById.get(cx.against_id) ?? null) : null,
+    });
+  }
+
+  for (const mu of (mutinyRows ?? []) as Mutiny[]) {
+    items.push({
+      kind: "mutiny",
+      at: mu.created_at,
+      mutiny: mu,
+      raiserName: (mu.raised_by && nameById.get(mu.raised_by)) || "Someone",
+      targetName: mu.target_id ? (nameById.get(mu.target_id) ?? null) : null,
     });
   }
 

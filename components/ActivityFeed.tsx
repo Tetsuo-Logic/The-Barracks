@@ -32,6 +32,10 @@ function rowKey(item: ActivityItem): string {
       return `n-${item.night.id}`;
     case "squadReq":
       return `sq-${item.request.id}`;
+    case "complaint":
+      return `cx-${item.complaint.id}`;
+    case "mutiny":
+      return `mu-${item.mutiny.id}`;
   }
 }
 
@@ -49,6 +53,8 @@ function deleteTarget(item: ActivityItem): { kind: DeletableKind; id: string } |
     case "muster":
     case "night":
     case "squadReq":
+    case "complaint":
+    case "mutiny":
       return null;
   }
 }
@@ -60,7 +66,8 @@ type FilterKey = "all" | "requests" | "messages" | "court";
 // them (getActivityFeed scopes the items), so a member's feed has none.
 const isRequest = (i: ActivityItem) =>
   i.kind === "night" || i.kind === "squadReq" || (i.kind === "muster" && i.asRequest);
-const isCourt = (i: ActivityItem) => i.kind === "trial";
+const isCourt = (i: ActivityItem) =>
+  i.kind === "trial" || i.kind === "complaint" || i.kind === "mutiny";
 const isMessage = (i: ActivityItem) => !isRequest(i) && !isCourt(i);
 
 const FILTERS: { key: FilterKey; label: string; match: (i: ActivityItem) => boolean }[] = [
@@ -374,6 +381,63 @@ function renderItem(
           </p>
         </Link>
       );
+    case "complaint": {
+      const ruled = item.complaint.status === "addressed";
+      return (
+        <Link key={`cx-${item.complaint.id}`} href="/board" className="block border-b border-rule py-3">
+          <div className="flex items-center justify-between">
+            <span className="label" style={{ color: "var(--color-flag)" }}>
+              {ruled ? "⚖️ Complaint ruled" : "⚖️ Complaint filed"}
+            </span>
+            <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
+          </div>
+          <p className="mt-1 text-ink">
+            <span className="font-semibold">{item.filerName}</span>
+            {item.againstName ? (
+              <span className="text-ink-soft"> on {item.againstName} — </span>
+            ) : (
+              <span className="text-ink-soft"> — </span>
+            )}
+            “{item.complaint.reason}”
+          </p>
+          {ruled && item.complaint.ruling && (
+            <p className="mt-0.5 truncate text-sm text-ink-soft">
+              Ruling: {item.complaint.ruling}
+            </p>
+          )}
+        </Link>
+      );
+    }
+    case "mutiny": {
+      const m = item.mutiny;
+      const label =
+        m.status === "voting"
+          ? "🏴 Motion before the ranks"
+          : m.status === "carried"
+            ? "🏴 Motion carried"
+            : "🏴 Motion failed";
+      return (
+        <Link
+          key={`mu-${m.id}`}
+          href={m.trial_id ? `/trial/${m.trial_id}` : "/board"}
+          className="block border-b border-rule py-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="label" style={{ color: "var(--color-flag)" }}>{label}</span>
+            <span className="text-xs text-ink-soft">{relativeTime(item.at)}</span>
+          </div>
+          <p className="mt-1 text-ink">
+            <span className="font-semibold">{item.raiserName}</span>
+            <span className="text-ink-soft"> moved against {item.targetName ?? "the President"}</span>
+          </p>
+          {m.status !== "voting" && (
+            <p className="mt-0.5 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-ink-soft">
+              {m.agree_count} for · {m.against_count} against
+            </p>
+          )}
+        </Link>
+      );
+    }
     case "squadReq":
       return (
         <Link key={`sq-${item.request.id}`} href="/squads" className="block border-b border-rule py-3">
