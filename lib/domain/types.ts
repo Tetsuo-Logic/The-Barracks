@@ -118,7 +118,28 @@ export interface Trial {
   penalty: Penalty | null; // the outcome when guilty
   jury_opened: boolean; // did the President consult the jury
   note: string | null; // behaviour note / verdict caption
+  judge_id: string | null; // mutiny cases: rules in the President's place (0042)
   created_by: string | null;
+  created_at: string;
+}
+
+export type MutinyStatus = "voting" | "carried" | "failed";
+
+// A motion against the sitting President. The target can't see it while the
+// ranks vote (enforced by RLS, 0042); on failure they're told who raised it.
+export interface Mutiny {
+  id: string;
+  group_id: string;
+  raised_by: string | null;
+  target_id: string | null;
+  reason: string;
+  status: MutinyStatus;
+  agree_count: number;
+  against_count: number;
+  eligible_count: number;
+  judge_id: string | null; // named on success; rules in the President's place
+  trial_id: string | null;
+  resolved_at: string | null;
   created_at: string;
 }
 

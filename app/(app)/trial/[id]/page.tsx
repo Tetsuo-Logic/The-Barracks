@@ -25,17 +25,25 @@ export default async function TrialPage({
     supabase.from("profiles").select("*").order("created_at", { ascending: true }),
   ]);
 
+  // Mirror president_rule (0042): a case with a nominated judge — i.e. a carried
+  // mutiny, where the President is in the dock — is theirs alone to rule on.
+  // Every other case stays with the President/CO.
+  const t = trial as Trial;
+  const mayRule = t.judge_id
+    ? t.judge_id === profile.id
+    : canRule(profile, preview);
+
   return (
     <div>
       <Link href="/trial" className="label mb-4 inline-block text-ink-soft">
         ← The Courtroom
       </Link>
       <TrialView
-        trial={trial as Trial}
+        trial={t}
         votes={(votes ?? []) as TrialVote[]}
         profiles={(profiles ?? []) as Profile[]}
         currentUserId={profile.id}
-        canRule={canRule(profile, preview)}
+        canRule={mayRule}
       />
     </div>
   );

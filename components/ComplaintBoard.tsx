@@ -20,12 +20,14 @@ export function ComplaintBoard({
   complaints,
   profiles,
   currentUserId,
+  currentPresidentId = null,
   canRule,
   isAdmin = false,
 }: {
   complaints: Complaint[];
   profiles: Profile[];
   currentUserId: string;
+  currentPresidentId?: string | null; // excluded — go through a mutiny instead
   canRule: boolean;
   isAdmin?: boolean;
 }) {
@@ -43,6 +45,9 @@ export function ComplaintBoard({
   const [error, setError] = useState<string | null>(null);
 
   const others = profiles.filter((p) => p.id !== currentUserId);
+  // The President can't be named in an ordinary complaint — they'd end up ruling
+  // on themselves. Moving against them goes through the mutiny above.
+  const accusable = others.filter((p) => p.id !== currentPresidentId);
 
   async function file() {
     setBusy(true);
@@ -91,12 +96,17 @@ export function ComplaintBoard({
             className="mb-3 w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
           >
             <option value="">No One In Particular</option>
-            {others.map((p) => (
+            {accusable.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
+          {currentPresidentId && currentPresidentId !== currentUserId && (
+            <p className="-mt-2 mb-3 text-xs text-ink-soft">
+              Got a problem with the President? That&apos;s a mutiny, not a complaint.
+            </p>
+          )}
 
           <label className="label mb-1 block">The complaint</label>
           <input
