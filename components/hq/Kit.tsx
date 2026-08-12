@@ -14,6 +14,7 @@ export function Panel({
   sweep = false,
   i = 0,
   pad = true,
+  tier = "default",
 }: {
   label?: string;
   status?: ReactNode;
@@ -23,10 +24,14 @@ export function Panel({
   sweep?: boolean;
   i?: number;
   pad?: boolean;
+  /** Rank on the page. Exactly one `primary` per screen; `quiet` for reference
+   *  data that should recede. Without this everything shouts equally and the
+   *  eye has nothing to land on. */
+  tier?: "primary" | "default" | "quiet";
 }) {
   return (
     <section
-      className={`hq-panel hq-rise ${className}`}
+      className={`hq-panel hq-panel-${tier} hq-rise ${className}`}
       style={{ ["--i" as string]: i }}
     >
       {(label || right) && (

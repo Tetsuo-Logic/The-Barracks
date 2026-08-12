@@ -57,40 +57,34 @@ export default async function CommandPage() {
         )}
       </PageHead>
 
-      {/* ── Status strip ─────────────────────────────────────────────────── */}
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-6">
-        <Panel i={0}>
-          <div className="flex items-center gap-2">
-            <Dot tone="live" pulse />
-            <span className="hq-label">System</span>
-          </div>
-          <p className="hq-readout mt-2 text-[20px] font-bold" style={{ color: "var(--color-moss)" }}>
-            ONLINE
-          </p>
-        </Panel>
-        <Panel i={1}>
-          <Stat value={o.status.operatives} label="Operatives" sub={`${o.status.online} online now`} />
-        </Panel>
-        <Panel i={2}>
-          <Stat value={o.status.squadsActive} label="Squads active" />
-        </Panel>
-        <Panel i={3}>
-          <Stat
-            value={o.status.operationsTonight}
-            label="Operations tonight"
-            tone={o.status.operationsTonight > 0 ? "live" : undefined}
-          />
-        </Panel>
-        <Panel i={4}>
-          <Stat
-            value={o.status.actionsRequired}
-            label="Actions required"
-            tone={o.status.actionsRequired > 0 ? "alert" : undefined}
-          />
-        </Panel>
-        <Panel i={5}>
-          <Stat value={o.status.operationsRun} label="Operations run" sub={`${o.status.hoursDeployed}h deployed`} />
-        </Panel>
+      {/* ── Status line ──────────────────────────────────────────────────────
+          Six equal stat boxes made everything look equally important, so
+          nothing did. Standing figures belong on one quiet line; only a number
+          that wants something from you gets to shout. */}
+      <div className="hq-rise mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-rule py-2.5">
+        <span className="hq-label flex items-center gap-1.5" style={{ color: "var(--color-moss)" }}>
+          <Dot tone="live" pulse />
+          System online
+        </span>
+        <span className="hq-label opacity-30">/</span>
+        <span className="hq-label">
+          {o.status.operatives} operatives · {o.status.online} online
+        </span>
+        <span className="hq-label opacity-30">/</span>
+        <span className="hq-label">{o.status.squadsActive} squads</span>
+        <span className="hq-label opacity-30">/</span>
+        <span className="hq-label">
+          {o.status.operationsRun} operations run · {o.status.hoursDeployed}h deployed
+        </span>
+
+        {o.status.operationsTonight > 0 && (
+          <span
+            className="hq-mono ml-auto rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+            style={{ backgroundColor: "var(--color-moss)", color: "#0b100e" }}
+          >
+            {o.status.operationsTonight} operation tonight
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
@@ -99,7 +93,11 @@ export default async function CommandPage() {
           {/* Tonight / next up */}
           <Panel
             i={6}
-            sweep
+            sweep={Boolean(o.next)}
+            /* The night is the point of the screen — but only when there is
+               one. With an empty board it drops to reference weight so it
+               stops competing with everything else. */
+            tier={o.next ? "primary" : "quiet"}
             label={o.status.operationsTonight > 0 ? "Tonight" : "Next up"}
             status={<Dot tone={o.status.operationsTonight > 0 ? "live" : "idle"} pulse={o.status.operationsTonight > 0} />}
             right={

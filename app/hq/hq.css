@@ -89,6 +89,36 @@
   border-bottom: 1px solid var(--color-sand);
   border-right: 1px solid var(--color-sand);
 }
+/* ── Panel tiers ─────────────────────────────────────────────────────────
+   One primary per screen, everything else recedes. Without a ranking the eye
+   has nowhere to land and a dense screen reads as noise. */
+
+/* Primary: the one thing this screen is about. Amber edge, lifted, brighter. */
+.hq-panel-primary {
+  border-color: color-mix(in srgb, var(--color-sand) 34%, var(--color-rule));
+  background:
+    linear-gradient(180deg, rgba(245, 182, 61, 0.045), rgba(11, 16, 14, 0.94));
+  box-shadow: 0 0 0 1px rgba(245, 182, 61, 0.07), 0 22px 60px -30px rgba(0, 0, 0, 0.95);
+}
+.hq-panel-primary .hq-panel-head {
+  border-bottom-color: color-mix(in srgb, var(--color-sand) 22%, var(--color-rule));
+}
+.hq-panel-primary > .hq-panel-head .hq-label { color: var(--color-sand); }
+
+/* Quiet: reference data. No corner ticks, no lift, flat ground. */
+.hq-panel-quiet {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--color-rule) 62%, transparent);
+  box-shadow: none;
+}
+.hq-panel-quiet::before,
+.hq-panel-quiet::after { display: none; }
+.hq-panel-quiet .hq-panel-head {
+  background: transparent;
+  border-bottom-color: color-mix(in srgb, var(--color-rule) 55%, transparent);
+}
+.hq-panel-quiet .hq-label { opacity: 0.72; }
+
 .hq-panel-head {
   display: flex;
   align-items: center;
