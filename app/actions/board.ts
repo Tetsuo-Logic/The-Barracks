@@ -41,40 +41,31 @@ export async function fileComplaint(input: {
 
   const who = await nameOf(supabase, user.id);
 
-  // Nudge the president (and admin) that there's something to rule on.
+  // Nudge the president (and admin) that there's something to rule on — but not
+  // the person it's about, who gets the "you've been named" ping below instead.
   const { data: rulers } = await supabase
     .from("profiles")
     .select("id")
     .or("is_president.eq.true,is_admin.eq.true")
     .neq("id", user.id);
-  await sendToPlayers(
-    ((rulers ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
-    "board",
-    {
-      title: "A complaint has been filed",
-      body: `${who}: ${reason}`,
-      url: "/board",
-      tag: "board",
-    },
-  );
+  const toRule = ((rulers ?? []) as Pick<Profile, "id">[])
+    .map((p) => p.id)
+    .filter((id) => id !== againstId);
+  await sendToPlayers(toRule, "board", {
+    title: "A complaint has been filed",
+    body: `${who}: ${reason}`,
+    url: "/board",
+    tag: "board",
+  });
 
-  // Tell the accused they've been named (unless they filed it themselves).
+  // Tell the accused they've been named, so they can respond. One ping only —
+  // this used to fire twice with the same tag, which just overwrote itself.
   if (againstId && againstId !== user.id) {
     await sendToPlayers([againstId], "board", {
       title: "⚖️ You've been named in a complaint",
-      body: `${who}: ${reason}`,
-      url: "/board",
-      tag: "board",
-    });
-  }
-
-  // Tell the person it's about so they can respond.
-  if (againstId && againstId !== user.id) {
-    await sendToPlayers([againstId], "board", {
-      title: "You're facing a complaint",
       body: `${who}: ${reason} — tap to respond`,
       url: "/board",
-      tag: "board",
+      tag: `complaint-${againstId}`,
     });
   }
 
@@ -215,6 +206,27 @@ export async function ruleOnComplaint(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
+  // Guard server-side: RLS lets the accused update the row (they need it to post
+  // a response), so without this check they could close their own case — and a
+  // ruler can't sit in judgement on a complaint about themselves.
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("is_admin, is_president")
+    .eq("id", user.id)
+    .single();
+  if (!me?.is_admin && !me?.is_president) {
+    return { ok: false, error: "Only the president can rule on it." };
+  }
+  const { data: cx } = await supabase
+    .from("complaints")
+    .select("against_id, filed_by, reason")
+    .eq("id", complaintId)
+    .single();
+  const complaint = cx as { against_id: string | null; filed_by: string | null; reason: string } | null;
+  if (complaint?.against_id === user.id) {
+    return { ok: false, error: "You can't rule on a complaint about you." };
+  }
+
   const { error } = await supabase
     .from("complaints")
     .update({
@@ -225,6 +237,37 @@ export async function ruleOnComplaint(
     })
     .eq("id", complaintId);
   if (error) return { ok: false, error: "Couldn't rule on it. Are you the president?" };
+
+  // Tell the people involved how it landed — nobody was told before.
+  const involved = [complaint?.filed_by, complaint?.against_id].filter(
+    (id): id is string => Boolean(id) && id !== user.id,
+  );
+  if (involved.length > 0) {
+    await sendToPlayers([...new Set(involved)], "board", {
+      title: "⚖️ The President has ruled",
+      body: ruling.trim() || "Dismissed without comment.",
+      url: "/board",
+      tag: `complaint-ruling-${complaintId}`,
+    });
+  }
+
+  revalidatePath("/board");
+  return { ok: true };
+}
+
+// The CO or President bins a case (a stuck or duplicate one); the filer can
+// withdraw their own. Needs the delete policy from 0041.
+export async function deleteComplaint(
+  complaintId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase.from("complaints").delete().eq("id", complaintId);
+  if (error) return { ok: false, error: "Couldn't delete it." };
 
   revalidatePath("/board");
   return { ok: true };

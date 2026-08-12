@@ -9,6 +9,7 @@ import {
   requestSecondOpinion,
   submitSecondOpinion,
   sendComplaintToCourt,
+  deleteComplaint,
 } from "@/app/actions/board";
 import { Avatar } from "@/components/Avatar";
 import { useAnnounce } from "@/components/Announce";
@@ -73,9 +74,9 @@ export function ComplaintBoard({
         {!composing && (
           <button
             onClick={() => setComposing(true)}
-            className="label text-ink-soft transition-colors hover:text-ink"
+            className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft transition-colors hover:border-ink hover:text-ink"
           >
-            + File a complaint
+            ⚖ File a complaint
           </button>
         )}
       </div>
@@ -189,6 +190,7 @@ export function ComplaintBoard({
                 currentUserId={currentUserId}
                 canRule={canRule}
                 isAdmin={isAdmin}
+                canManage={canRule}
               />
             ))
           )}
@@ -207,6 +209,7 @@ export function ComplaintBoard({
                 currentUserId={currentUserId}
                 canRule={false}
                 isAdmin={false}
+                canManage={canRule}
               />
             ))
           )}
@@ -223,6 +226,7 @@ function ComplaintCard({
   currentUserId,
   canRule,
   isAdmin,
+  canManage = false,
 }: {
   c: Complaint;
   byId: Map<string, Profile>;
@@ -230,6 +234,7 @@ function ComplaintCard({
   currentUserId: string;
   canRule: boolean;
   isAdmin: boolean;
+  canManage?: boolean; // CO/President may bin a stuck case at any point
 }) {
   const router = useRouter();
   const announce = useAnnounce();
@@ -247,6 +252,7 @@ function ComplaintCard({
   const [toCourt, setToCourt] = useState(false);
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   async function run(fn: () => Promise<{ ok: boolean }>) {
     setBusy(true);
@@ -370,8 +376,17 @@ function ComplaintCard({
         )
       )}
 
+      {/* A ruler can't sit in judgement on a complaint about themselves — the
+          tools are hidden and it has to go to the court instead. */}
+      {open && canRule && isSubject && (
+        <p className="mt-3 rounded-[3px] border border-flag/50 bg-card px-3 py-2 text-sm text-ink-soft">
+          ⚖️ This one&apos;s about you — you can&apos;t rule on it. Respond above; it&apos;s for the
+          court to settle.
+        </p>
+      )}
+
       {/* president tools: ask for a second opinion + rule */}
-      {open && canRule && (
+      {open && canRule && !isSubject && (
         <div className="mt-3 space-y-3">
           {!c.second_opinion && (
             <div className="rounded-[3px] border border-rule bg-card p-3">
@@ -445,6 +460,41 @@ function ComplaintCard({
         <div className="mt-2 rounded-[3px] border-l-2 border-sand bg-card px-3 py-2">
           <p className="label mb-0.5" style={{ color: "var(--color-sand)" }}>The ruling</p>
           <p className="text-ink">{c.ruling || "Dismissed without comment."}</p>
+        </div>
+      )}
+
+      {/* Bin a stuck case — the CO/President any time, the filer withdraws theirs */}
+      {(canManage || c.filed_by === currentUserId) && (
+        <div className="mt-3 flex justify-end">
+          {confirmDel ? (
+            <div className="flex items-center gap-2 rounded-[3px] border border-flag/50 bg-paper px-3 py-2">
+              <span className="text-xs text-flag">Delete this case?</span>
+              <button
+                onClick={() => {
+                  setConfirmDel(false);
+                  run(() => deleteComplaint(c.id));
+                }}
+                disabled={busy}
+                className="rounded-[3px] bg-flag px-3 py-1 font-narrow text-xs font-semibold uppercase tracking-[0.06em] text-paper disabled:opacity-60"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDel(false)}
+                className="font-mono text-xs uppercase tracking-[0.06em] text-ink-soft"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDel(true)}
+              disabled={busy}
+              className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs uppercase tracking-[0.08em] text-ink-soft transition-colors hover:border-flag hover:text-flag"
+            >
+              🗑 {canManage ? "Delete case" : "Withdraw"}
+            </button>
+          )}
         </div>
       )}
     </div>

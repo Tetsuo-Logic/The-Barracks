@@ -97,8 +97,11 @@ export function SquadsBoard({
       <div className="mb-1 flex items-center justify-between">
         <p className="label">Squads 🪖</p>
         {available.length > 0 && !composing && (
-          <button onClick={() => setComposing(true)} className="label text-ink-soft transition-colors hover:text-ink">
-            + {isAdmin ? "New squad" : "Request squad"}
+          <button
+            onClick={() => setComposing(true)}
+            className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft transition-colors hover:border-ink hover:text-ink"
+          >
+            🪖 {isAdmin ? "New squad" : "Request squad"}
           </button>
         )}
       </div>

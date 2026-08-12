@@ -85,9 +85,9 @@ export function RadarBoard({
         {!composing && (
           <button
             onClick={() => setComposing(true)}
-            className="label text-ink-soft transition-colors hover:text-ink"
+            className="rounded-[4px] border border-rule px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft transition-colors hover:border-ink hover:text-ink"
           >
-            + Add a game
+            🛰 Add a game
           </button>
         )}
       </div>
