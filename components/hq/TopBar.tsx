@@ -97,8 +97,15 @@ export function TopBar({
       </div>
 
       <div className="hidden items-center gap-4 lg:flex">
-        <span className="hq-label flex items-center gap-1.5">
-          <span className="hq-dot" style={{ backgroundColor: "var(--color-moss)" }} />
+        {/* Not real presence yet — a placeholder off the roster count. Dashed
+            underline so it never reads as fact. Replaced by a Supabase Realtime
+            presence channel (lib/hq/future/systems.ts). */}
+        <span
+          className="hq-label flex cursor-help items-center gap-1.5"
+          style={{ textDecoration: "underline dotted", textUnderlineOffset: 3, opacity: 0.75 }}
+          title="Prototype — not live presence. Will show everyone linked to this Barracks once Realtime presence is wired."
+        >
+          <span className="hq-dot" style={{ backgroundColor: "var(--color-ink-soft)" }} />
           {online} online
         </span>
         <span className="hq-label opacity-50">|</span>
