@@ -168,6 +168,13 @@ export default async function CommandPage({
                         borderRadius: 3,
                         background: "rgba(255,255,255,0.015)",
                         minWidth: 116,
+                        /* The countdown carries a caption beneath it, so
+                           centring the two blocks against each other leaves the
+                           day numeral sitting ~12px below the clock's. Lift the
+                           plate by exactly that, as a transform rather than a
+                           margin so the row's height doesn't change: the two big
+                           numerals are what the eye pairs, not the boxes. */
+                        transform: "translateY(-12px)",
                       }}
                     >
                       <div
