@@ -157,22 +157,34 @@
 .hq-surface {
   --color-ink: #ffffff;
   /* Secondary was the worst casualty of the old palette — lifted a long way. */
-  --color-ink-soft: #aebcb3;
+  --color-ink-soft: #c2cec6;
   --color-rule: #2b3831;
+  /* Redeclaring the variable isn't enough: `.hq` already computed `color` from
+     the old value and children inherit that computed colour, not the variable.
+     This re-computes it, which is what actually turns the body text white. */
+  color: var(--color-ink);
 }
 
-/* Panels stay black — a touch above the page, nowhere near grey. */
+/* Panels stay black, with an amber edge — the boxes are the structure, so the
+   structure is what carries the colour. */
 .hq-surface .hq-panel {
   background: linear-gradient(180deg, #101715 0%, #0b100e 100%);
-  border-color: #2f3c35;
+  border-color: color-mix(in srgb, var(--color-sand) 42%, transparent);
 }
+.hq-surface .hq-panel::before,
+.hq-surface .hq-panel::after { opacity: 0.85; }
 .hq-surface .hq-panel-head {
   background: rgba(255, 255, 255, 0.022);
-  border-bottom-color: #2f3c35;
+  border-bottom-color: color-mix(in srgb, var(--color-sand) 26%, transparent);
 }
 .hq-surface .hq-panel-quiet {
   background: linear-gradient(180deg, #0e1412 0%, #0a0f0d 100%);
-  border-color: #283430;
+  border-color: color-mix(in srgb, var(--color-sand) 34%, transparent);
+}
+/* Live keeps its green edge — green means running, and that distinction is
+   worth more than edge-colour consistency. */
+.hq-surface .hq-panel-live {
+  border-color: color-mix(in srgb, var(--color-moss) 45%, transparent);
 }
 
 /* Panel titles and column headers are amber — the labels are the navigation
