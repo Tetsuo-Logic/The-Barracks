@@ -1,40 +1,102 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
-import { getSquads } from "@/lib/queries";
-import { todayISO, shortDate } from "@/lib/dates";
-import { Panel, Stat, Dot, Tag, Row, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
-import { AvailabilityMatrix } from "@/components/hq/availability/AvailabilityMatrix";
-import { buildSquadIntel, deploymentPlan, findConflicts } from "@/components/hq/availability/model";
+import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
+import { getPlanning, type PlanningRequest, type Stage } from "@/lib/hq/planning";
+import { Panel, PageHead, Nil, Proto, Tag } from "@/components/hq/Kit";
+import { Lifecycle } from "@/components/hq/availability/Lifecycle";
+import { RequestCard } from "@/components/hq/availability/RequestCard";
 
-export const metadata = { title: "Availability · Barracks HQ" };
+export const metadata = { title: "Command planning · Barracks HQ" };
 
-// Intelligent scheduling. The phone asks one squad "which nights can you do?";
-// this screen reads every answer at once — who, which night, and their hours —
-// and works out where the Barracks can actually field a squad.
-export default async function AvailabilityPage() {
-  const profile = await requireProfile();
-  const squads = await getSquads(profile.id);
-  const today = todayISO();
+const PAGE_WIDTH = 1180;
 
-  const intel = squads.map((s) => buildSquadIntel(s, today));
-  // Live musters first, then the squads we're prototyping from the roster.
-  intel.sort((a, b) => (a.live === b.live ? 0 : a.live ? -1 : 1));
+// ── COMMAND PLANNING ───────────────────────────────────────────────────────
+// Where completed squad requests arrive for the President to deploy.
+//
+// Answer first, evidence second. The matrix that used to be the front door is
+// still here — one level down, behind the request it belongs to, where it's
+// evidence for a decision rather than a decision to be worked out.
+//
+// Requests never wait for each other: each is scored against the calendar as it
+// stands right now, so deploying one immediately changes what the next
+// recommends. There is no weekly batch.
 
-  const live = intel.filter((s) => s.live);
-  const plan = deploymentPlan(intel);
-  const conflicts = findConflicts(intel);
+export default async function PlanningPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string; req?: string; demo?: string }>;
+}) {
+  const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
+  const real = await realRoleOf(profile);
+  const view = resolveViewRole(sp.as, real);
 
-  const nightsOnOffer = new Set(live.flatMap((s) => s.nights.map((n) => n.iso))).size;
-  const reported = live.reduce((n, s) => n + s.responded, 0);
-  const expected = live.reduce((n, s) => n + s.total, 0);
-  const bestOverall = plan[0] ?? null;
-  const awaiting = live.filter((s) => s.mine && s.status === "open" && !s.members.find((m) => m.id === profile.id)?.responded);
+  // Members have no business here — planning happens in their squad, by their
+  // Captain. This is a render filter; RLS is what actually stops them.
+  if (view === "member") {
+    return (
+      <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
+        <PageHead eyebrow="Command" title="Command planning">
+          Restricted to Command and Squad Captains
+        </PageHead>
+        <Panel tier="quiet" label="Not your post">
+          <div className="px-1 py-6 text-center">
+            <p className="text-[15px]">Nights are arranged inside your squad.</p>
+            <p className="mt-1.5 text-[13px] text-ink-soft">
+              Your Captain calls the muster and sends the request up to Command.
+            </p>
+            <Link
+              href="/hq/squads"
+              className="hq-label mt-4 inline-block rounded-[3px] px-4 py-2.5 font-semibold"
+              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
+            >
+              Go to your squad →
+            </Link>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
+  const planning = await getPlanning(profile);
+  const isPresident = view === "president";
+
+  // ?demo=0 strips the prototype scenarios — the only way to see the genuine
+  // ALL CLEAR state while the Barracks is quiet and the samples are loud.
+  const all = sp.demo === "0" ? planning.requests.filter((r) => !r.demo) : planning.requests;
+
+  // A Captain sees their own squads only, and sees them without the Barracks
+  // calendar folded in — that weighting is Command's job, not theirs.
+  const mine = isPresident
+    ? all
+    : all
+        .filter((r) => planning.captainOf.includes(r.squadId) || r.demo)
+        .map((r) => ({ ...r, options: r.squadOptions, top: r.squadOptions[0] ?? null, bumped: null }));
+
+  const by = (s: Stage) => mine.filter((r) => r.stage === s);
+  const counts: Partial<Record<Stage, number>> = {
+    requested: by("requested").length,
+    open: by("open").length,
+    ready: by("ready").length,
+    submitted: by("submitted").length,
+    deployed: by("deployed").length,
+  };
+
+  const submitted = by("submitted");
+  const gathering = [...by("ready"), ...by("open"), ...by("requested")];
+  const deployed = by("deployed");
+  const highlight = sp.req ?? null;
+
+  // The President's queue is SUBMITTED; the Captain's is everything before it.
+  const queue = isPresident ? submitted : gathering;
+  const queueLabel = isPresident ? "Awaiting deployment" : "In your squads";
+  const rest = isPresident ? gathering : submitted;
+  const restLabel = isPresident ? "In the squads" : "With Command";
 
   return (
-    <div>
+    <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
       <PageHead
-        eyebrow="Command"
-        title="Availability"
+        eyebrow={isPresident ? "Command" : "Squad"}
+        title={isPresident ? "Command planning" : "Squad planning"}
         right={
           <>
             <Link
@@ -44,300 +106,123 @@ export default async function AvailabilityPage() {
             >
               + Call a muster
             </Link>
-            <Link
-              href="/hq/comms"
-              className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
-            >
-              Poll the Barracks
-            </Link>
+            {planning.demoCount > 0 && (
+              <Link
+                href={sp.demo === "0" ? "/hq/availability" : "/hq/availability?demo=0"}
+                title="Toggle the prototype scenarios"
+              >
+                <Proto>{sp.demo === "0" ? "demo off" : `${planning.demoCount} demo`}</Proto>
+              </Link>
+            )}
           </>
         }
       >
-        {live.length > 0 ? (
+        {queue.length > 0 ? (
           <>
-            {live.length} muster{live.length === 1 ? "" : "s"} running ·{" "}
-            <span className="text-ink">{reported}</span> of {expected} operatives reported
+            <span className="text-ink">{queue.length}</span> operation
+            {queue.length === 1 ? "" : "s"}{" "}
+            {isPresident ? "awaiting deployment" : "being arranged"}
           </>
         ) : (
-          <>No muster running — the matrix below is prototyped from the real roster</>
+          <>Nothing {isPresident ? "awaiting deployment" : "being arranged"}</>
         )}
       </PageHead>
 
-      {squads.length === 0 ? (
-        <Panel label="Squads">
-          <Nil>No squads formed — availability is gathered per squad</Nil>
-          <div className="text-center">
-            <Link href="/squads" className="hq-label hover:text-ink">
-              Form a squad →
-            </Link>
-          </div>
-        </Panel>
-      ) : (
-        <>
-          {/* ── Status strip ────────────────────────────────────────────── */}
-          <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-6">
-            <Panel i={0}>
-              <Stat
-                value={live.length}
-                label="Musters live"
-                sub={`${intel.length} squads on strength`}
-                tone={live.length > 0 ? "live" : undefined}
-              />
-            </Panel>
-            <Panel i={1}>
-              <Stat value={nightsOnOffer || "—"} label="Nights on offer" />
-            </Panel>
-            <Panel i={2}>
-              <Stat
-                value={expected ? `${reported}/${expected}` : "—"}
-                label="Reported"
-                tone={expected && reported === expected ? "live" : expected ? "warn" : undefined}
-              />
-            </Panel>
-            <Panel i={3}>
-              <Stat
-                value={bestOverall ? `${bestOverall.count}` : "—"}
-                label="Peak strength"
-                sub={bestOverall ? `${bestOverall.dow} ${bestOverall.time} · ${bestOverall.squadName}` : "No overlap found"}
-                tone={bestOverall?.meets ? "live" : "warn"}
-              />
-            </Panel>
-            <Panel i={4}>
-              <Stat
-                value={bestOverall ? `${bestOverall.coverage}%` : "—"}
-                label="Best coverage"
-              />
-            </Panel>
-            <Panel i={5}>
-              <Stat
-                value={conflicts.length}
-                label="Conflicts"
-                sub={conflicts.length ? "Double-booked operatives" : "Clear"}
-                tone={conflicts.length > 0 ? "alert" : undefined}
-              />
-            </Panel>
-          </div>
+      <Lifecycle
+        counts={counts}
+        owns={isPresident ? ["submitted", "deployed"] : ["requested", "open", "ready"]}
+      />
 
-          <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-            {/* ── Left: the matrix + requirements ─────────────────────── */}
-            <div className="flex flex-col gap-4">
-              <AvailabilityMatrix squads={intel} />
+      {/* ── THE QUEUE ────────────────────────────────────────────────────── */}
+      <section className="mb-6">
+        <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
+          {queueLabel}
+        </h2>
 
-              <Panel
-                i={7}
-                label="Squad requirements"
-                right={<Proto>Minimum strength</Proto>}
+        {queue.length === 0 ? (
+          <Panel tier="quiet">
+            <div className="flex min-h-[180px] flex-col items-center justify-center px-5 text-center">
+              <span className="text-[26px]" aria-hidden>
+                ✓
+              </span>
+              <p
+                className="hq-readout mt-2 text-[19px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--color-moss)" }}
               >
-                <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
-                  {intel.map((s) => {
-                    const top = [...s.nights].sort((a, b) => b.peakCount - a.peakCount).slice(0, 3);
-                    const bestNight = top[0];
-                    const ready = (bestNight?.peakCount ?? 0) >= s.required;
-                    return (
-                      <div key={s.id}>
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <Dot tone={ready ? "live" : s.live ? "warn" : "idle"} pulse={ready && s.live} />
-                          <span className="hq-readout text-[14px] font-bold uppercase tracking-[0.04em]">
-                            {s.emoji} {s.name} squad
-                          </span>
-                          {s.tag && <Tag>{s.tag}</Tag>}
-                          {!s.live && <Proto />}
-                          <span className="hq-label ml-auto shrink-0">
-                            Required: <span className="hq-mono text-ink">{s.required}</span>
-                          </span>
-                        </div>
-                        <div className="hq-mono flex flex-col text-[12px]">
-                          {top.length === 0 || (bestNight && bestNight.peakCount === 0) ? (
-                            <span className="py-1 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-                              No night carries a squad yet
-                            </span>
-                          ) : (
-                            top.map((n) => {
-                              const ok = n.peakCount >= s.required;
-                              return (
-                                <div
-                                  key={n.iso}
-                                  className="flex items-center gap-2 border-b border-rule/50 py-1 last:border-0"
-                                >
-                                  <span className="w-[86px] shrink-0 uppercase tracking-[0.06em]">
-                                    {n.dow} {n.peakFrom ?? s.windowFrom}
-                                  </span>
-                                  <span
-                                    className="w-[74px] shrink-0"
-                                    style={{ color: ok ? "var(--color-moss)" : "var(--color-sand)" }}
-                                  >
-                                    {n.peakCount}/{s.total} on
-                                  </span>
-                                  <span className="min-w-0 flex-1">
-                                    <Meter
-                                      pct={s.total ? (n.peakCount / s.total) * 100 : 0}
-                                      tone={ok ? "live" : "warn"}
-                                    />
-                                  </span>
-                                  <span className="w-[62px] shrink-0 text-right text-[10px] uppercase tracking-[0.1em] text-ink-soft">
-                                    {ok ? "Deployable" : `−${s.required - n.peakCount}`}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Panel>
+                All clear
+              </p>
+              <p className="hq-label mt-1.5 opacity-70">
+                {isPresident
+                  ? "No operations awaiting deployment"
+                  : "No requests or musters running in your squads"}
+              </p>
             </div>
-
-            {/* ── Right: plan, conflicts, control ─────────────────────── */}
-            <div className="flex flex-col gap-4">
-              <Panel
-                i={8}
-                sweep
-                label="Recommended deployment plan"
-                status={<Dot tone={plan.some((p) => p.meets) ? "live" : "warn"} pulse />}
-                right={<Proto>Reasoning</Proto>}
-              >
-                {plan.length === 0 ? (
-                  <Nil>Nothing overlaps yet — chase the silent operatives</Nil>
-                ) : (
-                  <ol className="flex flex-col gap-2.5">
-                    {plan.map((p, i) => (
-                      <li
-                        key={p.key}
-                        className="hq-rise rounded-[3px] border px-3 py-2.5"
-                        style={{
-                          ["--i" as string]: i,
-                          borderColor: i === 0 ? "color-mix(in srgb, var(--color-sand) 45%, transparent)" : "var(--color-rule)",
-                          backgroundColor: i === 0 ? "rgba(245,182,61,0.05)" : "transparent",
-                        }}
-                      >
-                        <div className="flex items-baseline gap-2.5">
-                          <span
-                            className="hq-readout w-5 shrink-0 text-[16px] font-bold leading-none"
-                            style={{ color: i === 0 ? "var(--color-sand)" : "var(--color-ink-soft)" }}
-                          >
-                            {i + 1}
-                          </span>
-                          <span className="hq-readout min-w-0 flex-1 truncate text-[15px] font-bold uppercase tracking-[0.03em]">
-                            {p.dow} {p.day} {p.mon} · {p.time}
-                          </span>
-                          <Tag tone={p.meets ? "live" : "warn"} solid={i === 0}>
-                            {p.count}/{p.total}
-                          </Tag>
-                        </div>
-                        <p className="hq-mono mt-1 pl-[30px] text-[11px] uppercase tracking-[0.08em] text-ink-soft">
-                          {p.emoji} {p.squadName} · window {p.window} · required {p.required}
-                          {!p.live && " · prototype"}
-                        </p>
-                        <div className="mt-2 pl-[30px]">
-                          <Meter pct={p.coverage} tone={p.meets ? "live" : "warn"} />
-                          <p className="mt-1.5 text-[11px] text-ink-soft">{p.reason}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </Panel>
-
-              <Panel
-                i={9}
-                label="Conflicts"
-                status={<Dot tone={conflicts.length ? "alert" : "idle"} pulse={conflicts.length > 0} />}
-                right={
-                  <span
-                    className="hq-mono text-xs"
-                    style={{ color: conflicts.length ? "var(--color-flag)" : "var(--color-ink-soft)" }}
-                  >
-                    {conflicts.length}
-                  </span>
-                }
-              >
-                {conflicts.length === 0 ? (
-                  <Nil>No operative is double-booked</Nil>
-                ) : (
-                  <ul className="flex flex-col">
-                    {conflicts.slice(0, 8).map((c) => (
-                      <li
-                        key={c.key}
-                        className="flex items-start gap-2.5 border-b border-rule/60 py-2 last:border-0"
-                      >
-                        <Dot tone={c.overlap ? "alert" : "warn"} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] text-ink">
-                            {c.name} · {c.dow} {c.day}
-                          </span>
-                          <span className="hq-mono block truncate text-[11px] text-ink-soft">
-                            {c.squads.map((s) => `${s.name} ${s.from}–${s.to}`).join("  ·  ")}
-                          </span>
-                        </span>
-                        <Tag tone={c.overlap ? "alert" : "warn"}>{c.overlap ? "Clash" : "Same night"}</Tag>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Panel>
-
-              <Panel i={10} label="Muster control">
-                {awaiting.length > 0 && (
-                  <div
-                    className="mb-3 rounded-[3px] border px-3 py-2.5"
-                    style={{
-                      borderColor: "color-mix(in srgb, var(--color-flag) 45%, transparent)",
-                      backgroundColor: "rgba(255,91,59,0.06)",
-                    }}
-                  >
-                    <p className="hq-label" style={{ color: "var(--color-flag)" }}>
-                      Action required
-                    </p>
-                    <p className="mt-0.5 text-[13px]">
-                      {awaiting.length} muster{awaiting.length === 1 ? "" : "s"} awaiting your nights.
-                    </p>
-                    <Link href="/squads" className="hq-label mt-1.5 inline-block hover:text-ink">
-                      Send your times →
-                    </Link>
-                  </div>
-                )}
-
-                {intel.map((s) => (
-                  <Row
-                    key={s.id}
-                    k={s.name}
-                    v={
-                      s.live
-                        ? s.status === "proposed"
-                          ? `Proposed ${s.chosenDate ? shortDate(s.chosenDate) : ""} ${s.chosenTime?.slice(0, 5) ?? ""}`.trim()
-                          : `Open · ${s.responded}/${s.total} in`
-                        : "No muster"
-                    }
-                    tone={s.live ? (s.status === "proposed" ? "warn" : "live") : "idle"}
-                  />
-                ))}
-
-                {intel.some((s) => !s.live) && (
-                  <div className="mt-3 rounded-[3px] border border-dashed border-rule px-3 py-3 text-center">
-                    <p className="hq-readout text-[15px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-sand)" }}>
-                      Call a muster
-                    </p>
-                    <p className="mt-1 text-[12px] text-ink-soft">
-                      {intel.filter((s) => !s.live).length} squad
-                      {intel.filter((s) => !s.live).length === 1 ? " has" : "s have"} no night being arranged.
-                      Set the nights and a kick-off window; the squad reports their hours.
-                    </p>
-                    <Link
-                      href="/squads"
-                      className="hq-label mt-2.5 inline-block rounded-[3px] px-3 py-2 font-semibold"
-                      style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-                    >
-                      Open the muster flow →
-                    </Link>
-                  </div>
-                )}
-              </Panel>
-            </div>
+          </Panel>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {queue.map((r, i) => (
+              <RequestCard
+                key={r.id}
+                request={r as PlanningRequest}
+                canDeploy={isPresident}
+                open={highlight === r.id}
+                highlight={highlight === r.id}
+                i={i}
+              />
+            ))}
           </div>
-        </>
+        )}
+      </section>
+
+      {/* ── THE REST OF THE PIPELINE ─────────────────────────────────────── */}
+      {rest.length > 0 && (
+        <section className="mb-6">
+          <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
+            {restLabel}
+          </h2>
+          <div className="flex flex-col gap-5">
+            {rest.map((r, i) => (
+              <RequestCard key={r.id} request={r as PlanningRequest} canDeploy={false} i={i} />
+            ))}
+          </div>
+        </section>
       )}
+
+      {/* ── DEPLOYED ─────────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
+          Recently deployed
+        </h2>
+        <Panel tier="quiet">
+          {deployed.length === 0 ? (
+            <Nil>Nothing deployed from a muster yet</Nil>
+          ) : (
+            <div className="flex flex-col">
+              {deployed.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-rule/60 py-2.5 last:border-0"
+                >
+                  <span className="w-6 shrink-0 text-center">{r.emoji}</span>
+                  <span className="hq-readout min-w-0 flex-1 truncate text-[15px] font-bold uppercase tracking-[0.02em]">
+                    {r.title}
+                  </span>
+                  <span className="hq-mono shrink-0 text-[12px] uppercase tracking-[0.08em] text-ink-soft">
+                    {r.deployed?.iso}
+                    {r.deployed?.time ? ` · ${r.deployed.time.slice(0, 5)}` : ""}
+                  </span>
+                  <Tag tone="live">Deployed</Tag>
+                  {r.deployed?.compId && (
+                    <Link href={`/hq/operations/${r.deployed.compId}`} className="hq-label hover:text-ink">
+                      Open →
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </section>
     </div>
   );
 }

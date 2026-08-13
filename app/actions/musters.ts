@@ -5,7 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import * as musters from "@/lib/data/commands/musters";
 
 // Thin Server Action wrappers around @/lib/data/commands/musters.
-const rev = () => revalidatePath("/squads");
+const rev = () => {
+  revalidatePath("/squads");
+  // Headquarters reads the same musters — Command Planning, the inbox and the
+  // squad screens all move when one of these lands.
+  revalidatePath("/hq/availability");
+  revalidatePath("/hq/squads");
+  revalidatePath("/hq");
+};
 
 export async function openMuster(input: {
   squadId: string;
@@ -41,6 +48,10 @@ export async function approveMuster(musterId: string, date: string, time?: strin
   if (res.ok) {
     rev();
     revalidatePath("/");
+    // Deploying creates a real Operation — the calendar and the ops register
+    // are now stale everywhere they're rendered.
+    revalidatePath("/hq/operations");
+    revalidatePath("/hq/calendar");
   }
   return res;
 }

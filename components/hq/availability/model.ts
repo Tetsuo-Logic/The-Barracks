@@ -114,6 +114,61 @@ export type SquadIntel = {
 
 const FALLBACK_WINDOW = { from: "18:00", to: "23:00" };
 
+/** Per-night headcount and the best overlapping window, from a filled grid.
+ *  Split out from buildSquadIntel so anything holding cells — a live muster or
+ *  a constructed scenario — reads the same nights through the same maths. */
+export function computeNights(
+  dates: string[],
+  members: { id: string }[],
+  cells: Record<string, Record<string, Cell>>,
+  windowFrom: string,
+  windowTo: string,
+): Night[] {
+  const starts = hourSlots(windowFrom, windowTo).slice(0, -1);
+
+  return dates.map((iso) => {
+    const hd = heroDate(iso);
+    let count = 0;
+    for (const m of members) if (cells[m.id][iso].state === "on") count++;
+
+    const slots: Slot[] = starts.map((s) => {
+      const sMin = toMin(s);
+      let n = 0;
+      for (const m of members) {
+        const c = cells[m.id][iso];
+        if (c.state !== "on" || !c.from || !c.to) continue;
+        if (toMin(c.from) <= sMin && toMin(c.to) > sMin) n++;
+      }
+      return { slot: s, count: n };
+    });
+
+    // Peak = the longest unbroken run of hours at the highest headcount. That
+    // run *is* the best overlapping window for the night.
+    const peakCount = slots.reduce((mx, s) => Math.max(mx, s.count), 0);
+    let peakFrom: string | null = null;
+    let peakTo: string | null = null;
+    if (peakCount > 0) {
+      let bestLen = 0;
+      let runStart = -1;
+      for (let i = 0; i <= slots.length; i++) {
+        const at = i < slots.length && slots[i].count === peakCount;
+        if (at && runStart < 0) runStart = i;
+        if (!at && runStart >= 0) {
+          const len = i - runStart;
+          if (len > bestLen) {
+            bestLen = len;
+            peakFrom = slots[runStart].slot;
+            peakTo = toHHMM(toMin(slots[i - 1].slot) + 60);
+          }
+          runStart = -1;
+        }
+      }
+    }
+
+    return { iso, dow: hd.dow, day: hd.day, mon: hd.mon, count, slots, peakCount, peakFrom, peakTo };
+  });
+}
+
 /** No minimum-strength column exists yet — derive one and mark it prototype. */
 export function requiredFor(memberCount: number): number {
   if (memberCount <= 1) return 1;
@@ -192,49 +247,7 @@ export function buildSquadIntel(sq: SquadView, todayISO: string): SquadIntel {
     cells[m.id] = row;
   }
 
-  const starts = hourSlots(windowFrom, windowTo).slice(0, -1);
-
-  const nights: Night[] = dates.map((iso) => {
-    const hd = heroDate(iso);
-    let count = 0;
-    for (const m of members) if (cells[m.id][iso].state === "on") count++;
-
-    const slots: Slot[] = starts.map((s) => {
-      const sMin = toMin(s);
-      let n = 0;
-      for (const m of members) {
-        const c = cells[m.id][iso];
-        if (c.state !== "on" || !c.from || !c.to) continue;
-        if (toMin(c.from) <= sMin && toMin(c.to) > sMin) n++;
-      }
-      return { slot: s, count: n };
-    });
-
-    // Peak = the longest unbroken run of hours at the highest headcount. That
-    // run *is* the best overlapping window for the night.
-    const peakCount = slots.reduce((mx, s) => Math.max(mx, s.count), 0);
-    let peakFrom: string | null = null;
-    let peakTo: string | null = null;
-    if (peakCount > 0) {
-      let bestLen = 0;
-      let runStart = -1;
-      for (let i = 0; i <= slots.length; i++) {
-        const at = i < slots.length && slots[i].count === peakCount;
-        if (at && runStart < 0) runStart = i;
-        if (!at && runStart >= 0) {
-          const len = i - runStart;
-          if (len > bestLen) {
-            bestLen = len;
-            peakFrom = slots[runStart].slot;
-            peakTo = toHHMM(toMin(slots[i - 1].slot) + 60);
-          }
-          runStart = -1;
-        }
-      }
-    }
-
-    return { iso, dow: hd.dow, day: hd.day, mon: hd.mon, count, slots, peakCount, peakFrom, peakTo };
-  });
+  const nights = computeNights(dates, members, cells, windowFrom, windowTo);
 
   return {
     id: sq.squad.id,

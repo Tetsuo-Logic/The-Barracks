@@ -156,9 +156,11 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     if (s.muster?.muster.status === "proposed" && profile.is_admin) {
       actions.push({
         source: squadName(s),
-        label: "Night proposed — approve to deploy",
-        href: "/hq/operations",
-        cta: "Approve",
+        label: "Operation ready to plan",
+        // Deep link — the President lands on this request in Command Planning,
+        // expanded, rather than on a page they have to search.
+        href: `/hq/availability?req=${s.muster.muster.id}`,
+        cta: "Review",
         tone: "alert",
         scope: "president",
       });

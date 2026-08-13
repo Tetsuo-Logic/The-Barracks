@@ -54,9 +54,9 @@ const SAMPLES: HqAction[] = [
     scope: "captain",
   },
   {
-    source: "COD SQUAD",
-    label: "Muster running — 4/7 answered, closes tomorrow",
-    href: "/hq/availability",
+    source: "SHOWDOWN SQUAD",
+    label: "Muster running — 3/6 answered, closes tomorrow",
+    href: "/hq/availability?req=demo:showdown",
     cta: "Review",
     tone: "info",
     scope: "captain",
@@ -81,9 +81,9 @@ const SAMPLES: HqAction[] = [
   // ── President ───────────────────────────────────────────────────────────
   {
     source: "COD SQUAD",
-    label: "Night proposed — approve to deploy",
-    href: "/hq/operations",
-    cta: "Approve",
+    label: "Operation ready to plan",
+    href: "/hq/availability?req=demo:cod",
+    cta: "Review",
     tone: "alert",
     scope: "president",
   },

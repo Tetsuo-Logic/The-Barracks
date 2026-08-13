@@ -16,7 +16,7 @@ export const NAV: Group[] = [
       { href: "/hq", label: "Headquarters" },
       { href: "/hq/calendar", label: "Calendar" },
       { href: "/hq/operations", label: "Operations" },
-      { href: "/hq/availability", label: "Availability" },
+      { href: "/hq/availability", label: "Planning" },
       { href: "/hq/comms", label: "Comms" },
     ],
   },
