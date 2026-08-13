@@ -257,11 +257,27 @@ export default async function CommandPage({
                                   {heroLabel}
                                 </p>
                               </TerminalHint>
-                              <p className="hq-mono mt-2 truncate text-[17px] uppercase tracking-[0.12em] text-ink-soft">
+                              {/* The kick-off is the second fact of the block, so
+                                  it's sized like one. Both lines hang off the
+                                  same left edge and scale together, which keeps
+                                  the pairing intact whatever the game is
+                                  called — COD and THE THREEBALL CUP have very
+                                  different widths. */}
+                              <p
+                                className="hq-readout mt-1.5 font-bold leading-none tracking-[0.04em]"
+                                style={{
+                                  fontSize: `calc(${heroTitleSize} * 0.58)`,
+                                  color: "var(--color-ink)",
+                                }}
+                              >
                                 {hero.time}
-                                {hero.stake ? ` · ${hero.stake}` : ""}
+                                {hero.stake ? (
+                                  <span className="hq-mono ml-3 text-[15px] uppercase tracking-[0.12em] text-ink-soft">
+                                    {hero.stake}
+                                  </span>
+                                ) : null}
                               </p>
-                              <div className="mt-3 flex flex-wrap gap-1.5">
+                              <div className="mt-3.5 flex flex-wrap gap-1.5">
                                 <Tag tone="idle">Standing by</Tag>
                                 {hero.squad && <Tag tone="warn">Squad operation</Tag>}
                                 {hero.demo && <Proto>Demo</Proto>}
