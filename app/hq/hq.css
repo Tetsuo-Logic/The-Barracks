@@ -344,6 +344,12 @@
   55%, 100% { transform: translateX(100%); }
 }
 
+/* The boot terminal opening — a window arriving, not a panel settling. */
+@keyframes hq-term-open {
+  from { opacity: 0; transform: translateY(10px) scale(0.955); }
+  to { opacity: 1; transform: none; }
+}
+
 .hq-caret::after {
   content: "▊";
   margin-left: 2px;
