@@ -37,6 +37,10 @@ export default async function CommandPage({
   const actions = [...o.actions, ...samples].filter((a) => canSee(view, a.scope));
   const sampleCount = samples.filter((a) => canSee(view, a.scope)).length;
 
+  // Is the thing on the hero actually under way? Once it is, the roll call is
+  // history — the roster bar answers "will we have enough?", which stops being
+  // a question the moment the night starts.
+  const heroLive = o.next != null && o.live.some((l) => l.id === o.next!.id);
   const nextGame = o.next ? gameById(o.next.game) : null;
   const nextIso = o.next ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}` : null;
   const rosterPct = o.profiles.length
@@ -139,11 +143,19 @@ export default async function CommandPage({
             scan="dash"
             sweep={Boolean(o.next)}
             tier={o.next ? "primary" : "quiet"}
-            label={o.live ? "In progress" : o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
+            label={
+              o.live.length > 1
+                ? `In progress · ${o.live.length}`
+                : o.live.length === 1
+                  ? "In progress"
+                  : o.status.operationsTonight > 0
+                    ? "Tonight"
+                    : "Next deployment"
+            }
             status={
               <Dot
-                tone={o.live || o.status.operationsTonight > 0 ? "live" : "idle"}
-                pulse={Boolean(o.live) || o.status.operationsTonight > 0}
+                tone={o.live.length > 0 || o.status.operationsTonight > 0 ? "live" : "idle"}
+                pulse={o.live.length > 0 || o.status.operationsTonight > 0}
               />
             }
             right={
@@ -157,7 +169,10 @@ export default async function CommandPage({
             {o.next && nextIso ? (
               /* Departure board: identity on the left, the clock dominating the
                  right, and the roster reading full width beneath both. */
-              <div className="flex flex-col justify-center gap-6 py-5" style={{ minHeight: 290 }}>
+              <div
+                className="flex flex-col justify-center gap-6 py-5"
+                style={{ minHeight: heroLive ? 180 : 290 }}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
                   <div className="flex min-w-0 flex-1 items-center gap-7">
                     {/* Date plate — deliberately built, deliberately secondary.
@@ -239,6 +254,7 @@ export default async function CommandPage({
                   </div>
                 </div>
 
+                {!heroLive && (
                 <div className="border-t border-rule pt-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="hq-label">Roster</span>
@@ -263,10 +279,40 @@ export default async function CommandPage({
                     />
                   </div>
                 </div>
+                )}
 
-                {/* Queued behind a running Operation. Without this the hero
-                    stays pinned to whatever kicked off and the night's second
-                    Operation has nowhere to appear. */}
+                {/* Everything else under way. The hero can only carry one, and
+                    a night with three Operations running must still say so. */}
+                {o.live.slice(1).map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/hq/operations/${c.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                    style={{ borderColor: "color-mix(in srgb, var(--color-moss) 40%, transparent)" }}
+                  >
+                    <span className="hq-label shrink-0 flex items-center gap-1.5" style={{ color: "var(--color-moss)" }}>
+                      <Dot tone="live" pulse />
+                      Also running
+                    </span>
+                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
+                      {heroDate(c.date).dow} {heroDate(c.date).day}
+                      {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
+                    </span>
+                    <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
+                      {compHeading(c)}
+                    </span>
+                    <Countdown
+                      iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
+                      size="19px"
+                      caption={false}
+                    />
+                    <span className="hq-label shrink-0 opacity-70">Open →</span>
+                  </Link>
+                ))}
+
+                {/* Queued behind whatever's running. Without this the hero stays
+                    pinned to what kicked off and the next Operation has nowhere
+                    to appear. */}
                 {o.upNext && (
                   <Link
                     href={`/hq/operations/${o.upNext.id}`}
@@ -342,11 +388,11 @@ export default async function CommandPage({
                         <span className="hq-mono shrink-0 text-[13px] text-ink-soft">
                           {shortTime(comp.tee_time) || "—"}
                         </span>
-                        {comp.id === o.live?.id ? (
+                        {o.live.some((l) => l.id === comp.id) ? (
                           <Tag tone="live" solid>
                             Live
                           </Tag>
-                        ) : comp.id === (o.live ? o.upNext?.id : o.next?.id) ? (
+                        ) : comp.id === (o.live.length ? o.upNext?.id : o.next?.id) ? (
                           <Tag tone="live">Next</Tag>
                         ) : null}
                       </Link>

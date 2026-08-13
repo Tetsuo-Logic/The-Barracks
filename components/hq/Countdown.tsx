@@ -11,11 +11,15 @@ export function Countdown({
   size = "40px",
   /** Sit the caption under the seconds rather than under the hours. */
   labelAlign = "left",
+  /** Drop the caption entirely — for compact rows where the context is
+   *  already stated beside the readout. */
+  caption = true,
 }: {
   iso: string;
   label?: string;
   size?: string;
   labelAlign?: "left" | "right";
+  caption?: boolean;
 }) {
   const [left, setLeft] = useState<string>("--:--:--");
   const [past, setPast] = useState(false);
@@ -55,12 +59,14 @@ export function Countdown({
       </div>
       {/* Caption stays white: the readout already carries the colour, and
           repeating it made the caption compete with the number. */}
-      <div
-        className="hq-label mt-2.5"
-        style={{ textAlign: labelAlign, color: "var(--color-ink)" }}
-      >
-        {past ? "Elapsed since kick-off" : label}
-      </div>
+      {caption && (
+        <div
+          className="hq-label mt-2.5"
+          style={{ textAlign: labelAlign, color: "var(--color-ink)" }}
+        >
+          {past ? "Elapsed since kick-off" : label}
+        </div>
+      )}
     </div>
   );
 }

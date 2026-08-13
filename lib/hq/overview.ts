@@ -41,8 +41,9 @@ export type HqOverview = {
   status: CommandStatus;
   /** What the hero shows: whatever is running, else the soonest not started. */
   next: Competition | null;
-  /** Running right now — started and not yet finished. */
-  live: Competition | null;
+  /** Everything running right now, soonest first. More than one is normal on
+   *  a busy night, so this is a list rather than a single Operation. */
+  live: Competition[];
   /** Queued behind the hero, so a live night doesn't hide the next one. */
   upNext: Competition | null;
   nextRsvps: { in: number; out: number; maybe: number; undecided: number };
@@ -111,23 +112,34 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   // getFixturesData also orders by date alone, so two Operations on the same
   // night came back in whatever order the query returned. Ordering by kick-off
   // is what makes "the 20:00, then the 21:00" actually true.
-  const byWhen = (a: Competition, b: Competition) =>
-    a.date === b.date
-      ? (a.tee_time ?? "").localeCompare(b.tee_time ?? "")
-      : a.date < b.date
-        ? -1
-        : 1;
-  const isLive = (c: Competition) =>
-    c.started_at != null && c.finished_at == null && c.status !== "cancelled";
+  const startsAt = (c: Competition) => `${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`;
+  const byWhen = (a: Competition, b: Competition) => (startsAt(a) < startsAt(b) ? -1 : 1);
+
+  // An Operation is under way once its kick-off has passed, whether or not
+  // anyone opened the room. Waiting for `started_at` meant a night that began
+  // half an hour ago still read as merely scheduled.
+  //
+  // CAVEAT: dates and times are stored as wall clock with no timezone, so this
+  // comparison is only right when the server shares the Barracks' clock. True
+  // locally; an hour out on a UTC host during BST. The whole app carries this
+  // assumption (see isToday) — fixing it means giving a Barracks a timezone.
+  const n = new Date();
+  const p2 = (v: number) => String(v).padStart(2, "0");
+  const nowStamp = `${n.getFullYear()}-${p2(n.getMonth() + 1)}-${p2(n.getDate())}T${p2(n.getHours())}:${p2(n.getMinutes())}:${p2(n.getSeconds())}`;
+  const today = nowStamp.slice(0, 10);
+
+  const begun = (c: Competition) => c.started_at != null || startsAt(c) <= nowStamp;
+  const isLive = (c: Competition) => begun(c) && c.finished_at == null && c.status !== "cancelled";
 
   const scheduled = comps.filter((c) => c.status === "upcoming").sort(byWhen);
-  const today = new Date().toISOString().slice(0, 10);
-  const notStarted = scheduled.filter((c) => !isLive(c) && c.date >= today);
 
-  // Something running owns the hero; otherwise the soonest thing that hasn't.
-  const live = scheduled.find(isLive) ?? null;
-  const next = live ?? notStarted[0] ?? scheduled[0] ?? null;
-  // Queued behind it — the answer to "what happens after this one finishes?"
+  // Everything running, not just the first — two or three Operations can
+  // easily overlap on a busy night, and the board has to say so.
+  const live = scheduled.filter(isLive);
+  const notStarted = scheduled.filter((c) => !begun(c) && c.date >= today);
+
+  const next = live[0] ?? notStarted[0] ?? scheduled[0] ?? null;
+  // Queued behind whatever's on the hero.
   const upNext = notStarted.find((c) => c.id !== next?.id) ?? null;
   const upcoming = scheduled.filter((c) => c.id !== next?.id);
 
