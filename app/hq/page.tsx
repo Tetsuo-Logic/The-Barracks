@@ -7,6 +7,7 @@ import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
+import { hqSampleActions } from "@/lib/hq/future/actions";
 
 export const metadata = { title: "Command · Barracks HQ" };
 
@@ -36,7 +37,11 @@ export default async function CommandPage({
   const view: HqScope = asked && allowed.includes(asked) ? asked : o.realRole;
 
   const isPresident = view === "president";
-  const actions = o.actions.filter((a) => VISIBLE_TO[view].includes(a.scope));
+  // Real work first, then dev-only samples so the panel can be designed against
+  // all three roles while the Barracks is quiet. Empty in production.
+  const samples = hqSampleActions();
+  const actions = [...o.actions, ...samples].filter((a) => VISIBLE_TO[view].includes(a.scope));
+  const sampleCount = samples.filter((a) => VISIBLE_TO[view].includes(a.scope)).length;
 
   const nextGame = o.next ? gameById(o.next.game) : null;
   const nextIso = o.next ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}` : null;
@@ -258,12 +263,23 @@ export default async function CommandPage({
           label="Action required"
           status={<Dot tone={actions.length ? "alert" : "live"} pulse={actions.length > 0} />}
           right={
-            <span
-              className="hq-readout text-[15px] font-bold"
-              style={{ color: actions.length ? "var(--color-flag)" : "var(--color-moss)" }}
-            >
-              {actions.length}
-            </span>
+            <>
+              {sampleCount > 0 && (
+                <span
+                  className="hq-mono rounded-[3px] border border-dashed px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]"
+                  style={{ borderColor: "#4b5a52", color: "#6d8076" }}
+                  title={`${sampleCount} demo rows for design — dev only, never shown in production`}
+                >
+                  {sampleCount} demo
+                </span>
+              )}
+              <span
+                className="hq-readout text-[15px] font-bold"
+                style={{ color: actions.length ? "var(--color-flag)" : "var(--color-moss)" }}
+              >
+                {actions.length}
+              </span>
+            </>
           }
           pad={false}
         >
