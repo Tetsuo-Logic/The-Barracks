@@ -53,7 +53,31 @@ export default async function CommandPage({
   return (
     <div>
       <PageHead
-        eyebrow="Command"
+        /* Barracks identity, sitting above the page title rather than becoming
+           a second one. The flex row is the point: a crest slots in before the
+           name and a clan tag after it, without the header changing shape or
+           growing a row. Neither is built yet. */
+        eyebrow={
+          <div className="mb-1 flex items-center gap-2.5">
+            {/* Crest slot — user-uploaded or generated, later. */}
+            <span
+              className="hq-readout text-[15px] font-bold uppercase leading-none tracking-[0.2em]"
+              style={{ color: "var(--color-sand)" }}
+            >
+              {o.barracks.name}
+            </span>
+            {/* Clan tag slot — e.g. [BRKS] — later. */}
+            <span
+              aria-hidden
+              className="h-px min-w-[28px] flex-1"
+              style={{
+                background:
+                  "linear-gradient(90deg, color-mix(in srgb, var(--color-sand) 45%, transparent), transparent)",
+                maxWidth: 220,
+              }}
+            />
+          </div>
+        }
         title="Headquarters"
         right={
           <>

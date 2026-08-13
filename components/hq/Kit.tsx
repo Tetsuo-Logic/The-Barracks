@@ -158,7 +158,8 @@ export function PageHead({
   right,
   children,
 }: {
-  eyebrow?: string;
+  /** String for a plain kicker, or markup for a richer identity line. */
+  eyebrow?: ReactNode;
   title: string;
   right?: ReactNode;
   children?: ReactNode;
@@ -166,7 +167,11 @@ export function PageHead({
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow && <p className="hq-label mb-1" style={{ color: "var(--color-sand)" }}>{eyebrow}</p>}
+        {typeof eyebrow === "string" ? (
+          <p className="hq-label mb-1" style={{ color: "var(--color-sand)" }}>{eyebrow}</p>
+        ) : (
+          eyebrow
+        )}
         <h1 className="hq-readout text-[26px] font-bold uppercase leading-none tracking-[0.02em]">
           {title}
         </h1>

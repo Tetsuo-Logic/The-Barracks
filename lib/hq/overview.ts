@@ -35,6 +35,9 @@ export type HqAction = {
 export type HqOverview = {
   profile: Profile;
   profiles: Profile[];
+  /** The Barracks being commanded. Read from `groups` — never hardcoded, since
+   *  every group names its own. Crest and clan tag will hang off this later. */
+  barracks: { id: string | null; name: string };
   status: CommandStatus;
   next: Competition | null;
   nextRsvps: { in: number; out: number; maybe: number; undecided: number };
@@ -54,15 +57,37 @@ const isToday = (d: string) => d === new Date().toISOString().slice(0, 10);
 export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   const supabase = await createClient();
 
-  const [fixtures, inbox, squads, activity, { data: allComps }, { data: allRsvps }] =
-    await Promise.all([
-      getFixturesData(),
-      getInbox(profile),
-      getSquads(profile.id),
-      getActivityFeed(profile.id, profile.is_admin),
-      supabase.from("competitions").select("*"),
-      supabase.from("rsvps").select("*"),
-    ]);
+  const [
+    fixtures,
+    inbox,
+    squads,
+    activity,
+    { data: allComps },
+    { data: allRsvps },
+    { data: membership },
+  ] = await Promise.all([
+    getFixturesData(),
+    getInbox(profile),
+    getSquads(profile.id),
+    getActivityFeed(profile.id, profile.is_admin),
+    supabase.from("competitions").select("*"),
+    supabase.from("rsvps").select("*"),
+    // The caller's Barracks. A User may hold 0..n memberships; this surface
+    // commands one at a time, so take the membership we're rendering for.
+    supabase
+      .from("memberships")
+      .select("group_id, groups(id, name)")
+      .eq("user_id", profile.id)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  // PostgREST returns an embedded many-to-one as an object, but returns an
+  // array when it can't infer the relationship. Handle both, so a rename never
+  // silently falls back to the default name.
+  type GroupRow = { id: string; name: string };
+  const embedded = (membership as { groups?: GroupRow | GroupRow[] | null } | null)?.groups ?? null;
+  const group: GroupRow | null = Array.isArray(embedded) ? (embedded[0] ?? null) : embedded;
 
   const profiles = fixtures.profiles;
   const comps = (allComps ?? []) as Competition[];
@@ -201,6 +226,7 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   return {
     profile,
     profiles,
+    barracks: { id: group?.id ?? null, name: group?.name ?? "Unnamed Barracks" },
     status,
     next,
     nextRsvps: {
