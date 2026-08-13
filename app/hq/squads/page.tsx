@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
+import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
 import { getSquads, getSquadRequests } from "@/lib/data/queries";
 import { gameById, compHeading } from "@/lib/games";
@@ -15,8 +16,16 @@ export const metadata = { title: "Squads · Barracks HQ" };
 // Squads overview — every fighting unit in the Barracks on one board. Squads,
 // members, captains, musters, night nudges and operations are all real; the
 // battle record is the one prototype and is marked as such.
-export default async function SquadsPage() {
-  const profile = await requireProfile();
+export default async function SquadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string }>;
+}) {
+  const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
+  // Planning is a Captain/President surface — a member never sees a route into
+  // it, here or anywhere else. Follows the dev role preview so it's testable.
+  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+
   const supabase = await createClient();
 
   const [squads, requests, { data: compRows }] = await Promise.all([
@@ -50,13 +59,15 @@ export default async function SquadsPage() {
         title="Squads"
         right={
           <>
-            <Link
-              href="/hq/availability"
-              className="hq-label rounded-[3px] px-3 py-2 font-semibold"
-              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-            >
-              Call a muster
-            </Link>
+            {canPlan && (
+              <Link
+                href="/hq/availability"
+                className="hq-label rounded-[3px] px-3 py-2 font-semibold"
+                style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
+              >
+                Call a muster
+              </Link>
+            )}
             <Link
               href="/squads"
               className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"

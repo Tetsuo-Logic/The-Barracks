@@ -147,7 +147,8 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
       actions.push({
         source: squadName(s),
         label: "Muster — select your available nights",
-        href: "/hq/availability",
+        // Members have no Planning surface; they answer inside their squad.
+        href: "/hq/squads",
         cta: "Respond",
         tone: "warn",
         scope: "member",

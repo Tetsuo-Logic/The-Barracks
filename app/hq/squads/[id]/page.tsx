@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
+import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
 import { getSquads } from "@/lib/data/queries";
 import { gameById, compHeading } from "@/lib/games";
@@ -29,11 +30,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 // specialised panel at the foot of the page.
 export default async function SquadDossierPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ as?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const profile = await requireProfile();
+  // Planning is a Captain/President surface — a member never sees a route into
+  // it, here or anywhere else. Follows the dev role preview so it's testable.
+  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+
   const squads = await getSquads(profile.id);
   const view = squads.find((s) => s.squad.id === id);
   if (!view) notFound();
@@ -114,13 +121,15 @@ export default async function SquadDossierPage({
         title={squad.name || `${game.name} Squad`}
         right={
           <>
-            <Link
-              href="/hq/availability"
-              className="hq-label rounded-[3px] px-3 py-2 font-semibold"
-              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-            >
-              Call a muster
-            </Link>
+            {canPlan && (
+              <Link
+                href="/hq/availability"
+                className="hq-label rounded-[3px] px-3 py-2 font-semibold"
+                style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
+              >
+                Call a muster
+              </Link>
+            )}
             <Link
               href="/hq/squads"
               className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
@@ -369,9 +378,11 @@ export default async function SquadDossierPage({
             label="Muster"
             status={<Dot tone={musterTone} pulse={Boolean(muster)} />}
             right={
-              <Link href="/hq/availability" className="hq-label hover:text-ink">
-                Availability →
-              </Link>
+              canPlan ? (
+                <Link href="/hq/availability" className="hq-label hover:text-ink">
+                  Planning →
+                </Link>
+              ) : undefined
             }
           >
             {!muster ? (

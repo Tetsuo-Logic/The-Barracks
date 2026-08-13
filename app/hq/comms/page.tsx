@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
+import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
 import { getActivityFeed, type ActivityItem } from "@/lib/queries";
 import { relativeTime, heroDate, shortDate } from "@/lib/dates";
@@ -30,10 +31,15 @@ const KIND_TONE: Record<string, "live" | "warn" | "alert" | "info" | "idle"> = {
 export default async function CommsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ b?: string }>;
+  searchParams: Promise<{ b?: string; as?: string }>;
 }) {
   const profile = await requireProfile();
-  const { b: selectedId } = await searchParams;
+  const sp = await searchParams;
+  const selectedId = sp.b;
+  // Planning is a Captain/President surface — a member never sees a route into
+  // it, here or anywhere else. Follows the dev role preview so it's testable.
+  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+
   const supabase = await createClient();
 
   const [{ data: bxRows }, { data: respRows }, { data: profileRows }, activity] =
@@ -138,12 +144,14 @@ export default async function CommsPage({
             <Tag tone={profile.is_admin ? "live" : "idle"}>
               {profile.is_admin ? "Transmit clearance" : "Receive only"}
             </Tag>
-            <Link
-              href="/hq/availability"
-              className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
-            >
-              Availability
-            </Link>
+            {canPlan && (
+              <Link
+                href="/hq/availability"
+                className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
+              >
+                Planning
+              </Link>
+            )}
           </>
         }
       >

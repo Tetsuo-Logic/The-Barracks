@@ -14,7 +14,7 @@ const SAMPLES: HqAction[] = [
   {
     source: "COD SQUAD",
     label: "Muster — select your available nights",
-    href: "/hq/availability",
+    href: "/hq/squads",
     cta: "Respond",
     tone: "warn",
     scope: "member",
