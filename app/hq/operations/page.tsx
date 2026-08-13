@@ -242,7 +242,7 @@ export default async function OperationsPage({
           i={1}
           pad={false}
           label="Upcoming"
-          status={<Dot tone={upcoming.length ? "warn" : "idle"} />}
+          status={<Dot tone="warn" />}
           right={
             upcoming.length > UPCOMING_SHOWN ? (
               <Link href="/hq/calendar" className="hq-label hover:text-ink">
@@ -336,7 +336,7 @@ export default async function OperationsPage({
           pad={false}
           tier="quiet"
           label="Operation history"
-          status={<Dot tone="idle" />}
+          status={<Dot tone="alert" />}
           right={
             <span className="hq-mono text-xs text-ink-soft">
               {historyAll.length} operations · {totalGames} games
@@ -379,7 +379,6 @@ export default async function OperationsPage({
                 open-ended lists are dropdowns so twenty squads don't wrap into
                 a wall of chips. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="hq-label mr-1 opacity-50">Squad</span>
               <FilterChip
                 href={qs({ q: sp.q, game: gameFilter })}
                 label="All"
