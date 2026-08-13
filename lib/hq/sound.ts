@@ -16,32 +16,44 @@
 const MUTE_KEY = "hq-muted";
 
 let ctx: AudioContext | null = null;
-let unlocked = false;
 
 function context(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!ctx) {
-    const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Ctor =
+      window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
   }
-  if (ctx.state === "suspended" && unlocked) void ctx.resume();
+  // Always try. A suspended context resumes the moment the page has had any
+  // interaction, and asking early costs nothing — gating the resume behind our
+  // own "unlocked" flag just meant staying silent long after we were allowed
+  // to play.
+  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 
-/** Call once from the shell: the first real gesture unlocks audio for good. */
+/** Call once from the shell so audio is live the instant it's permitted. */
 export function armAudio(): () => void {
   if (typeof window === "undefined") return () => {};
-  const arm = () => {
-    unlocked = true;
-    void context()?.resume();
-  };
-  window.addEventListener("pointerdown", arm, { once: true });
-  window.addEventListener("keydown", arm, { once: true });
+  const arm = () => void context()?.resume();
+  // Not `once`: the first gesture may arrive before the browser is willing,
+  // and pointerdown fires before click, which is the earliest we can ask.
+  //
+  // Deliberately NOT called eagerly here. A context constructed outside a user
+  // gesture is born suspended and tends to stay that way; constructing it
+  // inside the first real gesture is what actually gets us a running one.
+  window.addEventListener("pointerdown", arm);
+  window.addEventListener("keydown", arm);
   return () => {
     window.removeEventListener("pointerdown", arm);
     window.removeEventListener("keydown", arm);
   };
+}
+
+/** True when a sound would actually be heard right now. */
+export function audioReady(): boolean {
+  return !isMuted() && context()?.state === "running";
 }
 
 export function isMuted(): boolean {
@@ -65,6 +77,7 @@ function blip(opts: {
   if (isMuted()) return;
   const c = context();
   if (!c || c.state !== "running") return;
+
 
   const now = c.currentTime;
   const osc = c.createOscillator();

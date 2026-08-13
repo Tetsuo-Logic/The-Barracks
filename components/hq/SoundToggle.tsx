@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { armAudio, isMuted, setMuted } from "@/lib/hq/sound";
+import { armAudio, isMuted, setMuted, playKey, audioReady } from "@/lib/hq/sound";
 
 // Sound you can't turn off is the fastest way to make flair annoying, so the
 // mute lives in the bar and is remembered across sessions.
@@ -22,8 +22,17 @@ export function SoundToggle() {
         const next = !muted;
         setMuted(next);
         setLocal(next);
+        // Click to unmute and you hear it immediately — the click itself is the
+        // gesture that lets audio start, so this doubles as the proof it works.
+        if (!next) window.setTimeout(playKey, 0);
       }}
-      title={muted ? "Sound off" : "Sound on"}
+      title={
+        muted
+          ? "Sound off — click to turn on"
+          : audioReady()
+            ? "Sound on"
+            : "Sound on — click anywhere to start audio"
+      }
       aria-label={muted ? "Turn sound on" : "Turn sound off"}
       className="hq-label rounded-[3px] border px-2 py-1.5 transition-colors"
       style={{

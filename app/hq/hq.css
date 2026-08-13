@@ -221,6 +221,8 @@
   border-top: 1px solid color-mix(in srgb, var(--color-sand) 42%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--color-sand) 42%, transparent);
 }
+/* The strip's own readings set their colour in StatusStrip — it stays green,
+   because that line is the machine reporting rather than a page heading. */
 .hq .hq-strip .hq-label { color: var(--color-sand); }
 
 /* Rows: white text on black, with dividers and hover doing the separating. */

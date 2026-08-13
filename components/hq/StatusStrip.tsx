@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { playKey, playLine } from "@/lib/hq/sound";
 import type { Tone } from "@/components/hq/Kit";
 
-// The standing-figures strip, with a short handshake on arrival: the first
-// reading types itself out in phosphor green — the machine reporting — then
-// settles to amber as the rest of the line falls in behind it.
+// The standing-figures strip, reporting itself on arrival: the whole line types
+// out in phosphor green, reading after reading, and stays green — this line is
+// the machine talking, not a page heading, so it keeps the terminal's colour.
 //
 // It plays ONCE per screen per browser session. Flair that replays every time
 // you navigate stops being flair and starts being a toll booth, which is the
@@ -22,6 +22,9 @@ const TONE: Record<string, string> = {
   idle: "var(--color-rule)",
   info: "var(--color-ink-soft)",
 };
+
+/** Between readings — long enough to read as a separate line of output. */
+const BETWEEN = 170;
 
 export type StripItem = {
   text: string;
@@ -45,15 +48,15 @@ export function StatusStrip({
 }) {
   const pathname = usePathname();
   // -1 = not decided yet (server render + first paint), so nothing flickers.
-  const [typed, setTyped] = useState(-1);
-  const [shown, setShown] = useState(-1);
+  const [item, setItem] = useState(-1);
+  const [chars, setChars] = useState(0);
   // Strict Mode runs effects twice in dev. Without this the second pass reads
   // the "already played" flag the first pass just wrote and skips its own
   // animation — so the strip only ever animated in production.
   const decided = useRef<string | null>(null);
 
-  const head = items[0];
-  const rest = items.slice(1);
+  // Items are rebuilt every render, so key the effects off their content.
+  const sig = items.map((i) => i.text).join("|");
 
   useEffect(() => {
     const key = `hq-strip:${pathname}`;
@@ -66,15 +69,14 @@ export function StatusStrip({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (skip) {
-      setTyped(head?.text.length ?? 0);
-      setShown(rest.length);
+      setItem(items.length);
       return;
     }
 
     const start = () => {
       sessionStorage.setItem(key, "1");
-      setTyped(0);
-      setShown(0);
+      setItem(0);
+      setChars(0);
     };
 
     // On a cold arrival the boot terminal is covering the page — wait for it,
@@ -85,76 +87,64 @@ export function StatusStrip({
     }
     window.addEventListener("hq:booted", start, { once: true });
     return () => window.removeEventListener("hq:booted", start);
-  }, [pathname, head?.text.length, rest.length]);
+  }, [pathname, items.length]);
 
-  // Type the first reading.
+  // Type the current reading, then move to the next.
   useEffect(() => {
-    if (typed < 0 || !head || typed >= head.text.length) return;
+    if (item < 0 || item >= items.length) return;
+    const text = items[item].text;
+
+    if (chars >= text.length) {
+      const t = setTimeout(() => {
+        setItem((v) => v + 1);
+        setChars(0);
+        playLine();
+      }, BETWEEN);
+      return () => clearTimeout(t);
+    }
+
+    // Tiny hesitations: a beat at word breaks and a shorter one every so often,
+    // so it reads as something typing rather than a progress bar.
+    const ch = text[chars];
+    const pause = ch === " " ? 80 : chars > 0 && chars % 6 === 0 ? 40 : 0;
+    const first = item === 0 && chars === 0;
+
     const t = setTimeout(
       () => {
-        setTyped((v) => v + 1);
+        setChars((v) => v + 1);
         playKey();
       },
-      typed === 0 ? 160 : speed,
+      (first ? 160 : speed) + pause,
     );
     return () => clearTimeout(t);
-  }, [typed, head, speed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item, chars, speed, sig]);
 
-  const typing = typed >= 0 && head != null && typed < head.text.length;
-
-  // Then bring the rest in, one at a time.
-  useEffect(() => {
-    if (typing || shown < 0 || shown >= rest.length) return;
-    const t = setTimeout(() => {
-      setShown((v) => v + 1);
-      playLine();
-    }, 110);
-    return () => clearTimeout(t);
-  }, [shown, typing, rest.length]);
+  const running = item >= 0 && item < items.length;
 
   return (
     <div className="hq-strip hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
-      {head && (
-        <span className="hq-label flex items-center gap-1.5">
-          {head.dot && (
-            <span
-              className={`hq-dot ${head.pulse ? "hq-dot-live" : ""}`}
-              style={{ backgroundColor: TONE[head.dot] ?? TONE.idle }}
-              aria-hidden
-            />
-          )}
-          {/* Green while it's still reporting, amber once it's a fact. The
-              transition is only on the way out — easing *into* green means the
-              first characters arrive amber, which reads as a fade, not a
-              readout coming through. */}
-          <span
-            style={{
-              color: typing ? "var(--color-moss)" : undefined,
-              transition: typing ? "none" : "color 500ms ease",
-            }}
-          >
-            {typed < 0 ? head.text : head.text.slice(0, typed)}
-            {typing && <span className="hq-caret" />}
-          </span>
-        </span>
-      )}
-
-      {rest.map((it, i) => {
-        const on = shown < 0 || i < shown;
+      {items.map((it, i) => {
+        const settled = item < 0 || i < item;
+        const active = i === item;
+        const text = settled ? it.text : active ? it.text.slice(0, chars) : it.text;
         return (
           <span
             key={it.text}
             className="flex items-center gap-5"
-            style={{
-              opacity: on ? 1 : 0,
-              transform: on ? "none" : "translateY(3px)",
-              transition: "opacity 260ms ease, transform 260ms ease",
-            }}
+            // Space is held for readings that haven't been typed yet, so the
+            // line doesn't shuffle sideways as each one lands.
+            style={{ visibility: settled || active ? "visible" : "hidden" }}
           >
-            <span className="hq-label opacity-30" aria-hidden>
-              {separator}
-            </span>
-            <span className="hq-label flex items-center gap-1.5">
+            {i > 0 && (
+              <span className="hq-label opacity-30" aria-hidden>
+                {separator}
+              </span>
+            )}
+            <span
+              className="hq-label flex items-center gap-1.5"
+              style={{ color: "var(--color-moss)" }}
+            >
               {it.dot && (
                 <span
                   className={`hq-dot ${it.pulse ? "hq-dot-live" : ""}`}
@@ -162,13 +152,24 @@ export function StatusStrip({
                   aria-hidden
                 />
               )}
-              {it.text}
+              {text}
+              {active && <span className="hq-caret" />}
             </span>
           </span>
         );
       })}
 
-      {right && <span className="ml-auto shrink-0">{right}</span>}
+      {right && (
+        <span
+          className="ml-auto shrink-0"
+          style={{
+            opacity: running ? 0 : 1,
+            transition: "opacity 300ms ease",
+          }}
+        >
+          {right}
+        </span>
+      )}
     </div>
   );
 }
