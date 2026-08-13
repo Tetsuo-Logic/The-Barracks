@@ -17,8 +17,12 @@ export const metadata = { title: "Operations · Barracks HQ" };
 // that gets more valuable the longer the group exists, so it's built as a table
 // from the start rather than a list that will need replacing.
 
-const UPCOMING_SHOWN = 8;
+// The calendar owns the full future — this page shows just enough of it to know
+// what's next. History is the part that grows, so it gets the room.
+const UPCOMING_SHOWN = 3;
 const HISTORY_SHOWN = 25;
+/** Six-column tables stop being readable much past this. */
+const PAGE_WIDTH = 1180;
 
 function durationText(startIso: string, endIso: string) {
   const mins = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000));
@@ -39,7 +43,7 @@ type Row = {
 export default async function OperationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ squad?: string; all?: string; as?: string }>;
+  searchParams: Promise<{ squad?: string; all?: string; as?: string; q?: string; game?: string }>;
 }) {
   const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
   const supabase = await createClient();
@@ -89,14 +93,25 @@ export default async function OperationsPage({
     (r) => r.comp.finished_at != null || r.comp.status === "played" || r.comp.status === "cancelled",
   );
 
-  // Filters run over history only — that's the set that grows.
+  // Filters run over history only — that's the set that grows without bound.
   const squadFilter = sp.squad ?? "all";
-  const history =
-    squadFilter === "all"
-      ? historyAll
-      : squadFilter === "barracks"
-        ? historyAll.filter((r) => !r.squadId)
-        : historyAll.filter((r) => r.squadId === squadFilter);
+  const gameFilter = sp.game ?? "all";
+  const query = (sp.q ?? "").trim().toLowerCase();
+
+  const gamesInHistory = Array.from(new Set(historyAll.map((r) => r.comp.game)));
+
+  const history = historyAll.filter((r) => {
+    if (squadFilter === "barracks" && r.squadId) return false;
+    if (squadFilter !== "all" && squadFilter !== "barracks" && r.squadId !== squadFilter) return false;
+    if (gameFilter !== "all" && r.comp.game !== gameFilter) return false;
+    if (query) {
+      const hay = `${compHeading(r.comp)} ${gameById(r.comp.game).name} ${r.squadName ?? ""} ${r.comp.date}`;
+      if (!hay.toLowerCase().includes(query)) return false;
+    }
+    return true;
+  });
+
+  const filtered = squadFilter !== "all" || gameFilter !== "all" || query.length > 0;
 
   const showAllHistory = sp.all === "1";
   const historyShown = showAllHistory ? history : history.slice(0, HISTORY_SHOWN);
@@ -111,11 +126,17 @@ export default async function OperationsPage({
   const isAdmin = view === "president";
 
   // Dev-only filler so the tables can be judged at length. Empty in production.
-  const sampleUpcoming = hqSampleUpcoming();
+  // Upcoming tops up to the cap rather than adding to it, so the demo rows
+  // can't quietly break the "only the next three" rule.
+  const upcomingShown = upcoming.slice(0, UPCOMING_SHOWN);
+  const sampleUpcoming = hqSampleUpcoming().slice(
+    0,
+    Math.max(0, UPCOMING_SHOWN - upcomingShown.length),
+  );
   const sampleHistory = hqSampleHistory();
 
   return (
-    <div>
+    <div style={{ maxWidth: PAGE_WIDTH }}>
       <PageHead
         eyebrow="Command"
         title="Operations"
@@ -146,9 +167,9 @@ export default async function OperationsPage({
         <span className="hq-label opacity-30">·</span>
         <span className="hq-label">{upcoming.length} upcoming</span>
         <span className="hq-label opacity-30">·</span>
-        <span className="hq-label">{historyAll.length} in history</span>
+        <span className="hq-label">{historyAll.length} completed</span>
         <span className="hq-label opacity-30">·</span>
-        <span className="hq-label">{totalGames} games logged</span>
+        <span className="hq-label">{totalGames} games</span>
         {totalHours > 0 && (
           <>
             <span className="hq-label opacity-30">·</span>
@@ -243,7 +264,7 @@ export default async function OperationsPage({
                 </tr>
               </thead>
               <tbody>
-                {upcoming.slice(0, UPCOMING_SHOWN).map((r, n) => {
+                {upcomingShown.map((r, n) => {
                   const c = r.comp;
                   const hd = heroDate(c.date);
                   return (
@@ -319,26 +340,73 @@ export default async function OperationsPage({
             </span>
           }
         >
-          {/* Filters. Server-rendered via the URL so a view stays linkable. */}
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-3 py-2.5">
-            <FilterChip href="/hq/operations" label="All squads" active={squadFilter === "all"} />
-            <FilterChip
-              href="/hq/operations?squad=barracks"
-              label="Whole Barracks"
-              active={squadFilter === "barracks"}
-            />
-            {squads.map((s) => (
-              <FilterChip
-                key={s.squad.id}
-                href={`/hq/operations?squad=${s.squad.id}`}
-                label={s.squad.name || gameById(s.squad.game).name}
-                active={squadFilter === s.squad.id}
+          {/* Filters. Plain GET form + links, so every view is server-rendered
+              and linkable — no client state, and a filtered archive can be
+              bookmarked or shared. */}
+          <div className="flex flex-col gap-2.5 border-b border-rule px-3 py-3">
+            <form method="GET" action="/hq/operations" className="flex items-center gap-2">
+              {squadFilter !== "all" && <input type="hidden" name="squad" value={squadFilter} />}
+              {gameFilter !== "all" && <input type="hidden" name="game" value={gameFilter} />}
+              <input
+                type="search"
+                name="q"
+                defaultValue={sp.q ?? ""}
+                placeholder="Search operations, squads, dates…"
+                className="hq-mono min-w-0 flex-1 rounded-[3px] border border-rule bg-card px-3 py-1.5 text-[12px] text-ink outline-none focus:border-ink-soft"
               />
-            ))}
+              <button
+                type="submit"
+                className="hq-label shrink-0 rounded-[3px] border border-rule px-3 py-1.5 transition-colors hover:border-ink-soft hover:text-ink"
+              >
+                Search
+              </button>
+              {filtered && (
+                <Link
+                  href="/hq/operations"
+                  className="hq-label shrink-0 rounded-[3px] px-2.5 py-1.5 transition-colors hover:text-ink"
+                  style={{ color: "var(--color-flag)" }}
+                >
+                  Clear
+                </Link>
+              )}
+            </form>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="hq-label mr-1 opacity-50">Squad</span>
+              <FilterChip href={qs({ q: sp.q })} label="All" active={squadFilter === "all"} />
+              <FilterChip
+                href={qs({ q: sp.q, game: gameFilter, squad: "barracks" })}
+                label="Whole Barracks"
+                active={squadFilter === "barracks"}
+              />
+              {squads.map((s) => (
+                <FilterChip
+                  key={s.squad.id}
+                  href={qs({ q: sp.q, game: gameFilter, squad: s.squad.id })}
+                  label={s.squad.name || gameById(s.squad.game).name}
+                  active={squadFilter === s.squad.id}
+                />
+              ))}
+
+              {gamesInHistory.length > 1 && (
+                <>
+                  <span className="hq-label ml-3 mr-1 opacity-50">Game</span>
+                  <FilterChip href={qs({ q: sp.q, squad: squadFilter })} label="All" active={gameFilter === "all"} />
+                  {gamesInHistory.map((g) => (
+                    <FilterChip
+                      key={g}
+                      href={qs({ q: sp.q, squad: squadFilter, game: g })}
+                      label={gameById(g).name}
+                      active={gameFilter === g}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
           </div>
 
-          {historyShown.length === 0 && !(squadFilter === "all" && sampleHistory.length > 0) ? (
-            <Nil>{squadFilter === "all" ? "No operations closed yet" : "Nothing under this filter"}</Nil>
+          {historyShown.length === 0 && (filtered || sampleHistory.length === 0) ? (
+            <Nil>{filtered ? "Nothing matches that" : "No operations closed yet"}</Nil>
           ) : (
             <>
               <table className="w-full border-collapse">
@@ -405,7 +473,9 @@ export default async function OperationsPage({
                       </tr>
                     );
                   })}
-                  {squadFilter === "all" &&
+                  {/* Samples sit out whenever a filter is applied — a demo row
+                      surviving a search would misrepresent the result. */}
+                  {!filtered &&
                     sampleHistory.map((s) => (
                       <SampleRow key={`h-${s.date}-${s.title}`} op={s} kind="history" />
                     ))}
@@ -415,7 +485,7 @@ export default async function OperationsPage({
               {!showAllHistory && history.length > HISTORY_SHOWN && (
                 <div className="border-t border-rule px-3 py-2.5 text-center">
                   <Link
-                    href={`/hq/operations?${squadFilter !== "all" ? `squad=${squadFilter}&` : ""}all=1`}
+                    href={qs({ q: sp.q, squad: squadFilter, game: gameFilter, all: "1" })}
                     className="hq-label hover:text-ink"
                   >
                     View all {history.length} operations →
@@ -480,6 +550,16 @@ function SampleRow({ op, kind }: { op: SampleOp; kind: "upcoming" | "history" })
       )}
     </tr>
   );
+}
+
+/** Build an /hq/operations URL, dropping empty or "all" values. */
+function qs(parts: Record<string, string | undefined>): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(parts)) {
+    if (v && v !== "all") p.set(k, v);
+  }
+  const s = p.toString();
+  return s ? `/hq/operations?${s}` : "/hq/operations";
 }
 
 function FilterChip({ href, label, active }: { href: string; label: string; active: boolean }) {
