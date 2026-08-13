@@ -319,40 +319,35 @@ export default async function CommandPage({
                     className={`hq-label ${hero ? "mt-2 border-t border-rule pt-4" : ""}`}
                     style={{ color: "var(--color-moss)" }}
                   >
-                    Running now · {o.live.length}
+                    Running now
                   </p>
                 )}
                 {o.live.map((c) => (
                   <Link
                     key={c.id}
                     href={`/hq/operations/${c.id}`}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
-                    style={{
-                      borderColor: "color-mix(in srgb, var(--color-moss) 42%, transparent)",
-                      background: "rgba(61,220,132,0.05)",
-                    }}
+                    /* No box. These are departure-board lines like the hero,
+                       just at a smaller scale — a bordered card made them read
+                       as a separate widget rather than the same board. */
+                    className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-rule/60 px-1 py-3 transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]"
                   >
-                    <span
-                      className="hq-label flex shrink-0 items-center gap-1.5"
-                      style={{ color: "var(--color-moss)" }}
-                    >
+                    <span className="shrink-0">
                       <Dot tone="live" pulse />
-                      Running
                     </span>
-                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
+                    <span className="hq-mono shrink-0 text-[15px] uppercase tracking-[0.08em] text-ink-soft">
                       {heroDate(c.date).dow} {heroDate(c.date).day}
                       {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
                     </span>
-                    <span className="w-6 shrink-0 text-center">{gameById(c.game).emoji}</span>
+                    <GameInsignia game={c.game} size={30} />
                     <span
-                      className="hq-readout min-w-0 flex-1 truncate text-[17px] font-bold uppercase tracking-[0.02em]"
+                      className="hq-readout min-w-0 flex-1 truncate text-[27px] font-bold uppercase leading-none tracking-[0.02em]"
                       title={compHeading(c)}
                     >
                       {gameById(c.game).name}
                     </span>
                     <Countdown
                       iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
-                      size="21px"
+                      size="27px"
                       caption={false}
                     />
                     <span className="hq-label shrink-0 opacity-70">Open →</span>
