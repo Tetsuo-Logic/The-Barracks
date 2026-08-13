@@ -70,6 +70,9 @@ export function Boot({ callsign }: { callsign: string }) {
   function finish() {
     sessionStorage.setItem(KEY, "1");
     setDone(true);
+    // Tell the page it can start its own arrival flair. Without this the
+    // status strip types itself out behind this overlay and you never see it.
+    window.dispatchEvent(new Event("hq:booted"));
   }
 
   useEffect(() => {

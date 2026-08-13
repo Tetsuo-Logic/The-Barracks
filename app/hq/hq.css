@@ -267,6 +267,11 @@
   height: 7px;
   border-radius: 99px;
   flex: none;
+  /* Dots almost always sit beside uppercase labels. Flex centring aligns them
+     to the line box, but uppercase has no descenders, so its optical centre is
+     ~1px higher — which is why every dot read as sitting slightly low. */
+  position: relative;
+  top: -1px;
 }
 .hq-dot-live {
   background: var(--color-moss);
@@ -342,6 +347,31 @@
 @keyframes hq-sweep {
   0% { transform: translateX(-100%); }
   55%, 100% { transform: translateX(100%); }
+}
+
+/* A scanner passing down a panel as it arrives. Percentage background-position
+   means it needs no knowledge of the panel's height, and background-size keeps
+   the band a fixed thickness whatever that height turns out to be. */
+.hq-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--color-moss) 30%, transparent) 45%,
+    color-mix(in srgb, var(--color-moss) 46%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 100% 46px;
+  background-repeat: no-repeat;
+  animation: hq-scan-down 780ms cubic-bezier(0.33, 0, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 90ms);
+}
+@keyframes hq-scan-down {
+  from { background-position: 0 -46px; }
+  to { background-position: 0 calc(100% + 46px); }
 }
 
 /* The boot terminal opening — a window arriving, not a panel settling. */

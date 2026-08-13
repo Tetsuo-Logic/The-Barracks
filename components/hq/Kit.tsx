@@ -15,6 +15,7 @@ export function Panel({
   i = 0,
   pad = true,
   fill = false,
+  scan = false,
   tier = "default",
 }: {
   label?: string;
@@ -25,6 +26,9 @@ export function Panel({
   sweep?: boolean;
   i?: number;
   pad?: boolean;
+  /** Run a scanner down the panel as it arrives. Opt-in — a screen where every
+   *  panel scans at once is a light show, not an instrument. */
+  scan?: boolean;
   /** Take the full height of the grid cell and let the body absorb the slack,
    *  so a panel can bottom out level with the column beside it instead of
    *  ending wherever its content happens to stop. */
@@ -41,6 +45,7 @@ export function Panel({
       className={`hq-panel hq-panel-${tier} hq-rise ${fill ? "flex h-full flex-col" : ""} ${className}`}
       style={{ ["--i" as string]: i }}
     >
+      {scan && <span className="hq-scanline" aria-hidden />}
       {(label || right) && (
         <header className={`hq-panel-head ${sweep ? "hq-sweep" : ""}`}>
           <div className="flex min-w-0 items-center gap-2">

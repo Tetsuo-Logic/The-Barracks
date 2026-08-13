@@ -5,6 +5,7 @@ import { resolveViewRole, canSee } from "@/lib/hq/role";
 import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
+import { StatusStrip } from "@/components/hq/StatusStrip";
 import { Countdown } from "@/components/hq/Countdown";
 import { GameInsignia } from "@/components/hq/GameInsignia";
 import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
@@ -102,30 +103,28 @@ export default async function CommandPage({
         )}
       </PageHead>
 
-      {/* Standing figures — see .hq-strip. */}
-      <div className="hq-strip hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
-        <span className="hq-label flex items-center gap-1.5">
-          {/* The light stays green — green means running, everywhere in HQ. */}
-          <Dot tone="live" pulse />
-          System online
-        </span>
-        <span className="hq-label opacity-30">/</span>
-        <span className="hq-label">{o.status.operatives} operatives</span>
-        <span className="hq-label opacity-30">/</span>
-        <span className="hq-label">{o.status.squadsActive} squads</span>
-        <span className="hq-label opacity-30">/</span>
-        <span className="hq-label">
-          {o.status.operationsRun} operations run · {o.status.hoursDeployed}h deployed
-        </span>
-        {o.status.operationsTonight > 0 && (
-          <span
-            className="hq-mono ml-auto rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
-            style={{ backgroundColor: "var(--color-moss)", color: "#0b100e" }}
-          >
-            {o.status.operationsTonight} operation tonight
-          </span>
-        )}
-      </div>
+      {/* Standing figures — see .hq-strip. StatusStrip adds the arrival
+          handshake: the first reading types out in green, then settles. */}
+      <StatusStrip
+        items={[
+          { text: "System online", dot: "live", pulse: true },
+          { text: `${o.status.operatives} operatives` },
+          { text: `${o.status.squadsActive} squads` },
+          {
+            text: `${o.status.operationsRun} operations run · ${o.status.hoursDeployed}h deployed`,
+          },
+        ]}
+        right={
+          o.status.operationsTonight > 0 ? (
+            <span
+              className="hq-mono rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{ backgroundColor: "var(--color-moss)", color: "#0b100e" }}
+            >
+              {o.status.operationsTonight} operation tonight
+            </span>
+          ) : undefined
+        }
+      />
 
       {/* LEFT wider: the night, then the week. RIGHT narrower: the inbox. */}
       {/* items-stretch, not items-start: the inbox is told to fill its cell so
@@ -135,6 +134,7 @@ export default async function CommandPage({
           {/* ── TONIGHT / NEXT ─────────────────────────────────────────── */}
           <Panel
             i={0}
+            scan
             sweep={Boolean(o.next)}
             tier={o.next ? "primary" : "quiet"}
             label={o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
@@ -283,6 +283,7 @@ export default async function CommandPage({
           {/* ── THIS WEEK ──────────────────────────────────────────────── */}
           <Panel
             i={1}
+            scan
             label="This week"
             right={
               <Link href="/hq/calendar" className="hq-label hover:text-ink">
@@ -353,6 +354,7 @@ export default async function CommandPage({
             one item it still holds its ground, with none it says ALL CLEAR. */}
         <Panel
           i={2}
+          scan
           tier={actions.length > 0 ? "primary" : "default"}
           label="Action required"
           status={<Dot tone={actions.length ? "alert" : "live"} pulse={actions.length > 0} />}

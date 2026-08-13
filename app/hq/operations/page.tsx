@@ -5,6 +5,7 @@ import { getSquads } from "@/lib/data";
 import { gameById, compHeading } from "@/lib/games";
 import { todayISO, shortTime, heroDate } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
+import { StatusStrip } from "@/components/hq/StatusStrip";
 import { GameInsignia } from "@/components/hq/GameInsignia";
 import { FilterSelect } from "@/components/hq/FilterSelect";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
@@ -157,24 +158,16 @@ export default async function OperationsPage({
       </PageHead>
 
       {/* Status strip — the numbers, without five cards demanding attention. */}
-      <div className="hq-strip hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
-        <span className="hq-label flex items-center gap-1.5">
-          <Dot tone={live.length ? "live" : "idle"} pulse={live.length > 0} />
-          {live.length} live
-        </span>
-        <span className="hq-label opacity-30">·</span>
-        <span className="hq-label">{upcoming.length} upcoming</span>
-        <span className="hq-label opacity-30">·</span>
-        <span className="hq-label">{historyAll.length} completed</span>
-        <span className="hq-label opacity-30">·</span>
-        <span className="hq-label">{totalGames} games</span>
-        {totalHours > 0 && (
-          <>
-            <span className="hq-label opacity-30">·</span>
-            <span className="hq-label">{totalHours}h deployed</span>
-          </>
-        )}
-      </div>
+      <StatusStrip
+        separator="·"
+        items={[
+          { text: `${live.length} live`, dot: live.length ? "live" : "idle", pulse: live.length > 0 },
+          { text: `${upcoming.length} upcoming` },
+          { text: `${historyAll.length} completed` },
+          { text: `${totalGames} games` },
+          ...(totalHours > 0 ? [{ text: `${totalHours}h deployed` }] : []),
+        ]}
+      />
 
       <div className="flex flex-col gap-5">
         {/* ── LIVE NOW ──────────────────────────────────────────────────── */}
