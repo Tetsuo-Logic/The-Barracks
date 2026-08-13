@@ -6,7 +6,6 @@ import { gameById, compHeading } from "@/lib/games";
 import { todayISO, shortTime, heroDate } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { StatusStrip } from "@/components/hq/StatusStrip";
-import { GameInsignia } from "@/components/hq/GameInsignia";
 import { FilterSelect } from "@/components/hq/FilterSelect";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { hqSampleUpcoming, hqSampleHistory, type SampleOp } from "@/lib/hq/future/actions";
@@ -194,7 +193,7 @@ export default async function OperationsPage({
                       background: "rgba(61,220,132,0.03)",
                     }}
                   >
-                    <GameInsignia game={c.game} size={48} tone="var(--color-moss)" />
+<span className="shrink-0 text-[30px]">{gameById(c.game).emoji}</span>
                     <div className="min-w-0 flex-1">
                       <p className="hq-readout text-[26px] font-bold leading-tight">
                         {compHeading(c)}
@@ -280,7 +279,7 @@ export default async function OperationsPage({
                       </Td>
                       <Td>
                         <Link href={`/hq/operations/${c.id}`} className="flex min-w-0 items-center gap-2.5">
-                          <GameInsignia game={c.game} size={22} tone="var(--color-ink-soft)" />
+<span className="w-5 shrink-0 text-center text-[14px]">{gameById(c.game).emoji}</span>
                           <span className="truncate text-[13px]">{compHeading(c)}</span>
                         </Link>
                       </Td>
@@ -438,7 +437,7 @@ export default async function OperationsPage({
                         </Td>
                         <Td>
                           <Link href={`/hq/operations/${c.id}`} className="flex min-w-0 items-center gap-2.5">
-                            <GameInsignia game={c.game} size={20} tone="var(--color-ink-soft)" />
+<span className="w-5 shrink-0 text-center text-[14px]">{gameById(c.game).emoji}</span>
                             <span className="truncate text-[13px]">{compHeading(c)}</span>
                             {scrubbed && <Tag tone="alert">Scrubbed</Tag>}
                           </Link>
@@ -518,7 +517,7 @@ function SampleRow({ op, kind }: { op: SampleOp; kind: "upcoming" | "history" })
       )}
       <Td>
         <span className="flex min-w-0 items-center gap-2.5">
-          <GameInsignia game={op.game} size={kind === "upcoming" ? 22 : 20} tone="var(--color-ink-soft)" />
+<span className="w-5 shrink-0 text-center text-[14px]">{gameById(op.game).emoji}</span>
           <span className="truncate text-[13px]">{op.title}</span>
           {op.scrubbed && <Tag tone="alert">Scrubbed</Tag>}
           {kind === "history" && (

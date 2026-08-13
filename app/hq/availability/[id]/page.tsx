@@ -4,7 +4,6 @@ import { requireProfile } from "@/lib/auth";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { getPlanningRequest } from "@/lib/hq/planning";
 import { Panel, Dot, Tag, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
-import { GameInsignia } from "@/components/hq/GameInsignia";
 import { AvailabilityMatrix } from "@/components/hq/availability/AvailabilityMatrix";
 import { findConflicts } from "@/components/hq/availability/model";
 
@@ -94,7 +93,6 @@ export default async function EvidencePage({
           }
         >
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
-            <GameInsignia game={r.game} size={44} />
             <span className="hq-readout text-[30px] font-bold uppercase leading-none tracking-[0.01em]">
               {top.dow} {top.day} {top.mon} · {top.from}
             </span>

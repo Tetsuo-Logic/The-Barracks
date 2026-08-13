@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tag, Meter, Proto } from "@/components/hq/Kit";
-import { GameInsignia } from "@/components/hq/GameInsignia";
 import { approveMuster } from "@/app/actions/musters";
 import type { PlanningRequest, Stage } from "@/lib/hq/planning";
 import type { Option } from "./recommend";
@@ -111,7 +110,6 @@ export function RequestDetail({
       <span className="hq-scanline" data-scan="pulse" aria-hidden />
       {/* ── What am I organising, and for whom? ────────────────────────── */}
       <header className="flex flex-wrap items-start gap-x-5 gap-y-3 px-5 py-4">
-        <GameInsignia game={r.game} size={46} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="hq-readout text-[30px] font-bold uppercase leading-none tracking-[0.01em]">

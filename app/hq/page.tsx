@@ -8,7 +8,6 @@ import { Panel, Dot, Tag, PageHead, Nil, Proto } from "@/components/hq/Kit";
 import { StatusStrip } from "@/components/hq/StatusStrip";
 import { SignalLock } from "@/components/hq/SignalLock";
 import { Countdown } from "@/components/hq/Countdown";
-import { GameInsignia } from "@/components/hq/GameInsignia";
 import { TerminalHint } from "@/components/hq/TerminalHint";
 import { hqSampleActions, hqSampleWeek, hqSampleNextOp } from "@/lib/hq/future/actions";
 
@@ -250,7 +249,6 @@ export default async function CommandPage({
                           </div>
 
                           <div className="flex min-w-0 items-center gap-4">
-                            <GameInsignia game={hero.game} size={60} />
                             <div className="min-w-0">
                               <TerminalHint text={hero.title} className="inline-block">
                                 <p
@@ -337,7 +335,6 @@ export default async function CommandPage({
                       {heroDate(c.date).dow} {heroDate(c.date).day}
                       {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
                     </span>
-                    <GameInsignia game={c.game} size={30} />
                     <TerminalHint text={compHeading(c)} className="flex-1">
                       <span className="hq-readout block truncate text-[27px] font-bold uppercase leading-none tracking-[0.02em]">
                         {gameById(c.game).name}
