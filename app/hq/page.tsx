@@ -139,11 +139,11 @@ export default async function CommandPage({
             scan="dash"
             sweep={Boolean(o.next)}
             tier={o.next ? "primary" : "quiet"}
-            label={o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
+            label={o.live ? "In progress" : o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
             status={
               <Dot
-                tone={o.status.operationsTonight > 0 ? "live" : "idle"}
-                pulse={o.status.operationsTonight > 0}
+                tone={o.live || o.status.operationsTonight > 0 ? "live" : "idle"}
+                pulse={Boolean(o.live) || o.status.operationsTonight > 0}
               />
             }
             right={
@@ -263,6 +263,29 @@ export default async function CommandPage({
                     />
                   </div>
                 </div>
+
+                {/* Queued behind a running Operation. Without this the hero
+                    stays pinned to whatever kicked off and the night's second
+                    Operation has nowhere to appear. */}
+                {o.upNext && (
+                  <Link
+                    href={`/hq/operations/${o.upNext.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                    style={{ borderColor: "color-mix(in srgb, var(--color-sand) 34%, transparent)" }}
+                  >
+                    <span className="hq-label shrink-0" style={{ color: "var(--color-sand)" }}>
+                      Up next
+                    </span>
+                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
+                      {heroDate(o.upNext.date).dow} {heroDate(o.upNext.date).day}
+                      {o.upNext.tee_time ? ` · ${shortTime(o.upNext.tee_time)}` : ""}
+                    </span>
+                    <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
+                      {compHeading(o.upNext)}
+                    </span>
+                    <span className="hq-label shrink-0 opacity-70">Open →</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="py-10 text-center">
@@ -299,7 +322,7 @@ export default async function CommandPage({
                 {[o.next, ...o.upcoming]
                   .filter(Boolean)
                   .slice(0, 6)
-                  .map((c, idx) => {
+                  .map((c) => {
                     const comp = c!;
                     const g = gameById(comp.game);
                     const hd = heroDate(comp.date);
@@ -319,7 +342,13 @@ export default async function CommandPage({
                         <span className="hq-mono shrink-0 text-[13px] text-ink-soft">
                           {shortTime(comp.tee_time) || "—"}
                         </span>
-                        {idx === 0 && <Tag tone="live">Next</Tag>}
+                        {comp.id === o.live?.id ? (
+                          <Tag tone="live" solid>
+                            Live
+                          </Tag>
+                        ) : comp.id === (o.live ? o.upNext?.id : o.next?.id) ? (
+                          <Tag tone="live">Next</Tag>
+                        ) : null}
                       </Link>
                     );
                   })}

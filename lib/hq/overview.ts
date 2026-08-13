@@ -39,7 +39,12 @@ export type HqOverview = {
    *  every group names its own. Crest and clan tag will hang off this later. */
   barracks: { id: string | null; name: string };
   status: CommandStatus;
+  /** What the hero shows: whatever is running, else the soonest not started. */
   next: Competition | null;
+  /** Running right now — started and not yet finished. */
+  live: Competition | null;
+  /** Queued behind the hero, so a live night doesn't hide the next one. */
+  upNext: Competition | null;
   nextRsvps: { in: number; out: number; maybe: number; undecided: number };
   upcoming: Competition[];
   recent: Competition[];
@@ -97,8 +102,36 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   const service = computeService(rsvps, comps);
   const operationsRun = comps.filter((c) => c.status === "played").length;
 
-  const next = fixtures.next ?? null;
-  const nextList = next ? (fixtures.rsvpsByComp[next.id] ?? []) : [];
+  // ── What the hero is looking at ──────────────────────────────────────────
+  // An Operation that has started is not "next" — it's happening. Until this
+  // was separated, a night that kicked off pinned the hero to itself and the
+  // one behind it had nowhere to appear; it just sat in This Week looking
+  // scheduled while the board said the evening was already under way.
+  //
+  // getFixturesData also orders by date alone, so two Operations on the same
+  // night came back in whatever order the query returned. Ordering by kick-off
+  // is what makes "the 20:00, then the 21:00" actually true.
+  const byWhen = (a: Competition, b: Competition) =>
+    a.date === b.date
+      ? (a.tee_time ?? "").localeCompare(b.tee_time ?? "")
+      : a.date < b.date
+        ? -1
+        : 1;
+  const isLive = (c: Competition) =>
+    c.started_at != null && c.finished_at == null && c.status !== "cancelled";
+
+  const scheduled = comps.filter((c) => c.status === "upcoming").sort(byWhen);
+  const today = new Date().toISOString().slice(0, 10);
+  const notStarted = scheduled.filter((c) => !isLive(c) && c.date >= today);
+
+  // Something running owns the hero; otherwise the soonest thing that hasn't.
+  const live = scheduled.find(isLive) ?? null;
+  const next = live ?? notStarted[0] ?? scheduled[0] ?? null;
+  // Queued behind it — the answer to "what happens after this one finishes?"
+  const upNext = notStarted.find((c) => c.id !== next?.id) ?? null;
+  const upcoming = scheduled.filter((c) => c.id !== next?.id);
+
+  const nextList = next ? rsvps.filter((r) => r.competition_id === next.id) : [];
   const counts = { in: 0, out: 0, maybe: 0 };
   for (const r of nextList) {
     if (r.status === "in") counts.in++;
@@ -232,11 +265,13 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     barracks: { id: group?.id ?? null, name: group?.name ?? "Unnamed Barracks" },
     status,
     next,
+    live,
+    upNext,
     nextRsvps: {
       ...counts,
       undecided: Math.max(0, profiles.length - counts.in - counts.out - counts.maybe),
     },
-    upcoming: fixtures.upcoming,
+    upcoming,
     recent: fixtures.recent,
     president,
     captains,
