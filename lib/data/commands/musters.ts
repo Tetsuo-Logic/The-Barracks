@@ -175,13 +175,44 @@ export async function approveMuster(db: Db, musterId: string, date: string, time
     .update({ status: "approved", chosen_date: date, chosen_time: time || null, competition_id: compId })
     .eq("id", musterId);
 
+  // Carry the muster's answers onto the Operation, so anyone who already told
+  // their Captain they could do this night starts on the roster instead of
+  // being asked the same question twice. SECURITY DEFINER — see 0044.
+  // A failure here must not fail the deployment: the Operation exists, and the
+  // worst case is everyone answers roll call from scratch, as they did before.
+  await db.rpc("seed_roll_call", { p_muster: musterId, p_comp: compId });
+
+  const { data: seededRows } = await db
+    .from("rsvps")
+    .select("player_id")
+    .eq("competition_id", compId);
+  const seeded = new Set(((seededRows ?? []) as { player_id: string }[]).map((r) => r.player_id));
+
   const label = gameById(m.game).name;
-  await sendToPlayers(await squadMemberIds(db, m.squad_id, user.id), "new_comp", {
-    title: `🎮 ${label}: game on`,
-    body: `${shortDate(date)}${time ? ` · ${time}` : ""}. Roll call — you in?`,
-    url: `/comp/${compId}`,
-    tag: `comp-${compId}`,
-  });
+  const when = `${shortDate(date)}${time ? ` · ${time}` : ""}`;
+  const squad = await squadMemberIds(db, m.squad_id, user.id);
+
+  // Two different messages, because these are two different asks. One is a
+  // confirmation of something you already said; the other is a fresh question.
+  const carried = squad.filter((id) => seeded.has(id));
+  const fresh = squad.filter((id) => !seeded.has(id));
+
+  if (carried.length) {
+    await sendToPlayers(carried, "new_comp", {
+      title: `🎮 ${label}: game on`,
+      body: `${when}. You're down from your muster — tap if that's changed.`,
+      url: `/comp/${compId}`,
+      tag: `comp-${compId}`,
+    });
+  }
+  if (fresh.length) {
+    await sendToPlayers(fresh, "new_comp", {
+      title: `🎮 ${label}: game on`,
+      body: `${when}. Roll call — you in?`,
+      url: `/comp/${compId}`,
+      tag: `comp-${compId}`,
+    });
+  }
   return { ok: true };
 }
 
