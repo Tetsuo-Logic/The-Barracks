@@ -75,7 +75,6 @@ export default async function CommandPage({
   // glance; "FIFA - Friday league night" wrapped to four lines and looked like
   // a layout fault. The full name goes on the line beneath and in the tooltip.
   const heroLabel = heroGame?.name ?? hero?.title ?? "";
-  const heroSubtitle = hero && hero.title !== heroLabel ? hero.title : null;
   const heroTitleSize =
     heroLabel.length <= 16 ? "clamp(38px, 3.2vw, 52px)" : "clamp(28px, 2.4vw, 40px)";
   const heroIso = hero ? `${hero.iso}T${hero.time}:00` : null;
@@ -260,7 +259,6 @@ export default async function CommandPage({
                               </TerminalHint>
                               <p className="hq-mono mt-2 truncate text-[17px] uppercase tracking-[0.12em] text-ink-soft">
                                 {hero.time}
-                                {heroSubtitle ? ` · ${heroSubtitle}` : ""}
                                 {hero.stake ? ` · ${hero.stake}` : ""}
                               </p>
                               <div className="mt-3 flex flex-wrap gap-1.5">
