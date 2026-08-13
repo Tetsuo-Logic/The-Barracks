@@ -148,7 +148,13 @@ const WEEK: { inDays: number; emoji: string; game: string; title: string; time: 
 /** The soonest filler night, shaped for the HQ hero. Lets the "up next" layout
  *  be judged while every real Operation on the board is already running. Empty
  *  in production, and the hero tags it DEMO. */
-export function hqSampleNextOp(): { iso: string; time: string; game: string; title: string } | null {
+export function hqSampleNextOp(): {
+  iso: string;
+  time: string;
+  game: string;
+  title: string;
+  roster: { in: number; maybe: number; out: number; undecided: number; total: number };
+} | null {
   if (process.env.NODE_ENV === "production") return null;
   const w = WEEK[0];
   const d = new Date();
@@ -159,6 +165,7 @@ export function hqSampleNextOp(): { iso: string; time: string; game: string; tit
     time: w.time,
     game: w.game,
     title: w.title,
+    roster: { in: 4, maybe: 1, out: 1, undecided: 0, total: 6 },
   };
 }
 

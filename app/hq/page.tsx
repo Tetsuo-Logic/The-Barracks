@@ -55,6 +55,7 @@ export default async function CommandPage({
         title: compHeading(realNext),
         stake: realNext.stake,
         squad: Boolean(realNext.squad_id),
+        roster: { ...o.nextRsvps, total: o.profiles.length },
         demo: false,
       }
     : demoNext
@@ -66,6 +67,7 @@ export default async function CommandPage({
           title: demoNext.title,
           stake: null,
           squad: false,
+          roster: demoNext.roster,
           demo: true,
         }
       : null;
@@ -78,9 +80,8 @@ export default async function CommandPage({
   const heroTitleSize =
     heroLabel.length <= 16 ? "clamp(38px, 3.2vw, 52px)" : "clamp(28px, 2.4vw, 40px)";
   const heroIso = hero ? `${hero.iso}T${hero.time}:00` : null;
-  const rosterPct = o.profiles.length
-    ? Math.round((o.nextRsvps.in / o.profiles.length) * 100)
-    : 0;
+  const rosterPct =
+    hero && hero.roster.total ? Math.round((hero.roster.in / hero.roster.total) * 100) : 0;
 
   return (
     <div>
@@ -203,7 +204,7 @@ export default async function CommandPage({
                   <div>
                     <div
                       className="flex flex-col justify-center gap-6"
-                      style={{ minHeight: hero.demo ? 165 : 250 }}
+                      style={{ minHeight: 250 }}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
                         <div className="flex min-w-0 flex-1 items-center gap-7">
@@ -292,20 +293,19 @@ export default async function CommandPage({
                       </div>
 
                       {/* Roster is a pre-start question, so it belongs to this
-                          block and nowhere else. Meaningless for demo filler,
-                          which has no roll call behind it. */}
-                      {!hero.demo && (
-                        <div className="border-t border-rule pt-4">
+                          block and nowhere else — the one Operation that hasn't
+                          happened yet. */}
+                      <div className="border-t border-rule pt-4">
                           <div className="mb-2 flex items-center justify-between">
                             <span className="hq-label">Roster</span>
                             <span className="hq-mono text-[14px]">
                               <span className="font-bold" style={{ color: "var(--color-moss)" }}>
-                                {o.nextRsvps.in} in
+                                {hero.roster.in} in
                               </span>
                               <span className="text-ink-soft">
                                 {" "}
-                                · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
-                                {o.nextRsvps.undecided} silent
+                                · {hero.roster.maybe} maybe · {hero.roster.out} out ·{" "}
+                                {hero.roster.undecided} silent
                               </span>
                             </span>
                           </div>
@@ -318,8 +318,7 @@ export default async function CommandPage({
                               }}
                             />
                           </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 )}
