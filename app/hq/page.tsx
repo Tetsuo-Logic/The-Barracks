@@ -142,7 +142,7 @@ export default async function CommandPage({
                  right, and the roster reading full width beneath both. */
               <div className="flex flex-col justify-center gap-6 py-5" style={{ minHeight: 290 }}>
                 <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
-                  <div className="flex min-w-0 items-center gap-6">
+                  <div className="flex min-w-0 flex-1 items-center gap-7">
                     {/* Date plate — deliberately built, deliberately secondary.
                         Hairline rules and a framed tile give it structure so it
                         reads as issued stock rather than three loose words. */}
@@ -176,15 +176,15 @@ export default async function CommandPage({
                     </div>
 
                     <div className="flex min-w-0 items-center gap-4">
-                      <GameInsignia game={o.next.game} size={48} />
+                      <GameInsignia game={o.next.game} size={60} />
                       <div className="min-w-0">
                       <p
-                        className="hq-readout font-bold leading-[1.05]"
-                        style={{ fontSize: "clamp(30px, 2.5vw, 40px)" }}
+                        className="hq-readout font-bold leading-[1.02]"
+                        style={{ fontSize: "clamp(38px, 3.2vw, 52px)" }}
                       >
                         {compHeading(o.next)}
                       </p>
-                      <p className="hq-mono mt-2 text-[15px] uppercase tracking-[0.12em] text-ink-soft">
+                      <p className="hq-mono mt-2 text-[17px] uppercase tracking-[0.12em] text-ink-soft">
                         {nextGame?.name}
                         {o.next.tee_time ? ` · ${shortTime(o.next.tee_time)}` : ""}
                         {o.next.stake ? ` · ${o.next.stake}` : ""}
@@ -206,7 +206,7 @@ export default async function CommandPage({
                   <div className="shrink-0">
                     <Countdown
                       iso={nextIso}
-                      size="clamp(56px, 5.6vw, 104px)"
+                      size="clamp(44px, 4.3vw, 80px)"
                       labelAlign="right"
                     />
                   </div>
