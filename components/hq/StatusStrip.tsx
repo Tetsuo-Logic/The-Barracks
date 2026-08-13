@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { playKey, playLine } from "@/lib/hq/sound";
 import type { Tone } from "@/components/hq/Kit";
 
 // The standing-figures strip, reporting itself on arrival: the whole line types
@@ -98,7 +97,6 @@ export function StatusStrip({
       const t = setTimeout(() => {
         setItem((v) => v + 1);
         setChars(0);
-        playLine();
       }, BETWEEN);
       return () => clearTimeout(t);
     }
@@ -109,13 +107,7 @@ export function StatusStrip({
     const pause = ch === " " ? 80 : chars > 0 && chars % 6 === 0 ? 40 : 0;
     const first = item === 0 && chars === 0;
 
-    const t = setTimeout(
-      () => {
-        setChars((v) => v + 1);
-        playKey();
-      },
-      (first ? 160 : speed) + pause,
-    );
+    const t = setTimeout(() => setChars((v) => v + 1), (first ? 160 : speed) + pause);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, chars, speed, sig]);

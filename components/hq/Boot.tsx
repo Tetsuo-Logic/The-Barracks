@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { playKey, playLine, playGranted } from "@/lib/hq/sound";
 
 // The command-link handshake, as a terminal session: the window opens, a
 // command is typed into it, and only then does the system start reporting.
@@ -62,13 +61,7 @@ export function Boot({ callsign }: { callsign: string }) {
   // Type the command in, after a beat for the window to land.
   useEffect(() => {
     if (done || typed >= COMMAND.length) return;
-    const t = setTimeout(
-      () => {
-        setTyped((v) => v + 1);
-        playKey();
-      },
-      typed === 0 ? 320 : 26,
-    );
+    const t = setTimeout(() => setTyped((v) => v + 1), typed === 0 ? 320 : 26);
     return () => clearTimeout(t);
   }, [typed, done]);
 
@@ -79,10 +72,7 @@ export function Boot({ callsign }: { callsign: string }) {
       if (crack < 0) setCrack(0);
       return;
     }
-    const t = setTimeout(() => {
-      setN((v) => v + 1);
-      playLine();
-    }, n === 0 ? 260 : 125);
+    const t = setTimeout(() => setN((v) => v + 1), n === 0 ? 260 : 125);
     return () => clearTimeout(t);
   }, [n, typed, done, crack]);
 
@@ -93,15 +83,7 @@ export function Boot({ callsign }: { callsign: string }) {
       const t = setTimeout(finish, 620);
       return () => clearTimeout(t);
     }
-    if (crack === GRANTED.length) {
-      playGranted();
-      const t = setTimeout(() => setCrack((v) => v + 1), 40);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => {
-      setCrack((v) => v + 1);
-      playKey();
-    }, crack === 0 ? 220 : 62);
+    const t = setTimeout(() => setCrack((v) => v + 1), crack === 0 ? 220 : 62);
     return () => clearTimeout(t);
   }, [crack, done]);
 
