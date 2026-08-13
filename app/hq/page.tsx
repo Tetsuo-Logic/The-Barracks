@@ -102,9 +102,10 @@ export default async function CommandPage({
         )}
       </PageHead>
 
-      {/* Standing figures — one quiet line, never competing with the page. */}
-      <div className="hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-rule py-2.5">
-        <span className="hq-label flex items-center gap-1.5" style={{ color: "var(--color-moss)" }}>
+      {/* Standing figures — see .hq-strip. */}
+      <div className="hq-strip hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
+        <span className="hq-label flex items-center gap-1.5">
+          {/* The light stays green — green means running, everywhere in HQ. */}
           <Dot tone="live" pulse />
           System online
         </span>
@@ -385,7 +386,7 @@ export default async function CommandPage({
                it keeps its footprint with only one row — this is a primary
                component, not a status chip. */
             <ul
-              className="flex min-h-0 flex-1 flex-col divide-y divide-rule/60 overflow-y-auto"
+              className="flex min-h-0 flex-1 basis-0 flex-col divide-y divide-rule/60 overflow-y-auto"
               style={{ minHeight: 280 }}
             >
               {actions.map((a, i) => (

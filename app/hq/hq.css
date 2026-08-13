@@ -139,7 +139,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 14px;
+  /* Fixed height, not padding-driven: a header carrying a count or a chip is
+     taller than one carrying only a label, and panels sitting side by side
+     with different header depths read as a misalignment. */
+  min-height: 37px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--color-rule);
   background: rgba(255, 255, 255, 0.012);
 }
@@ -197,6 +201,16 @@
   color: var(--color-sand);
   opacity: 1;
 }
+
+/* The standing-figures strip every page opens with. It's a row of labels, not
+   body text, so it takes the label colour — and the hairlines bracketing it
+   match the panel edges below rather than fading into the background. Status
+   lights inside it stay their own colour: green still means running. */
+.hq .hq-strip {
+  border-top: 1px solid color-mix(in srgb, var(--color-sand) 42%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-sand) 42%, transparent);
+}
+.hq .hq-strip .hq-label { color: var(--color-sand); }
 
 /* Rows: white text on black, with dividers and hover doing the separating. */
 .hq tbody tr { border-color: rgba(255, 255, 255, 0.07) !important; }

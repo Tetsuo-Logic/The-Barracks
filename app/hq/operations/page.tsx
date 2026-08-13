@@ -157,11 +157,8 @@ export default async function OperationsPage({
       </PageHead>
 
       {/* Status strip — the numbers, without five cards demanding attention. */}
-      <div className="hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-rule py-2.5">
-        <span
-          className="hq-label flex items-center gap-1.5"
-          style={{ color: live.length ? "var(--color-moss)" : undefined }}
-        >
+      <div className="hq-strip hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
+        <span className="hq-label flex items-center gap-1.5">
           <Dot tone={live.length ? "live" : "idle"} pulse={live.length > 0} />
           {live.length} live
         </span>

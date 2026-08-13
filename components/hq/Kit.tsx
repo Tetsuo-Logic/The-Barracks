@@ -50,7 +50,10 @@ export function Panel({
           {right && <div className="flex shrink-0 items-center gap-2">{right}</div>}
         </header>
       )}
-      <div className={`${pad ? "p-4" : ""} ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+      {/* basis-0, not flex-1's 0%: a percentage basis against an indefinite
+          height falls back to content, which would let a long body grow the
+          panel instead of scrolling inside it. */}
+      <div className={`${pad ? "p-4" : ""} ${fill ? "flex min-h-0 flex-1 basis-0 flex-col" : ""}`}>
         {children}
       </div>
     </section>
