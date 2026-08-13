@@ -7,6 +7,7 @@ import { NavRail } from "@/components/hq/NavRail";
 import { TopBar, type BarracksOption } from "@/components/hq/TopBar";
 import { Boot } from "@/components/hq/Boot";
 import { realRoleOf } from "@/lib/hq/role";
+import { getQuickComms } from "@/lib/hq/comms";
 import type { Profile } from "@/lib/types";
 
 export const metadata = {
@@ -27,7 +28,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
 
   const roster = (profiles ?? []) as Pick<Profile, "id" | "name" | "nickname">[];
   const callsign = profile.nickname || profile.name;
-  const realRole = await realRoleOf(profile);
+  const [realRole, comms] = await Promise.all([realRoleOf(profile), getQuickComms(profile)]);
 
   // A User has 0..n memberships. Only the live Barracks is wired; the others
   // exist so multi-Barracks switching can be experienced (lib/hq/future).
@@ -45,6 +46,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
         callsign={callsign}
         online={Math.max(1, Math.round(roster.length * 0.55))}
         realRole={realRole}
+        comms={comms}
       />
 
       <div className="flex" style={{ minHeight: "calc(100dvh - var(--hq-bar))" }}>

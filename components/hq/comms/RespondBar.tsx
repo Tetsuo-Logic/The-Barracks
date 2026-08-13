@@ -16,6 +16,8 @@ export function RespondBar({
   myComment,
   optionDates,
   myDates,
+  options = [],
+  myChoice = null,
 }: {
   broadcastId: string;
   kind: BroadcastKind;
@@ -23,6 +25,8 @@ export function RespondBar({
   myComment: string | null;
   optionDates: string[];
   myDates: string[];
+  options?: string[];
+  myChoice?: string | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -86,6 +90,38 @@ export function RespondBar({
           >
             Send reply
           </button>
+        </div>
+      )}
+
+      {kind === "poll" && options.length > 0 && (
+        <div>
+          <p className="hq-label mb-1.5">Your vote</p>
+          <div className="flex flex-col gap-1.5">
+            {options.map((o) => {
+              const on = myChoice === o;
+              return (
+                <button
+                  key={o}
+                  disabled={busy}
+                  onClick={() =>
+                    run(
+                      () => respondBroadcast(broadcastId, null, undefined, undefined, undefined, o),
+                      "VOTE LOGGED",
+                    )
+                  }
+                  className="hq-mono rounded-[3px] border px-3 py-2.5 text-left text-[13px] transition-colors disabled:opacity-50"
+                  style={{
+                    borderColor: on ? "var(--color-moss)" : "var(--color-rule)",
+                    backgroundColor: on ? "color-mix(in srgb, var(--color-moss) 14%, transparent)" : "transparent",
+                    color: on ? "var(--color-moss)" : "var(--color-ink)",
+                  }}
+                >
+                  {on ? "✓ " : ""}
+                  {o}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

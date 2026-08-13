@@ -2,59 +2,57 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
-import { getActivityFeed, type ActivityItem } from "@/lib/queries";
-import { relativeTime, heroDate, shortDate } from "@/lib/dates";
-import { Panel, Stat, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
-import { Composer } from "@/components/hq/comms/Composer";
+import { relativeTime, shortDate, heroDate } from "@/lib/dates";
+import { Panel, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
+import { Transmitter } from "@/components/hq/comms/Transmitter";
 import { RespondBar } from "@/components/hq/comms/RespondBar";
+import { KIND_LABEL, KIND_TONE } from "@/components/hq/comms/kinds";
 import type { Broadcast, BroadcastMessage, BroadcastResponse, Profile } from "@/lib/types";
 
 export const metadata = { title: "Comms · Barracks HQ" };
 
-const KIND_LABEL: Record<string, string> = {
-  announce: "Notice",
-  yesno: "Yes / No",
-  ask: "Question",
-  dates: "Dates poll",
-};
+// ── COMMS ──────────────────────────────────────────────────────────────────
+// The PA system. Command speaks to the Barracks and, where it wants one, gets
+// an answer back. That is the whole job.
+//
+// Not here, deliberately: musters, planning, Court, scheduling, requests, or
+// generic system activity. Those are workflows with their own screens, and
+// pouring them in here is what turned Comms into a second activity feed. NAAFI
+// is separate too — Comms is Command broadcasting, NAAFI is people talking.
 
-const KIND_TONE: Record<string, "live" | "warn" | "alert" | "info" | "idle"> = {
-  announce: "info",
-  yesno: "live",
-  ask: "warn",
-  dates: "warn",
-};
+type Filter = "all" | "notices" | "questions" | "polls" | "awaiting";
 
-// Comms dispatch. The transmitter on the left, every signal ever sent down the
-// middle, and the selected signal opened up on the right — who answered, who
-// hasn't, and the thread underneath it. All real rows.
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "notices", label: "Notices" },
+  { key: "questions", label: "Questions" },
+  { key: "polls", label: "Polls" },
+  { key: "awaiting", label: "Awaiting reply" },
+];
+
 export default async function CommsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ b?: string; as?: string }>;
+  searchParams: Promise<{ b?: string; as?: string; f?: string }>;
 }) {
   const profile = await requireProfile();
   const sp = await searchParams;
-  const selectedId = sp.b;
-  // Planning is a Captain/President surface — a member never sees a route into
-  // it, here or anywhere else. Follows the dev role preview so it's testable.
-  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+  const openId = sp.b ?? null;
+  const filter: Filter = (FILTERS.find((f) => f.key === sp.f)?.key ?? "all") as Filter;
+  const canTransmit = resolveViewRole(sp.as, await realRoleOf(profile)) === "president";
 
   const supabase = await createClient();
-
-  const [{ data: bxRows }, { data: respRows }, { data: profileRows }, activity] =
-    await Promise.all([
-      supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
-      supabase.from("broadcast_responses").select("*"),
-      supabase.from("profiles").select("*").order("created_at", { ascending: true }),
-      getActivityFeed(profile.id, profile.is_admin),
-    ]);
+  const [{ data: bxRows }, { data: respRows }, { data: profileRows }] = await Promise.all([
+    supabase.from("broadcasts").select("*").order("created_at", { ascending: false }),
+    supabase.from("broadcast_responses").select("*"),
+    supabase.from("profiles").select("*").order("created_at", { ascending: true }),
+  ]);
 
   const broadcasts = (bxRows ?? []) as Broadcast[];
   const responses = (respRows ?? []) as BroadcastResponse[];
   const profiles = (profileRows ?? []) as Profile[];
   const nameById = new Map(profiles.map((p) => [p.id, p.nickname || p.name]));
-  const totalPlayers = profiles.length;
+  const onNet = profiles.length;
 
   const respByBroadcast = new Map<string, BroadcastResponse[]>();
   for (const r of responses) {
@@ -63,376 +61,309 @@ export default async function CommsPage({
     respByBroadcast.set(r.broadcast_id, arr);
   }
 
-  const selected = broadcasts.find((x) => x.id === selectedId) ?? broadcasts[0] ?? null;
+  const answerable = (b: Broadcast) => b.kind !== "announce";
+  const iAnswered = (b: Broadcast) =>
+    (respByBroadcast.get(b.id) ?? []).some((r) => r.player_id === profile.id);
+  const needsMe = (b: Broadcast) => answerable(b) && b.created_by !== profile.id && !iAnswered(b);
 
-  // Thread for the open signal — append-only, newest last.
+  const shown = broadcasts.filter((b) => {
+    switch (filter) {
+      case "notices":
+        return b.kind === "announce";
+      case "questions":
+        return b.kind === "ask" || b.kind === "yesno";
+      case "polls":
+        return b.kind === "poll" || b.kind === "dates";
+      case "awaiting":
+        return needsMe(b);
+      default:
+        return true;
+    }
+  });
+
+  const awaitingMe = broadcasts.filter(needsMe).length;
+
+  // The open transmission's thread — only fetched when one is open.
   let thread: BroadcastMessage[] = [];
-  if (selected) {
+  if (openId) {
     const { data } = await supabase
       .from("broadcast_messages")
       .select("*")
-      .eq("broadcast_id", selected.id)
+      .eq("broadcast_id", openId)
       .order("created_at", { ascending: true });
     thread = (data ?? []) as BroadcastMessage[];
   }
 
-  // System traffic — real events off the activity feed, rendered as the
-  // machine's own transmissions alongside the human ones.
-  const system = activity.items
-    .filter((i): i is Exclude<ActivityItem, { kind: "broadcast" }> => i.kind !== "broadcast")
-    .slice(0, 12)
-    .map((i) => {
-      switch (i.kind) {
-        case "round":
-          return { at: i.at, text: `OPERATION SCHEDULED — ${(i.comp.title || i.comp.game).toUpperCase()}`, tone: "info" as const };
-        case "result":
-          return { at: i.at, text: `RESULT POSTED — ${(i.comp.title || i.comp.game).toUpperCase()}`, tone: "live" as const };
-        case "muster":
-          return { at: i.at, text: `MUSTER CALLED — ${i.squadName.toUpperCase()}`, tone: "warn" as const };
-        case "night":
-          return { at: i.at, text: `NIGHT WANTED — ${i.squadName.toUpperCase()}`, tone: "warn" as const };
-        case "trial":
-          return { at: i.at, text: `COURT CASE ${i.trial.status === "open" ? "OPENED" : "CLOSED"}`, tone: "alert" as const };
-        case "complaint":
-          return { at: i.at, text: `COMPLAINT FILED — ${i.filerName.toUpperCase()}`, tone: "alert" as const };
-        case "mutiny":
-          return { at: i.at, text: `MOTION ${i.mutiny.status.toUpperCase()} — ${i.raiserName.toUpperCase()}`, tone: "alert" as const };
-        case "squadReq":
-          return { at: i.at, text: `SQUAD REQUESTED — ${i.requesterName.toUpperCase()}`, tone: "warn" as const };
-        case "comment":
-          return { at: i.at, text: `${i.authorName.toUpperCase()} COMMENTED`, tone: "info" as const };
-      }
-    });
-
-  // Strip stats
-  const openSignals = broadcasts.filter((x) => x.kind !== "announce");
-  const awaiting = openSignals.filter(
-    (x) => (respByBroadcast.get(x.id)?.length ?? 0) < totalPlayers,
-  ).length;
-  const answeredTotal = openSignals.reduce((n, x) => n + (respByBroadcast.get(x.id)?.length ?? 0), 0);
-  const expected = openSignals.length * Math.max(1, totalPlayers);
-  const responseRate = expected ? Math.round((answeredTotal / expected) * 100) : 0;
-  const mineUnanswered = openSignals.filter(
-    (x) => x.created_by !== profile.id && !(respByBroadcast.get(x.id) ?? []).some((r) => r.player_id === profile.id),
-  ).length;
-
-  // ── The open signal, unpacked ──────────────────────────────────────────
-  const sel = selected ? respByBroadcast.get(selected.id) ?? [] : [];
-  const yes = sel.filter((r) => r.answer === "yes").length;
-  const no = sel.filter((r) => r.answer === "no").length;
-  const silent = Math.max(0, totalPlayers - sel.length);
-  const mine = selected ? sel.find((r) => r.player_id === profile.id) ?? null : null;
-
-  const dateTally =
-    selected?.kind === "dates" && selected.option_dates
-      ? selected.option_dates.map((iso) => ({
-          iso,
-          count: sel.filter((r) => (r.available_dates ?? []).includes(iso)).length,
-        }))
-      : [];
-  const bestDate = dateTally.length
-    ? dateTally.reduce((b, d) => (d.count > b.count ? d : b), dateTally[0])
-    : null;
+  const url = (patch: { b?: string | null; f?: Filter | null }) => {
+    const q = new URLSearchParams();
+    if (sp.as) q.set("as", sp.as);
+    const f = patch.f !== undefined ? patch.f : filter === "all" ? null : filter;
+    const b = patch.b !== undefined ? patch.b : openId;
+    if (f && f !== "all") q.set("f", f);
+    if (b) q.set("b", b);
+    const s = q.toString();
+    return s ? `/hq/comms?${s}` : "/hq/comms";
+  };
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Command"
-        title="Comms Dispatch"
-        right={
-          <>
-            <Tag tone={profile.is_admin ? "live" : "idle"}>
-              {profile.is_admin ? "Transmit clearance" : "Receive only"}
-            </Tag>
-            {canPlan && (
-              <Link
-                href="/hq/availability"
-                className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
-              >
-                Planning
-              </Link>
-            )}
-          </>
-        }
-      >
-        {broadcasts.length} signal{broadcasts.length === 1 ? "" : "s"} on record ·{" "}
-        {mineUnanswered > 0 ? (
-          <span style={{ color: "var(--color-flag)" }}>{mineUnanswered} awaiting your answer</span>
-        ) : (
-          <>nothing awaiting your answer</>
-        )}
+    <div className="mx-auto w-full" style={{ maxWidth: 1180 }}>
+      <PageHead eyebrow="Command" title="Comms">
+        {canTransmit
+          ? "The Barracks PA — speak to everyone, and get an answer where you need one"
+          : awaitingMe > 0
+            ? <>
+                <span style={{ color: "var(--color-flag)" }}>{awaitingMe}</span> transmission
+                {awaitingMe === 1 ? "" : "s"} awaiting your reply
+              </>
+            : "Nothing awaiting your reply"}
       </PageHead>
 
-      {/* ── Status strip ──────────────────────────────────────────────── */}
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <Panel i={0}>
-          <Stat value={broadcasts.length} label="Signals sent" />
-        </Panel>
-        <Panel i={1}>
-          <Stat value={openSignals.length} label="Answerable" sub={`${broadcasts.length - openSignals.length} notices`} />
-        </Panel>
-        <Panel i={2}>
-          <Stat value={awaiting} label="Awaiting replies" tone={awaiting > 0 ? "warn" : undefined} />
-        </Panel>
-        <Panel i={3}>
-          <Stat value={`${responseRate}%`} label="Response rate" tone={responseRate >= 70 ? "live" : "warn"} />
-        </Panel>
-        <Panel i={4}>
-          <Stat value={totalPlayers} label="On the net" sub="All operatives reachable" />
-        </Panel>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[330px_minmax(280px,0.95fr)_1.2fr]">
-        {/* ── Transmitter ───────────────────────────────────────────── */}
-        <Panel
-          i={5}
-          sweep
-          label="Transmitter"
-          status={<Dot tone={profile.is_admin ? "live" : "idle"} pulse={profile.is_admin} />}
-          pad={false}
-        >
-          <Composer canSend={profile.is_admin} callsign={profile.nickname || profile.name} />
-        </Panel>
-
-        {/* ── Traffic ───────────────────────────────────────────────── */}
-        <Panel
-          i={6}
-          label="Signal traffic"
-          right={<span className="hq-mono text-[11px] text-ink-soft">{broadcasts.length}</span>}
-          pad={false}
-        >
-          <div className="max-h-[720px] overflow-y-auto">
-            {broadcasts.length === 0 ? (
-              <Nil>No signals transmitted</Nil>
-            ) : (
-              <ul className="flex flex-col">
-                {broadcasts.map((x, i) => {
-                  const rs = respByBroadcast.get(x.id) ?? [];
-                  const on = selected?.id === x.id;
-                  const answered = rs.some((r) => r.player_id === profile.id);
-                  return (
-                    <li key={x.id}>
-                      <Link
-                        href={`/hq/comms?b=${x.id}`}
-                        scroll={false}
-                        className="hq-rise block border-b border-rule/60 px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.025)]"
-                        style={{
-                          ["--i" as string]: Math.min(i, 10),
-                          backgroundColor: on ? "rgba(245,182,61,0.07)" : undefined,
-                          borderLeft: on ? "2px solid var(--color-sand)" : "2px solid transparent",
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Tag tone={KIND_TONE[x.kind]}>{KIND_LABEL[x.kind]}</Tag>
-                          {x.kind !== "announce" && !answered && x.created_by !== profile.id && (
-                            <Tag tone="alert" solid>
-                              Answer
-                            </Tag>
-                          )}
-                          <span className="hq-mono ml-auto shrink-0 text-[10px] text-ink-soft">
-                            {relativeTime(x.created_at)}
-                          </span>
-                        </div>
-                        {x.title && (
-                          <p className="hq-readout mt-1 truncate text-[14px] font-bold">{x.title}</p>
-                        )}
-                        <p className="mt-0.5 line-clamp-2 text-[12px] text-ink-soft">{x.body}</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="min-w-0 flex-1">
-                            <Meter
-                              pct={totalPlayers ? (rs.length / totalPlayers) * 100 : 0}
-                              tone={rs.length >= totalPlayers ? "live" : "warn"}
-                            />
-                          </div>
-                          <span className="hq-mono shrink-0 text-[10px] text-ink-soft">
-                            {x.kind === "announce" ? "—" : `${rs.length}/${totalPlayers}`}
-                          </span>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* System traffic */}
-          <div className="border-t border-rule">
-            <p className="hq-label px-3 py-2">System traffic</p>
-            <ul className="max-h-[220px] overflow-y-auto pb-2">
-              {system.length === 0 ? (
-                <Nil>Quiet on the net</Nil>
-              ) : (
-                system.map((s, i) => (
-                  <li key={`${s.at}-${i}`} className="flex items-center gap-2.5 px-3 py-1">
-                    <Dot tone={s.tone} />
-                    <span className="hq-mono min-w-0 flex-1 truncate text-[10px] tracking-[0.06em] text-ink-soft">
-                      {s.text}
-                    </span>
-                    <span className="hq-mono shrink-0 text-[9px] text-ink-soft">{relativeTime(s.at)}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        </Panel>
-
-        {/* ── Detail ────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
-          {!selected ? (
-            <Panel i={7} label="Signal detail">
-              <Nil>Select a signal to read its traffic</Nil>
-            </Panel>
-          ) : (
-            <>
-              <Panel
-                i={7}
-                label={`Signal · ${KIND_LABEL[selected.kind]}`}
-                status={<Dot tone={KIND_TONE[selected.kind]} />}
-                right={
-                  <span className="hq-mono text-[11px] text-ink-soft">
-                    {shortDate(selected.created_at.slice(0, 10))} · {relativeTime(selected.created_at)}
-                  </span>
-                }
-              >
-                <p className="hq-label mb-1">
-                  From {selected.created_by ? nameById.get(selected.created_by) ?? "Command" : "Command"}
-                </p>
-                {selected.title && (
-                  <h3 className="hq-readout text-[20px] font-bold leading-tight">{selected.title}</h3>
-                )}
-                <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed">{selected.body}</p>
-
-                {/* Tally */}
-                {selected.kind === "yesno" && (
-                  <div className="mt-4 grid grid-cols-3 gap-4 border-t border-rule pt-3">
-                    <Stat value={yes} label="In" tone="live" />
-                    <Stat value={no} label="Out" tone="alert" />
-                    <Stat value={silent} label="Silent" />
-                  </div>
-                )}
-
-                {selected.kind === "dates" && dateTally.length > 0 && (
-                  <div className="mt-4 border-t border-rule pt-3">
-                    <div className="mb-2 flex items-baseline justify-between">
-                      <span className="hq-label">Night tally</span>
-                      {bestDate && bestDate.count > 0 && (
-                        <span className="hq-mono text-[11px]" style={{ color: "var(--color-moss)" }}>
-                          BEST · {heroDate(bestDate.iso).dow} {heroDate(bestDate.iso).day} · {bestDate.count} ON
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {dateTally.map((d) => {
-                        const hd = heroDate(d.iso);
-                        const best = bestDate?.iso === d.iso && d.count > 0;
-                        return (
-                          <div key={d.iso} className="flex items-center gap-2.5">
-                            <span className="hq-mono w-16 shrink-0 text-[11px] uppercase tracking-[0.08em]">
-                              {hd.dow} {hd.day}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <Meter
-                                pct={totalPlayers ? (d.count / totalPlayers) * 100 : 0}
-                                tone={best ? "live" : "warn"}
-                              />
-                            </div>
-                            <span className="hq-mono w-10 shrink-0 text-right text-[11px] text-ink-soft">
-                              {d.count}/{totalPlayers}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {selected.kind === "ask" && (
-                  <div className="mt-4 grid grid-cols-2 gap-4 border-t border-rule pt-3">
-                    <Stat value={sel.filter((r) => r.comment).length} label="Replied" tone="live" />
-                    <Stat value={silent} label="Silent" />
-                  </div>
-                )}
-              </Panel>
-
-              <Panel i={8} label="Responses" right={<span className="hq-mono text-[11px] text-ink-soft">{sel.length}/{totalPlayers}</span>}>
-                {profiles.length === 0 ? (
-                  <Nil>No operatives</Nil>
-                ) : (
-                  <ul className="flex flex-col">
-                    {profiles.map((p) => {
-                      const r = sel.find((x) => x.player_id === p.id);
-                      const tone = !r ? "idle" : r.answer === "yes" ? "live" : r.answer === "no" ? "alert" : "warn";
-                      const label = !r
-                        ? "No response"
-                        : r.answer
-                          ? r.answer.toUpperCase()
-                          : (r.available_dates?.length ?? 0) > 0
-                            ? `${r.available_dates!.length} nights`
-                            : "Replied";
-                      return (
-                        <li key={p.id} className="flex items-center gap-2.5 border-b border-rule/50 py-1.5 last:border-0">
-                          <Dot tone={tone} />
-                          <span className="w-24 shrink-0 truncate text-[13px]">
-                            {p.id === profile.id ? "You" : p.name}
-                          </span>
-                          <span className="hq-mono min-w-0 flex-1 truncate text-[11px] text-ink-soft">
-                            {r?.comment ?? (r?.available_dates?.length ? r.available_dates.map((d) => heroDate(d).dow).join(" ") : "—")}
-                          </span>
-                          <span
-                            className="hq-mono shrink-0 text-[10px] uppercase tracking-[0.12em]"
-                            style={{
-                              color:
-                                tone === "live"
-                                  ? "var(--color-moss)"
-                                  : tone === "alert"
-                                    ? "var(--color-flag)"
-                                    : tone === "warn"
-                                      ? "var(--color-sand)"
-                                      : "var(--color-ink-soft)",
-                            }}
-                          >
-                            {label}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </Panel>
-
-              <Panel i={9} label="Thread">
-                {thread.length === 0 ? (
-                  <Nil>No traffic on this thread</Nil>
-                ) : (
-                  <ul className="mb-3 flex flex-col gap-2">
-                    {thread.map((t) => (
-                      <li key={t.id} className="rounded-[3px] border border-rule px-3 py-2">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="hq-label">
-                            {t.author_id ? nameById.get(t.author_id) ?? "Operative" : "Command"}
-                          </span>
-                          <span className="hq-mono text-[10px] text-ink-soft">{relativeTime(t.created_at)}</span>
-                        </div>
-                        <p className="mt-0.5 text-[13px]">{t.body}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <RespondBar
-                  broadcastId={selected.id}
-                  kind={selected.kind}
-                  myAnswer={mine?.answer ?? null}
-                  myComment={mine?.comment ?? null}
-                  optionDates={selected.option_dates ?? []}
-                  myDates={mine?.available_dates ?? []}
-                />
-              </Panel>
-            </>
-          )}
+      {/* ── TRANSMIT ─────────────────────────────────────────────────────
+          President only. Everyone else receives and replies. */}
+      {canTransmit && (
+        <div className="mb-5">
+          <Panel i={0} tier="primary" label="Transmit to the Barracks" status={<Dot tone="live" pulse />} pad={false}>
+            <Transmitter callsign={profile.nickname || profile.name} />
+          </Panel>
         </div>
-      </div>
+      )}
+
+      {/* ── TRANSMISSIONS ────────────────────────────────────────────── */}
+      <Panel
+        i={1}
+        label="Transmissions"
+        right={
+          <div className="flex flex-wrap items-center gap-1.5">
+            {FILTERS.map((f) => {
+              const on = f.key === filter;
+              const n = f.key === "awaiting" ? awaitingMe : null;
+              return (
+                <Link
+                  key={f.key}
+                  href={url({ f: f.key === "all" ? null : f.key, b: null })}
+                  scroll={false}
+                  className="hq-mono rounded-[3px] border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
+                  style={{
+                    borderColor: on ? "var(--color-sand)" : "var(--color-rule)",
+                    backgroundColor: on ? "rgba(245,182,61,0.12)" : "transparent",
+                    color: on ? "var(--color-sand)" : "var(--color-ink-soft)",
+                  }}
+                >
+                  {f.label}
+                  {n != null && n > 0 && <span className="ml-1.5">{n}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        }
+        pad={false}
+      >
+        {shown.length === 0 ? (
+          <Nil>{filter === "all" ? "Nothing transmitted yet" : "Nothing under this filter"}</Nil>
+        ) : (
+          <ul className="flex flex-col divide-y divide-rule/60">
+            {shown.map((b) => {
+              const rs = respByBroadcast.get(b.id) ?? [];
+              const open = openId === b.id;
+              const mine = rs.find((r) => r.player_id === profile.id) ?? null;
+              const from = b.created_by ? (nameById.get(b.created_by) ?? "Command") : "Command";
+
+              return (
+                <li key={b.id}>
+                  {/* The row itself — type, preview, sender, when, response count */}
+                  <Link
+                    href={url({ b: open ? null : b.id })}
+                    scroll={false}
+                    className="block px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.025)]"
+                    style={open ? { backgroundColor: "rgba(245,182,61,0.06)" } : undefined}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Tag tone={KIND_TONE[b.kind]}>{KIND_LABEL[b.kind]}</Tag>
+                      {needsMe(b) && (
+                        <Tag tone="alert" solid>
+                          Reply needed
+                        </Tag>
+                      )}
+                      <span className="hq-mono ml-auto shrink-0 text-[11px] uppercase tracking-[0.08em] text-ink-soft">
+                        {from} · {shortDate(b.created_at.slice(0, 10))} · {relativeTime(b.created_at)}
+                      </span>
+                    </div>
+
+                    <p className="hq-readout mt-1.5 truncate text-[16px] font-bold">
+                      {b.title || b.body}
+                    </p>
+                    {b.title && <p className="mt-0.5 truncate text-[13px] text-ink-soft">{b.body}</p>}
+
+                    {answerable(b) && (
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="max-w-[280px] flex-1">
+                          <Meter
+                            pct={onNet ? (rs.length / onNet) * 100 : 0}
+                            tone={rs.length >= onNet ? "live" : "warn"}
+                          />
+                        </div>
+                        <span className="hq-mono shrink-0 text-[11px] uppercase tracking-[0.08em] text-ink-soft">
+                          {rs.length}/{onNet} replied
+                        </span>
+                        <span className="hq-label ml-auto shrink-0 opacity-70">
+                          {open ? "Close ▴" : "Open ▾"}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+
+                  {/* ── Opened: full message, responses, thread ───────── */}
+                  {open && (
+                    <div className="border-t border-rule px-4 py-4">
+                      <p className="whitespace-pre-wrap text-[14px] leading-relaxed">{b.body}</p>
+
+                      {/* Tally, per type */}
+                      {b.kind === "yesno" && (
+                        <div className="mt-4 flex flex-wrap gap-6 border-t border-rule pt-3">
+                          {(
+                            [
+                              ["Yes", rs.filter((r) => r.answer === "yes").length, "var(--color-moss)"],
+                              ["No", rs.filter((r) => r.answer === "no").length, "var(--color-flag)"],
+                              ["Silent", Math.max(0, onNet - rs.length), "var(--color-ink-soft)"],
+                            ] as const
+                          ).map(([k, v, c]) => (
+                            <div key={k}>
+                              <div className="hq-readout text-[26px] font-bold leading-none" style={{ color: c }}>
+                                {v}
+                              </div>
+                              <div className="hq-label mt-1">{k}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {b.kind === "poll" && (b.options ?? []).length > 0 && (
+                        <div className="mt-4 flex flex-col gap-1.5 border-t border-rule pt-3">
+                          {(b.options ?? []).map((o) => {
+                            const n = rs.filter((r) => r.choice === o).length;
+                            return (
+                              <div key={o} className="flex items-center gap-3">
+                                <span className="w-[180px] shrink-0 truncate text-[13px]">{o}</span>
+                                <div className="min-w-0 flex-1">
+                                  <Meter pct={onNet ? (n / onNet) * 100 : 0} tone="live" />
+                                </div>
+                                <span className="hq-mono w-12 shrink-0 text-right text-[11px] text-ink-soft">
+                                  {n}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Legacy availability polls — Planning owns scheduling now,
+                          but these rows are real history and still read. */}
+                      {b.kind === "dates" && (b.option_dates ?? []).length > 0 && (
+                        <div className="mt-4 flex flex-col gap-1.5 border-t border-rule pt-3">
+                          {(b.option_dates ?? []).map((iso) => {
+                            const hd = heroDate(iso);
+                            const n = rs.filter((r) => (r.available_dates ?? []).includes(iso)).length;
+                            return (
+                              <div key={iso} className="flex items-center gap-3">
+                                <span className="hq-mono w-[180px] shrink-0 text-[12px] uppercase tracking-[0.08em]">
+                                  {hd.dow} {hd.day} {hd.mon}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <Meter pct={onNet ? (n / onNet) * 100 : 0} tone="live" />
+                                </div>
+                                <span className="hq-mono w-12 shrink-0 text-right text-[11px] text-ink-soft">
+                                  {n}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Who said what */}
+                      {answerable(b) && (
+                        <div className="mt-4 border-t border-rule pt-3">
+                          <p className="hq-label mb-2">
+                            Responses · {rs.length}/{onNet}
+                          </p>
+                          <ul className="flex flex-col">
+                            {profiles.map((p) => {
+                              const r = rs.find((x) => x.player_id === p.id);
+                              const tone = !r
+                                ? "idle"
+                                : r.answer === "yes"
+                                  ? "live"
+                                  : r.answer === "no"
+                                    ? "alert"
+                                    : "warn";
+                              const said =
+                                r?.comment ??
+                                r?.choice ??
+                                (r?.answer ? r.answer.toUpperCase() : null) ??
+                                (r?.available_dates?.length
+                                  ? r.available_dates.map((d) => heroDate(d).dow).join(" ")
+                                  : "—");
+                              return (
+                                <li
+                                  key={p.id}
+                                  className="flex items-center gap-2.5 border-b border-rule/50 py-1.5 last:border-0"
+                                >
+                                  <Dot tone={tone} />
+                                  <span className="w-28 shrink-0 truncate text-[13px]">
+                                    {p.id === profile.id ? "You" : p.name}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink-soft">
+                                    {r ? said : "No response"}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Discussion */}
+                      {thread.length > 0 && (
+                        <div className="mt-4 border-t border-rule pt-3">
+                          <p className="hq-label mb-2">Replies</p>
+                          <ul className="flex flex-col gap-2">
+                            {thread.map((t) => (
+                              <li key={t.id} className="rounded-[3px] border border-rule px-3 py-2">
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <span className="hq-label">
+                                    {t.author_id ? (nameById.get(t.author_id) ?? "Operative") : "Command"}
+                                  </span>
+                                  <span className="hq-mono text-[10px] text-ink-soft">
+                                    {relativeTime(t.created_at)}
+                                  </span>
+                                </div>
+                                <p className="mt-0.5 text-[13px]">{t.body}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="mt-4 border-t border-rule pt-3">
+                        <RespondBar
+                          broadcastId={b.id}
+                          kind={b.kind}
+                          myAnswer={mine?.answer ?? null}
+                          myComment={mine?.comment ?? null}
+                          optionDates={b.option_dates ?? []}
+                          myDates={mine?.available_dates ?? []}
+                          options={b.options ?? []}
+                          myChoice={mine?.choice ?? null}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
     </div>
   );
 }

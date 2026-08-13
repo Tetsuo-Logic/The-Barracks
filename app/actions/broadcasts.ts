@@ -14,6 +14,8 @@ export async function createBroadcast(input: {
   title?: string;
   body: string;
   optionDates?: string[];
+  /** Poll choices. Requires migration 0043_comms_polls. */
+  options?: string[];
 }): Promise<Result> {
   const supabase = await createClient();
   const {
@@ -42,10 +44,19 @@ export async function createBroadcast(input: {
         input.kind === "dates" && input.optionDates?.length
           ? input.optionDates
           : null,
+      options: input.kind === "poll" && input.options?.length ? input.options : null,
     })
     .select("id")
     .single();
-  if (error || !data) return { ok: false, error: "Couldn't send it." };
+  if (error || !data) {
+    // The poll columns arrive with migration 0043; say so rather than blaming
+    // the message, which is what a bare "couldn't send it" implies.
+    const missing = /column .*options/i.test(error?.message ?? "");
+    return {
+      ok: false,
+      error: missing ? "Polls need migration 0043_comms_polls running first." : "Couldn't send it.",
+    };
+  }
 
   // Push to everyone but the sender.
   const { data: others } = await supabase
@@ -53,7 +64,13 @@ export async function createBroadcast(input: {
     .select("id")
     .neq("id", user.id);
   const prompt =
-    input.kind === "yesno" ? "Tap to answer" : input.kind === "ask" ? "Tap to reply" : "";
+    input.kind === "yesno"
+      ? "Tap to answer"
+      : input.kind === "ask"
+        ? "Tap to reply"
+        : input.kind === "poll"
+          ? "Tap to vote"
+          : "";
   await sendToPlayers(
     ((others ?? []) as Pick<Profile, "id">[]).map((p) => p.id),
     "new_comp",
@@ -66,6 +83,7 @@ export async function createBroadcast(input: {
   );
 
   revalidatePath("/broadcast");
+  revalidatePath("/hq/comms");
   return { ok: true, id: data.id as string };
 }
 
@@ -108,6 +126,7 @@ export async function postBroadcastMessage(
   );
 
   revalidatePath(`/broadcast/${broadcastId}`);
+  revalidatePath("/hq/comms");
   return { ok: true };
 }
 
@@ -117,6 +136,7 @@ export async function respondBroadcast(
   comment?: string,
   availableDates?: string[],
   dateTimes?: string[],
+  choice?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
@@ -132,6 +152,7 @@ export async function respondBroadcast(
       comment: comment?.trim() || null,
       available_dates: availableDates ?? null,
       date_times: dateTimes ?? null,
+      choice: choice ?? null,
       created_at: new Date().toISOString(),
     },
     { onConflict: "broadcast_id,player_id" },
@@ -152,7 +173,13 @@ export async function respondBroadcast(
       .eq("id", user.id)
       .single();
     const who = (me as { name?: string })?.name ?? "Someone";
-    const verb = answer ? `said ${answer}` : bx.kind === "dates" ? "picked their dates" : "replied";
+    const verb = answer
+      ? `said ${answer}`
+      : bx.kind === "dates"
+        ? "picked their dates"
+        : bx.kind === "poll"
+          ? "voted"
+          : "replied";
     await sendToPlayers([bx.created_by], "rsvp_changes", {
       title: `${who} ${verb}`,
       body: `“${bx.title || bx.body}”`,
@@ -163,5 +190,6 @@ export async function respondBroadcast(
 
   revalidatePath(`/broadcast/${broadcastId}`);
   revalidatePath("/broadcast");
+  revalidatePath("/hq/comms");
   return { ok: true };
 }

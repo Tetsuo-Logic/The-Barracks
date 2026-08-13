@@ -299,7 +299,9 @@ export interface RadarInterest {
   updated_at: string;
 }
 
-export type BroadcastKind = "announce" | "yesno" | "ask" | "dates";
+// Comms transmission types. 'dates' is legacy — availability polls belong to
+// Planning now — but the rows are real history, so they still render.
+export type BroadcastKind = "announce" | "yesno" | "ask" | "dates" | "poll";
 
 export interface Broadcast {
   id: string;
@@ -307,7 +309,8 @@ export interface Broadcast {
   kind: BroadcastKind;
   title: string | null;
   body: string;
-  option_dates: string[] | null; // candidate dates for a 'dates' poll
+  option_dates: string[] | null; // candidate dates for a legacy 'dates' poll
+  options: string[] | null; // choices for a 'poll' — see 0043_comms_polls
   created_at: string;
 }
 
@@ -326,6 +329,7 @@ export interface BroadcastResponse {
   comment: string | null;
   available_dates: string[] | null; // which candidate dates this player can do
   date_times: string[] | null; // tee time that suits them per date, index-aligned with available_dates ('' = none)
+  choice: string | null; // the option picked, for a 'poll'
   created_at: string;
 }
 

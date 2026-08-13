@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { Portal } from "@/components/hq/Portal";
 import type { HqScope } from "@/lib/hq/role";
 
 // ── DEV ONLY — role preview ────────────────────────────────────────────────
@@ -59,7 +60,13 @@ export function RoleSwitch({ real }: { real: HqScope }) {
 
       {open && (
         <>
-          <button className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} aria-label="Close" />
+          <Portal>
+            <button
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+            />
+          </Portal>
           {/* top-full + margin, not an arbitrary calc: CSS requires whitespace
               around `+` inside calc(), so `top-[calc(100%+6px)]` is invalid and
               Tailwind emits no rule at all — the menu then falls back to

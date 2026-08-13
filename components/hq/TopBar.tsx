@@ -3,6 +3,9 @@
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
+import { QuickComms } from "@/components/hq/comms/QuickComms";
+import { Portal } from "@/components/hq/Portal";
+import type { QuickTransmission } from "@/lib/hq/comms";
 import type { HqScope } from "@/lib/hq/role";
 
 // Top bar: which Barracks you're commanding, system clock, presence, and the
@@ -17,11 +20,13 @@ export function TopBar({
   callsign,
   online,
   realRole,
+  comms,
 }: {
   barracks: BarracksOption[];
   callsign: string;
   online: number;
   realRole: HqScope;
+  comms: { items: QuickTransmission[]; awaiting: number };
 }) {
   const [open, setOpen] = useState(false);
   const [clock, setClock] = useState<string>("--:--:--");
@@ -62,11 +67,13 @@ export function TopBar({
 
         {open && (
           <>
-            <button
-              className="fixed inset-0 z-10 cursor-default"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-            />
+            <Portal>
+              <button
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+              />
+            </Portal>
             {/* See RoleSwitch: an arbitrary calc without spaces around `+` is
                 invalid CSS, so Tailwind drops the rule and the menu loses its
                 offset entirely. */}
@@ -125,6 +132,8 @@ export function TopBar({
         <Suspense fallback={null}>
           <RoleSwitch real={realRole} />
         </Suspense>
+        {/* The radio — Comms from any screen, without leaving it. */}
+        <QuickComms items={comms.items} awaiting={comms.awaiting} />
         <span className="hq-mono text-[12px] tracking-[0.1em] text-ink-soft">{clock}</span>
         <Link
           href="/"
