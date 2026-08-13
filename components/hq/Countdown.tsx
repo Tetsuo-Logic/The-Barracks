@@ -53,14 +53,11 @@ export function Countdown({
       >
         {left}
       </div>
-      {/* Caption carries the readout's own colour so the clock reads as one
-          unit rather than a number with a grey footnote. */}
+      {/* Caption stays white: the readout already carries the colour, and
+          repeating it made the caption compete with the number. */}
       <div
         className="hq-label mt-2.5"
-        style={{
-          textAlign: labelAlign,
-          color: past ? "var(--color-moss)" : "var(--color-sand)",
-        }}
+        style={{ textAlign: labelAlign, color: "var(--color-ink)" }}
       >
         {past ? "Elapsed since kick-off" : label}
       </div>
