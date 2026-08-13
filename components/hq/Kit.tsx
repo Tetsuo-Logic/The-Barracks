@@ -169,16 +169,12 @@ export function PageHead({
   title,
   right,
   children,
-  titleSize = 26,
 }: {
   /** String for a plain kicker, or markup for a richer identity line. */
   eyebrow?: ReactNode;
   title: string;
   right?: ReactNode;
   children?: ReactNode;
-  /** Headquarters runs a larger title than the working screens — it's the
-   *  front door, not a tool. Everything else keeps the standard size. */
-  titleSize?: number;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -188,10 +184,9 @@ export function PageHead({
         ) : (
           eyebrow
         )}
-        <h1
-          className="hq-readout font-bold uppercase leading-none tracking-[0.02em]"
-          style={{ fontSize: titleSize }}
-        >
+        {/* One masthead size for the whole of HQ — every screen is titled with
+            the same weight, so no page reads as more important than another. */}
+        <h1 className="hq-readout text-[36px] font-bold uppercase leading-none tracking-[0.02em]">
           {title}
         </h1>
         {children && <div className="mt-1.5 text-sm text-ink-soft">{children}</div>}

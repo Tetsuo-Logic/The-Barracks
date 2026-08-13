@@ -70,7 +70,6 @@ export default async function CommandPage({
           </div>
         }
         title="Headquarters"
-        titleSize={36}
         right={
           <>
             {isPresident && (
