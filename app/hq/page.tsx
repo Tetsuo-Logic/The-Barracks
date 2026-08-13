@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { requireProfile } from "@/lib/auth";
-import { getHqOverview, type HqScope } from "@/lib/hq/overview";
+import { getHqOverview } from "@/lib/hq/overview";
+import { resolveViewRole, canSee } from "@/lib/hq/role";
 import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
 import { GameInsignia } from "@/components/hq/GameInsignia";
-import { RoleSwitch } from "@/components/hq/RoleSwitch";
 import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
 
 export const metadata = { title: "Command · Barracks HQ" };
@@ -17,12 +16,6 @@ export const metadata = { title: "Command · Barracks HQ" };
 //   WHAT'S NEXT?  →  WHAT DO I NEED TO DO?  →  WHAT ELSE IS COMING?
 // Empty space below is intentional — this is not a widget board.
 
-const VISIBLE_TO: Record<HqScope, HqScope[]> = {
-  president: ["member", "captain", "president"],
-  captain: ["member", "captain"],
-  member: ["member"],
-};
-
 export default async function CommandPage({
   searchParams,
 }: {
@@ -31,18 +24,16 @@ export default async function CommandPage({
   const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
   const o = await getHqOverview(profile);
 
-  // Dev role preview. A view filter only — never widens what you may actually
-  // do, and every server action still checks the real role.
-  const asked = sp.as as HqScope | undefined;
-  const allowed: HqScope[] = VISIBLE_TO[o.realRole];
-  const view: HqScope = asked && allowed.includes(asked) ? asked : o.realRole;
-
+  // Dev role preview, resolved through the shared helper (lib/hq/role) — the
+  // switch itself lives in the shell. A view filter only.
+  const view = resolveViewRole(sp.as, o.realRole);
   const isPresident = view === "president";
+
   // Real work first, then dev-only samples so the panel can be designed against
   // all three roles while the Barracks is quiet. Empty in production.
   const samples = hqSampleActions();
-  const actions = [...o.actions, ...samples].filter((a) => VISIBLE_TO[view].includes(a.scope));
-  const sampleCount = samples.filter((a) => VISIBLE_TO[view].includes(a.scope)).length;
+  const actions = [...o.actions, ...samples].filter((a) => canSee(view, a.scope));
+  const sampleCount = samples.filter((a) => canSee(view, a.scope)).length;
 
   const nextGame = o.next ? gameById(o.next.game) : null;
   const nextIso = o.next ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}` : null;
@@ -81,9 +72,6 @@ export default async function CommandPage({
         title="Headquarters"
         right={
           <>
-            <Suspense fallback={null}>
-              <RoleSwitch value={view} real={o.realRole} />
-            </Suspense>
             {isPresident && (
               <>
                 <Link

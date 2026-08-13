@@ -142,6 +142,52 @@ const WEEK: { inDays: number; emoji: string; title: string; time: string }[] = [
   { inDays: 5, emoji: "⛳", title: "Threeball — midweek 9", time: "18:45" },
 ];
 
+// ── Operations register ────────────────────────────────────────────────────
+// Filler for the Operations page so the Upcoming and History tables can be
+// judged at length. Not linkable — these operations don't exist.
+
+export type SampleOp = {
+  date: string; // display only
+  game: string; // drives the insignia
+  title: string;
+  squad: string | null;
+  time: string;
+  roster: number;
+  present: number;
+  duration: string;
+  games: number;
+  scrubbed?: boolean;
+};
+
+const UPCOMING: Omit<SampleOp, "duration" | "present">[] = [
+  { date: "Fri 14 Aug", game: "fifa", title: "FIFA — Friday league night", squad: "FIFA Squad", time: "21:00", roster: 6, games: 0 },
+  { date: "Sat 15 Aug", game: "f1", title: "F1 — Silverstone GP", squad: "F1 Squad", time: "19:30", roster: 8, games: 0 },
+  { date: "Sun 16 Aug", game: "cod", title: "COD — Sunday session", squad: "COD Squad", time: "20:30", roster: 5, games: 0 },
+  { date: "Tue 18 Aug", game: "threeball", title: "Threeball — midweek 9", squad: null, time: "18:45", roster: 3, games: 0 },
+  { date: "Thu 20 Aug", game: "cod", title: "COD — ranked push", squad: "COD Squad", time: "20:00", roster: 4, games: 0 },
+];
+
+const HISTORY: SampleOp[] = [
+  { date: "Sun 10 Aug", game: "cod", title: "COD — Sunday session", squad: "COD Squad", time: "20:30", roster: 6, present: 6, duration: "3h 12m", games: 9 },
+  { date: "Fri 08 Aug", game: "fifa", title: "FIFA — league night", squad: "FIFA Squad", time: "21:00", roster: 6, present: 5, duration: "2h 04m", games: 7 },
+  { date: "Wed 06 Aug", game: "f1", title: "F1 — Spa", squad: "F1 Squad", time: "19:30", roster: 8, present: 7, duration: "1h 48m", games: 3 },
+  { date: "Sun 03 Aug", game: "cod", title: "COD — Sunday session", squad: "COD Squad", time: "20:30", roster: 6, present: 4, duration: "2h 41m", games: 8 },
+  { date: "Sat 02 Aug", game: "threeball", title: "Threeball — the annual", squad: null, time: "09:00", roster: 4, present: 4, duration: "4h 20m", games: 1 },
+  { date: "Thu 31 Jul", game: "fifa", title: "FIFA — cup night", squad: "FIFA Squad", time: "21:00", roster: 5, present: 2, duration: "0h 46m", games: 2 },
+  { date: "Tue 29 Jul", game: "cod", title: "COD — midweek", squad: "COD Squad", time: "20:00", roster: 5, present: 0, duration: "—", games: 0, scrubbed: true },
+  { date: "Sun 27 Jul", game: "cod", title: "COD — Sunday session", squad: "COD Squad", time: "20:30", roster: 7, present: 6, duration: "3h 35m", games: 11 },
+];
+
+export function hqSampleUpcoming(): SampleOp[] {
+  if (process.env.NODE_ENV === "production") return [];
+  return UPCOMING.map((u) => ({ ...u, present: 0, duration: "—" }));
+}
+
+export function hqSampleHistory(): SampleOp[] {
+  if (process.env.NODE_ENV === "production") return [];
+  return HISTORY;
+}
+
 export function hqSampleWeek(): SampleWeekRow[] {
   if (process.env.NODE_ENV === "production") return [];
   const base = new Date();

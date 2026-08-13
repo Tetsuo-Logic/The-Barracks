@@ -105,6 +105,21 @@
 }
 .hq-panel-primary > .hq-panel-head .hq-label { color: var(--color-sand); }
 
+/* Live: something is running right now. Green, not amber — amber is reserved
+   for significance/action, so the two can never be confused at a glance. */
+.hq-panel-live {
+  border-color: color-mix(in srgb, var(--color-moss) 42%, var(--color-rule));
+  background:
+    linear-gradient(180deg, rgba(61, 220, 132, 0.055), rgba(11, 16, 14, 0.94));
+  box-shadow: 0 0 0 1px rgba(61, 220, 132, 0.09), 0 22px 60px -30px rgba(0, 0, 0, 0.95);
+}
+.hq-panel-live::before,
+.hq-panel-live::after { border-color: var(--color-moss); opacity: 0.7; }
+.hq-panel-live .hq-panel-head {
+  border-bottom-color: color-mix(in srgb, var(--color-moss) 26%, var(--color-rule));
+}
+.hq-panel-live > .hq-panel-head .hq-label { color: var(--color-moss); }
+
 /* Quiet: reference data. No corner ticks, no lift, flat ground. */
 .hq-panel-quiet {
   background: transparent;

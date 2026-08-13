@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { HqScope } from "@/lib/hq/overview";
+import type { HqScope } from "@/lib/hq/role";
 
 // ── DEV ONLY — role preview ────────────────────────────────────────────────
 // Renders the page as another role would see it so each screen can be designed
@@ -17,11 +17,18 @@ const ROLES: { key: HqScope; label: string }[] = [
   { key: "member", label: "Member" },
 ];
 
-export function RoleSwitch({ value, real }: { value: HqScope; real: HqScope }) {
+/** Lives in the shell, so it's on every HQ page. Reads its own value from the
+ *  URL; each page resolves the same `?as=` server-side via lib/hq/role. */
+export function RoleSwitch({ real }: { real: HqScope }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
+
+  const allowed: HqScope[] =
+    real === "president" ? ["president", "captain", "member"] : real === "captain" ? ["captain", "member"] : ["member"];
+  const askedRaw = params.get("as") as HqScope | null;
+  const value: HqScope = askedRaw && allowed.includes(askedRaw) ? askedRaw : real;
 
   function pick(role: HqScope) {
     const next = new URLSearchParams(params.toString());
@@ -55,7 +62,7 @@ export function RoleSwitch({ value, real }: { value: HqScope; real: HqScope }) {
           <button className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} aria-label="Close" />
           <div className="hq-panel absolute right-0 top-[calc(100%+6px)] z-20 w-[220px] p-1.5">
             <p className="hq-label px-2.5 py-1.5 opacity-70">Preview role · dev</p>
-            {ROLES.map((r) => (
+            {ROLES.filter((r) => allowed.includes(r.key)).map((r) => (
               <button
                 key={r.key}
                 onClick={() => pick(r.key)}

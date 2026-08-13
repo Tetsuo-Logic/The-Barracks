@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
+import { RoleSwitch } from "@/components/hq/RoleSwitch";
+import type { HqScope } from "@/lib/hq/role";
 
 // Top bar: which Barracks you're commanding, system clock, presence, and the
 // route back to the phone. The Barracks switcher is real in shape — a User has
@@ -14,10 +16,12 @@ export function TopBar({
   barracks,
   callsign,
   online,
+  realRole,
 }: {
   barracks: BarracksOption[];
   callsign: string;
   online: number;
+  realRole: HqScope;
 }) {
   const [open, setOpen] = useState(false);
   const [clock, setClock] = useState<string>("--:--:--");
@@ -113,6 +117,11 @@ export function TopBar({
       </div>
 
       <div className="ml-auto flex items-center gap-4">
+        {/* Dev role preview — in the shell so every HQ page can be judged as
+            President, Captain and Member without per-page wiring. */}
+        <Suspense fallback={null}>
+          <RoleSwitch real={realRole} />
+        </Suspense>
         <span className="hq-mono text-[12px] tracking-[0.1em] text-ink-soft">{clock}</span>
         <Link
           href="/"

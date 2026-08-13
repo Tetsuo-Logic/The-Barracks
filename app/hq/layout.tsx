@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NavRail } from "@/components/hq/NavRail";
 import { TopBar, type BarracksOption } from "@/components/hq/TopBar";
 import { Boot } from "@/components/hq/Boot";
+import { realRoleOf } from "@/lib/hq/role";
 import type { Profile } from "@/lib/types";
 
 export const metadata = {
@@ -42,6 +43,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
         barracks={barracks}
         callsign={callsign}
         online={Math.max(1, Math.round(roster.length * 0.55))}
+        realRole={await realRoleOf(profile)}
       />
 
       <div className="flex" style={{ minHeight: "calc(100dvh - var(--hq-bar))" }}>

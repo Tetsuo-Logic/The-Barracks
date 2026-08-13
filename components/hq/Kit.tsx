@@ -25,9 +25,11 @@ export function Panel({
   i?: number;
   pad?: boolean;
   /** Rank on the page. Exactly one `primary` per screen; `quiet` for reference
-   *  data that should recede. Without this everything shouts equally and the
-   *  eye has nothing to land on. */
-  tier?: "primary" | "default" | "quiet";
+   *  data that should recede; `live` for something actually happening now.
+   *  Amber (`primary`) means significance/action, green (`live`) means running —
+   *  they must not be used interchangeably. Without a rank everything shouts
+   *  equally and the eye has nothing to land on. */
+  tier?: "primary" | "default" | "quiet" | "live";
 }) {
   return (
     <section
