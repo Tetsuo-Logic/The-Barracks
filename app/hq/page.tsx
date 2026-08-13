@@ -6,6 +6,7 @@ import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { StatusStrip } from "@/components/hq/StatusStrip";
+import { SignalLock } from "@/components/hq/SignalLock";
 import { Countdown } from "@/components/hq/Countdown";
 import { GameInsignia } from "@/components/hq/GameInsignia";
 import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
@@ -52,12 +53,12 @@ export default async function CommandPage({
         eyebrow={
           <div className="mb-1 flex items-center gap-2.5">
             {/* Crest slot — user-uploaded or generated, later. */}
-            <span
+            <SignalLock
               className="hq-readout text-[19px] font-bold uppercase leading-none tracking-[0.2em]"
               style={{ color: "var(--color-sand)" }}
             >
               {o.barracks.name}
-            </span>
+            </SignalLock>
             {/* Clan tag slot — e.g. [BRKS] — later. */}
             <span
               aria-hidden
@@ -106,6 +107,7 @@ export default async function CommandPage({
       {/* Standing figures — see .hq-strip. StatusStrip adds the arrival
           handshake: the first reading types out in green, then settles. */}
       <StatusStrip
+        speed={44}
         items={[
           { text: "System online", dot: "live", pulse: true },
           { text: `${o.status.operatives} operatives` },
@@ -134,7 +136,7 @@ export default async function CommandPage({
           {/* ── TONIGHT / NEXT ─────────────────────────────────────────── */}
           <Panel
             i={0}
-            scan
+            scan="dash"
             sweep={Boolean(o.next)}
             tier={o.next ? "primary" : "quiet"}
             label={o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
@@ -283,7 +285,6 @@ export default async function CommandPage({
           {/* ── THIS WEEK ──────────────────────────────────────────────── */}
           <Panel
             i={1}
-            scan
             label="This week"
             right={
               <Link href="/hq/calendar" className="hq-label hover:text-ink">
@@ -354,7 +355,6 @@ export default async function CommandPage({
             one item it still holds its ground, with none it says ALL CLEAR. */}
         <Panel
           i={2}
-          scan
           tier={actions.length > 0 ? "primary" : "default"}
           label="Action required"
           status={<Dot tone={actions.length ? "alert" : "live"} pulse={actions.length > 0} />}

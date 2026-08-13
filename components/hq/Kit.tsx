@@ -15,7 +15,7 @@ export function Panel({
   i = 0,
   pad = true,
   fill = false,
-  scan = false,
+  scan,
   tier = "default",
 }: {
   label?: string;
@@ -26,9 +26,11 @@ export function Panel({
   sweep?: boolean;
   i?: number;
   pad?: boolean;
-  /** Run a scanner down the panel as it arrives. Opt-in — a screen where every
-   *  panel scans at once is a light show, not an instrument. */
-  scan?: boolean;
+  /** Arrival effect. Opt-in, and at most one panel per screen should use it:
+   *  a page where everything moves at once has nothing to look at.
+   *  `dash` reads as an interrupted transmission, `sweep` as a register being
+   *  read, `pulse` as the edge briefly taking charge. */
+  scan?: "dash" | "sweep" | "pulse";
   /** Take the full height of the grid cell and let the body absorb the slack,
    *  so a panel can bottom out level with the column beside it instead of
    *  ending wherever its content happens to stop. */
@@ -45,7 +47,7 @@ export function Panel({
       className={`hq-panel hq-panel-${tier} hq-rise ${fill ? "flex h-full flex-col" : ""} ${className}`}
       style={{ ["--i" as string]: i }}
     >
-      {scan && <span className="hq-scanline" aria-hidden />}
+      {scan && <span className="hq-scanline" data-scan={scan} aria-hidden />}
       {(label || right) && (
         <header className={`hq-panel-head ${sweep ? "hq-sweep" : ""}`}>
           <div className="flex min-w-0 items-center gap-2">

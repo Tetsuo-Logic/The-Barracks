@@ -160,6 +160,7 @@ export default async function OperationsPage({
       {/* Status strip — the numbers, without five cards demanding attention. */}
       <StatusStrip
         separator="·"
+        speed={32}
         items={[
           { text: `${live.length} live`, dot: live.length ? "live" : "idle", pulse: live.length > 0 },
           { text: `${upcoming.length} upcoming` },
@@ -175,6 +176,7 @@ export default async function OperationsPage({
           <Panel
             i={0}
             tier="live"
+            scan="sweep"
             sweep
             label="Live now"
             status={<Dot tone="live" pulse />}

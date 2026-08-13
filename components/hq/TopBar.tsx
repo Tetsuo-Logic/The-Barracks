@@ -5,6 +5,7 @@ import Link from "next/link";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
 import { QuickComms } from "@/components/hq/comms/QuickComms";
 import { Portal } from "@/components/hq/Portal";
+import { SoundToggle } from "@/components/hq/SoundToggle";
 import type { QuickTransmission } from "@/lib/hq/comms";
 import type { HqScope } from "@/lib/hq/role";
 
@@ -134,6 +135,7 @@ export function TopBar({
         </Suspense>
         {/* The radio — Comms from any screen, without leaving it. */}
         <QuickComms items={comms.items} awaiting={comms.awaiting} />
+        <SoundToggle />
         <span className="hq-mono text-[12px] tracking-[0.1em] text-ink-soft">{clock}</span>
         <Link
           href="/"

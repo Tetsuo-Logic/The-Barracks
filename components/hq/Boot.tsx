@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { playKey, playLine, playGranted } from "@/lib/hq/sound";
 
 // The command-link handshake, as a terminal session: the window opens, a
 // command is typed into it, and only then does the system start reporting.
@@ -23,8 +24,15 @@ const LINES = [
   "LOADING BARRACKS REGISTRY...",
   "SQUADS SYNCHRONISED",
   "TELEMETRY ONLINE",
-  "HEADQUARTERS ONLINE",
+  "DECRYPTING COMMAND KEY...",
 ];
+
+// The lock giving. Scrambles for a beat, then resolves — the moment the system
+// decides you're allowed in.
+const GRANTED = "ACCESS GRANTED";
+// ASCII only: box-drawing glyphs aren't a single cell wide in this font, so a
+// scrambling line jitters as characters resolve.
+const SCRAMBLE = "#@%&$*/\|<>=+-~^?!";
 
 const KEY = "hq-booted";
 
@@ -36,8 +44,10 @@ const EDGE = "color-mix(in srgb, var(--color-moss) 38%, transparent)";
 export function Boot({ callsign }: { callsign: string }) {
   const [done, setDone] = useState(true);
   // Phase one: the command types itself. Phase two: the system answers.
+  // Phase three: the key cracks.
   const [typed, setTyped] = useState(0);
   const [n, setN] = useState(0);
+  const [crack, setCrack] = useState(-1);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -52,7 +62,13 @@ export function Boot({ callsign }: { callsign: string }) {
   // Type the command in, after a beat for the window to land.
   useEffect(() => {
     if (done || typed >= COMMAND.length) return;
-    const t = setTimeout(() => setTyped((v) => v + 1), typed === 0 ? 320 : 26);
+    const t = setTimeout(
+      () => {
+        setTyped((v) => v + 1);
+        playKey();
+      },
+      typed === 0 ? 320 : 26,
+    );
     return () => clearTimeout(t);
   }, [typed, done]);
 
@@ -60,12 +76,34 @@ export function Boot({ callsign }: { callsign: string }) {
   useEffect(() => {
     if (done || typed < COMMAND.length) return;
     if (n >= LINES.length) {
-      const t = setTimeout(finish, 460);
+      if (crack < 0) setCrack(0);
+      return;
+    }
+    const t = setTimeout(() => {
+      setN((v) => v + 1);
+      playLine();
+    }, n === 0 ? 260 : 125);
+    return () => clearTimeout(t);
+  }, [n, typed, done, crack]);
+
+  // Crack the key: each character settles left to right, then the lock gives.
+  useEffect(() => {
+    if (done || crack < 0) return;
+    if (crack > GRANTED.length) {
+      const t = setTimeout(finish, 620);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setN((v) => v + 1), n === 0 ? 260 : 125);
+    if (crack === GRANTED.length) {
+      playGranted();
+      const t = setTimeout(() => setCrack((v) => v + 1), 40);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setCrack((v) => v + 1);
+      playKey();
+    }, crack === 0 ? 220 : 62);
     return () => clearTimeout(t);
-  }, [n, typed, done]);
+  }, [crack, done]);
 
   function finish() {
     sessionStorage.setItem(KEY, "1");
@@ -146,10 +184,18 @@ export function Boot({ callsign }: { callsign: string }) {
             </div>
           )}
 
+          {crack >= 0 && (
+            <p className="mt-4 text-[17px] font-bold tracking-[0.2em]" style={{ color: GREEN }}>
+              {GRANTED.split("").map((ch, i) =>
+                i < crack ? ch : SCRAMBLE[(i * 7 + crack * 3) % SCRAMBLE.length],
+              ).join("")}
+            </p>
+          )}
+
           {n >= 3 && (
             <p
-              className="mt-5 text-[11px] uppercase tracking-[0.18em]"
-              style={{ color: GREEN }}
+              className="mt-4 text-[11px] uppercase tracking-[0.18em]"
+              style={{ color: GREEN_DIM }}
             >
               Welcome back, {callsign}
             </p>
@@ -161,7 +207,15 @@ export function Boot({ callsign }: { callsign: string }) {
           className="hq-mono flex items-center justify-between px-4 py-2 text-[9px] uppercase tracking-[0.18em]"
           style={{ borderTop: `1px solid ${EDGE}`, color: GREEN_FAINT, background: "rgba(61,220,132,0.04)" }}
         >
-          <span>{typing ? "Awaiting command" : n >= LINES.length ? "Ready" : "Working…"}</span>
+          <span>
+            {typing
+              ? "Awaiting command"
+              : crack > GRANTED.length
+                ? "Granted"
+                : crack >= 0
+                  ? "Cracking key…"
+                  : "Working…"}
+          </span>
           <span>Press any key to skip</span>
         </div>
       </div>

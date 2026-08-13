@@ -108,6 +108,7 @@ export function RequestDetail({
 
   return (
     <section className="hq-panel hq-panel-primary hq-rise">
+      <span className="hq-scanline" data-scan="pulse" aria-hidden />
       {/* ── What am I organising, and for whom? ────────────────────────── */}
       <header className="flex flex-wrap items-start gap-x-5 gap-y-3 px-5 py-4">
         <GameInsignia game={r.game} size={46} />

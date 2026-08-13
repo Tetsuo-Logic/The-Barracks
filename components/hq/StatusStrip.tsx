@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { playKey, playLine } from "@/lib/hq/sound";
 import type { Tone } from "@/components/hq/Kit";
 
 // The standing-figures strip, with a short handshake on arrival: the first
@@ -33,10 +34,14 @@ export function StatusStrip({
   items,
   separator = "/",
   right,
+  /** Milliseconds per character. Varied per screen on purpose — the pages
+   *  shouldn't all report at identical cadence. */
+  speed = 40,
 }: {
   items: StripItem[];
   separator?: string;
   right?: ReactNode;
+  speed?: number;
 }) {
   const pathname = usePathname();
   // -1 = not decided yet (server render + first paint), so nothing flickers.
@@ -85,16 +90,25 @@ export function StatusStrip({
   // Type the first reading.
   useEffect(() => {
     if (typed < 0 || !head || typed >= head.text.length) return;
-    const t = setTimeout(() => setTyped((v) => v + 1), typed === 0 ? 140 : 22);
+    const t = setTimeout(
+      () => {
+        setTyped((v) => v + 1);
+        playKey();
+      },
+      typed === 0 ? 160 : speed,
+    );
     return () => clearTimeout(t);
-  }, [typed, head]);
+  }, [typed, head, speed]);
 
   const typing = typed >= 0 && head != null && typed < head.text.length;
 
   // Then bring the rest in, one at a time.
   useEffect(() => {
     if (typing || shown < 0 || shown >= rest.length) return;
-    const t = setTimeout(() => setShown((v) => v + 1), 70);
+    const t = setTimeout(() => {
+      setShown((v) => v + 1);
+      playLine();
+    }, 110);
     return () => clearTimeout(t);
   }, [shown, typing, rest.length]);
 
