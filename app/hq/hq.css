@@ -144,6 +144,82 @@
   background: rgba(255, 255, 255, 0.012);
 }
 
+/* ── Surface experiment — scoped, Operations only ────────────────────────
+   The command black is right for the shell but wrong for content: panels sat
+   almost on the page colour, so tables read as floating text and metadata
+   disappeared. This lifts the *content* onto real surfaces and lets the
+   navigation shell stay the darkest thing on screen — monitors switched on in
+   a dark room, rather than a black terminal.
+
+   Colour still means something: amber/green/red are accents, never the reason
+   a surface is legible. Deliberately no extra borders — separation comes from
+   tone. Scoped to .hq-surface so it can be judged before going global. */
+.hq-surface {
+  /* Secondary text was the worst casualty — lifted a full step. */
+  --color-ink-soft: #9db0a5;
+  --color-rule: #313d37;
+  --color-card: #1c2622;
+  --color-card-2: #24302a;
+  /* Genuinely tertiary content stays dim, on purpose. */
+  --hq-dim: #77877d;
+}
+
+/* Ambient lift: the workspace sits a touch above the shell behind it. */
+.hq-surface::before {
+  content: "";
+  position: absolute;
+  inset: -24px -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(160, 200, 180, 0.045), transparent 70%);
+}
+
+/* Standard content surface. Elevation borrowed from the Action Required panel —
+   a defined edge plus a 1px top highlight is what makes a panel read as raised —
+   but neutral, because amber has to stay semantic rather than structural. */
+.hq-surface .hq-panel {
+  background: linear-gradient(180deg, #222d28 0%, #1a2420 100%);
+  border-color: #3a473f;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 22px 60px -30px rgba(0, 0, 0, 0.95);
+}
+/* Header is another tonal step, so panels read as layered not flat. */
+.hq-surface .hq-panel-head {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom-color: #414e46;
+}
+/* Quiet is still quiet — but it's a surface now, not a hole. */
+.hq-surface .hq-panel-quiet {
+  background: linear-gradient(180deg, #1c2622 0%, #171f1c 100%);
+  border-color: #33403a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.hq-surface .hq-panel-quiet .hq-panel-head {
+  background: rgba(255, 255, 255, 0.032);
+}
+/* Live keeps its green cast, lifted to match. */
+.hq-surface .hq-panel-live {
+  background: linear-gradient(180deg, rgba(61, 220, 132, 0.085) 0%, #1a2622 100%);
+  border-color: color-mix(in srgb, var(--color-moss) 40%, #333f39);
+}
+
+/* Table furniture: the head band reads as part of the surface, and dividers
+   are tonal rather than another border colour. */
+.hq-surface thead tr { background: rgba(255, 255, 255, 0.028); }
+.hq-surface tbody tr { border-color: rgba(255, 255, 255, 0.055) !important; }
+/* Hover has to be unmistakable — this is a table you scan. */
+.hq-surface tbody tr:hover { background: rgba(255, 255, 255, 0.062) !important; }
+
+/* Inputs sit on the surface, not in a pit. */
+.hq-surface input,
+.hq-surface select {
+  background-color: #232f2a;
+  border-color: #3a463f;
+  color: var(--color-ink);
+}
+.hq-surface input::placeholder { color: #82988c; }
+
 /* ── Labels & readouts ──────────────────────────────────────────────────── */
 .hq-label {
   font-family: var(--font-mono);

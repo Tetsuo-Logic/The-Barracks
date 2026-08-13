@@ -6,6 +6,7 @@ import { gameById, compHeading } from "@/lib/games";
 import { todayISO, shortTime, heroDate } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { GameInsignia } from "@/components/hq/GameInsignia";
+import { FilterSelect } from "@/components/hq/FilterSelect";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { hqSampleUpcoming, hqSampleHistory, type SampleOp } from "@/lib/hq/future/actions";
 import type { Competition, Rsvp } from "@/lib/types";
@@ -136,7 +137,10 @@ export default async function OperationsPage({
   const sampleHistory = hqSampleHistory();
 
   return (
-    <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
+    /* hq-surface: the lifted surface/contrast system, scoped to this page so it
+       can be compared against the rest of HQ before going global. Visual only —
+       no layout or content changes. */
+    <div className="hq-surface relative mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
       <PageHead
         eyebrow="Command"
         title="Operations"
@@ -371,35 +375,43 @@ export default async function OperationsPage({
               )}
             </form>
 
+            {/* 'All' stays a tab because it's the default you return to; the
+                open-ended lists are dropdowns so twenty squads don't wrap into
+                a wall of chips. */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="hq-label mr-1 opacity-50">Squad</span>
-              <FilterChip href={qs({ q: sp.q })} label="All" active={squadFilter === "all"} />
               <FilterChip
-                href={qs({ q: sp.q, game: gameFilter, squad: "barracks" })}
-                label="Whole Barracks"
-                active={squadFilter === "barracks"}
+                href={qs({ q: sp.q, game: gameFilter })}
+                label="All"
+                active={squadFilter === "all"}
               />
-              {squads.map((s) => (
-                <FilterChip
-                  key={s.squad.id}
-                  href={qs({ q: sp.q, game: gameFilter, squad: s.squad.id })}
-                  label={s.squad.name || gameById(s.squad.game).name}
-                  active={squadFilter === s.squad.id}
-                />
-              ))}
+              <FilterSelect
+                param="squad"
+                value={squadFilter}
+                allLabel="Choose squad"
+                options={[
+                  { value: "barracks", label: "Whole Barracks" },
+                  ...squads.map((s) => ({
+                    value: s.squad.id,
+                    label: s.squad.name || gameById(s.squad.game).name,
+                  })),
+                ]}
+              />
 
               {gamesInHistory.length > 1 && (
                 <>
                   <span className="hq-label ml-3 mr-1 opacity-50">Game</span>
-                  <FilterChip href={qs({ q: sp.q, squad: squadFilter })} label="All" active={gameFilter === "all"} />
-                  {gamesInHistory.map((g) => (
-                    <FilterChip
-                      key={g}
-                      href={qs({ q: sp.q, squad: squadFilter, game: g })}
-                      label={gameById(g).name}
-                      active={gameFilter === g}
-                    />
-                  ))}
+                  <FilterChip
+                    href={qs({ q: sp.q, squad: squadFilter })}
+                    label="All"
+                    active={gameFilter === "all"}
+                  />
+                  <FilterSelect
+                    param="game"
+                    value={gameFilter}
+                    allLabel="Choose game"
+                    options={gamesInHistory.map((g) => ({ value: g, label: gameById(g).name }))}
+                  />
                 </>
               )}
             </div>
