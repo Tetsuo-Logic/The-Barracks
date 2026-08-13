@@ -56,6 +56,9 @@ export default async function CommandPage({
         stake: realNext.stake,
         squad: Boolean(realNext.squad_id),
         roster: { ...o.nextRsvps, total: o.profiles.length },
+        confirmBy: o.nextRsvps.confirmBy,
+        lapsed: o.nextRsvps.lapsed,
+        pending: o.nextRsvps.pending,
         demo: false,
       }
     : demoNext
@@ -68,6 +71,9 @@ export default async function CommandPage({
           stake: null,
           squad: false,
           roster: demoNext.roster,
+          confirmBy: demoNext.confirmBy,
+          lapsed: demoNext.lapsed,
+          pending: demoNext.pending,
           demo: true,
         }
       : null;
@@ -318,6 +324,34 @@ export default async function CommandPage({
                               }}
                             />
                           </div>
+
+                          {/* The confirmation window. Stated plainly, because
+                              the deadline only works if people can see it. */}
+                          {(hero.confirmBy || hero.pending > 0 || hero.lapsed > 0) && (
+                            <p className="hq-mono mt-2.5 text-[11px] uppercase tracking-[0.1em]">
+                              {hero.pending > 0 && (
+                                <span style={{ color: "var(--color-sand)" }}>
+                                  {hero.pending} to confirm
+                                </span>
+                              )}
+                              {hero.pending > 0 && hero.lapsed > 0 && (
+                                <span className="text-ink-soft"> · </span>
+                              )}
+                              {hero.lapsed > 0 && (
+                                <span style={{ color: "var(--color-flag)" }}>
+                                  {hero.lapsed} never confirmed — off the roster
+                                </span>
+                              )}
+                              {hero.confirmBy && (hero.pending > 0 || hero.lapsed > 0) && (
+                                <span className="text-ink-soft"> · </span>
+                              )}
+                              {hero.confirmBy && (
+                                <span className="text-ink-soft">
+                                  confirm by {shortTime(new Date(hero.confirmBy).toTimeString().slice(0, 8))}
+                                </span>
+                              )}
+                            </p>
+                          )}
                       </div>
                     </div>
                   </div>

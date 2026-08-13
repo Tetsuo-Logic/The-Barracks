@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendToPlayers } from "@/lib/push";
-import { isLocked, isClosed } from "@/lib/rsvp";
+import { isLocked, isClosed, confirmState } from "@/lib/rsvp";
 import { shortDate } from "@/lib/dates";
 import { compHeading } from "@/lib/games";
 import type { Competition, Profile, RsvpStatus } from "@/lib/types";
@@ -21,11 +21,37 @@ export async function setRsvp(
 
   const { data: lock } = await supabase
     .from("competitions")
-    .select("status, started_at")
+    .select("status, started_at, confirm_by")
     .eq("id", competitionId)
     .single();
   if (lock && isClosed(lock as Pick<Competition, "status" | "started_at">)) {
     return { ok: false, error: "This operation is closed — roll call is locked." };
+  }
+
+  // The confirmation window. Someone carried over from the muster who let the
+  // deadline pass is off the roster, and can't quietly put themselves back on —
+  // a Captain or the President has to. Coming off the roster stays free: you
+  // can always drop out, it's only rejoining that needs a nod.
+  const { data: mine } = await supabase
+    .from("rsvps")
+    .select("confirmed_at, approved_late")
+    .eq("competition_id", competitionId)
+    .eq("player_id", user.id)
+    .maybeSingle();
+
+  if (
+    status === "in" &&
+    mine &&
+    lock &&
+    confirmState(
+      mine as { confirmed_at: string | null; approved_late: boolean },
+      lock as { confirm_by: string | null },
+    ) === "lapsed"
+  ) {
+    return {
+      ok: false,
+      error: "You missed the confirmation window — ask your Captain to approve you back on.",
+    };
   }
 
   const { error } = await supabase.from("rsvps").upsert(
@@ -34,6 +60,8 @@ export async function setRsvp(
       player_id: user.id,
       status,
       note: note?.trim() || null,
+      // Answering for yourself is what confirmation means.
+      confirmed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "competition_id,player_id" },

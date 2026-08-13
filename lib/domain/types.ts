@@ -63,6 +63,7 @@ export interface Competition {
   finished_at: string | null; // Operation Room: closed / archived
   games_count: number; // Operation Room: games played this session
   squad_id: string | null; // Sq-3: the squad this Operation belongs to (null = whole Barracks)
+  confirm_by: string | null; // deadline for carried-over roll call answers — see 0045
   acting_captain_id: string | null; // Sq-3: stand-in Captain for this one event
   created_at: string;
 }
@@ -73,6 +74,8 @@ export interface Rsvp {
   status: RsvpStatus; // intent: were you expected?
   note: string | null;
   attended: boolean | null; // roll call: null = unrolled · true = present · false = no-show
+  confirmed_at: string | null; // when they answered themselves; null = carried from a muster
+  approved_late: boolean; // a Captain or the President let them back on
   updated_at: string;
 }
 

@@ -3,6 +3,7 @@ import type { Muster } from "@/lib/domain";
 import { sendToPlayers } from "@/lib/push";
 import { gameById } from "@/lib/games";
 import { shortDate } from "@/lib/dates";
+import { confirmDeadline, CONFIRM_HOURS } from "@/lib/rsvp";
 
 // Muster commands — the Captain's pre-week arrangement. Writes are gated by RLS
 // (Captain of the squad or the CO); responses are self-only. The President
@@ -164,6 +165,10 @@ export async function approveMuster(db: Db, musterId: string, date: string, time
       notes: m.note,
       for_cup: false,
       created_by: user.id,
+      // The clock starts the moment the President deploys — see lib/rsvp.
+      confirm_by: confirmDeadline(
+        { date, tee_time: time ? `${time}:00` : null } as never,
+      ).toISOString(),
     })
     .select("id")
     .single();
@@ -200,7 +205,7 @@ export async function approveMuster(db: Db, musterId: string, date: string, time
   if (carried.length) {
     await sendToPlayers(carried, "new_comp", {
       title: `🎮 ${label}: game on`,
-      body: `${when}. You're down from your muster — tap if that's changed.`,
+      body: `${when}. You're down from your muster — confirm within ${CONFIRM_HOURS}h.`,
       url: `/comp/${compId}`,
       tag: `comp-${compId}`,
     });

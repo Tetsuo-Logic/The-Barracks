@@ -1,4 +1,4 @@
-import type { Competition } from "@/lib/types";
+import type { Competition, Rsvp } from "@/lib/types";
 
 // The RSVP lock: from 24h before a competition, backing out after saying "in"
 // has consequences (a warning to the player, a ping to the organiser).
@@ -35,4 +35,55 @@ export function isFlake(
   nextStatus: string,
 ): boolean {
   return prevStatus === "in" && nextStatus !== "in" && isLocked(comp);
+}
+
+
+// ── The confirmation window ────────────────────────────────────────────────
+// Offering a night at muster is not the same as turning up. When the President
+// deploys, everyone carried across from that muster gets 24 hours to confirm.
+// Miss it and you come off the roster; a Captain or the President can put you
+// back on.
+//
+// Lapsing is derived, never stored: it's a comparison between confirm_by and
+// confirmed_at, so there's no scheduled job and no window where the database
+// disagrees with the clock.
+
+/** Hours from deployment to confirm. Clamped to kick-off — a night deployed
+ *  three hours before it starts can't offer a day to answer. */
+export const CONFIRM_HOURS = 24;
+
+export function confirmDeadline(comp: Competition, deployedAt: Date = new Date()): Date {
+  const [y, m, d] = comp.date.split("-").map(Number);
+  const [hh, mm] = (comp.tee_time ?? "20:00:00").slice(0, 5).split(":").map(Number);
+  const kickoff = new Date(y, m - 1, d, hh, mm);
+  const full = new Date(deployedAt.getTime() + CONFIRM_HOURS * 3600 * 1000);
+  return full < kickoff ? full : kickoff;
+}
+
+export type ConfirmState =
+  /** They answered themselves, or command let them back on. */
+  | "confirmed"
+  /** Carried from the muster, clock still running. */
+  | "pending"
+  /** Carried from the muster, deadline gone. Off the roster. */
+  | "lapsed";
+
+export function confirmState(
+  rsvp: Pick<Rsvp, "confirmed_at" | "approved_late">,
+  comp: Pick<Competition, "confirm_by">,
+  now: number = Date.now(),
+): ConfirmState {
+  if (rsvp.confirmed_at != null || rsvp.approved_late) return "confirmed";
+  if (!comp.confirm_by) return "confirmed"; // deployed before the window existed
+  return now >= new Date(comp.confirm_by).getTime() ? "lapsed" : "pending";
+}
+
+/** Does this answer still count toward the roster? A lapsed one doesn't —
+ *  that's the whole point of the deadline. */
+export function countsToward(
+  rsvp: Pick<Rsvp, "confirmed_at" | "approved_late">,
+  comp: Pick<Competition, "confirm_by">,
+  now: number = Date.now(),
+): boolean {
+  return confirmState(rsvp, comp, now) !== "lapsed";
 }

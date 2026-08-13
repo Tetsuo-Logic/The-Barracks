@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFixturesData, getInbox, getSquads, getActivityFeed } from "@/lib/queries";
 import { computeService } from "@/lib/service";
 import { gameById } from "@/lib/games";
+import { confirmState } from "@/lib/rsvp";
 import type { Profile, Competition, Rsvp, Mutiny, Complaint, Trial } from "@/lib/types";
 
 // Headquarters reads the *same* domain layer as the phone — this file only
@@ -46,7 +47,15 @@ export type HqOverview = {
   live: Competition[];
   /** Queued behind the hero, so a live night doesn't hide the next one. */
   upNext: Competition | null;
-  nextRsvps: { in: number; out: number; maybe: number; undecided: number };
+  nextRsvps: {
+    in: number;
+    out: number;
+    maybe: number;
+    undecided: number;
+    lapsed: number;
+    pending: number;
+    confirmBy: string | null;
+  };
   upcoming: Competition[];
   recent: Competition[];
   president: Profile | null;
@@ -143,9 +152,20 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   const upNext = notStarted.find((c) => c.id !== next?.id) ?? null;
   const upcoming = scheduled.filter((c) => c.id !== next?.id);
 
+  // A roster only means something if it counts people who have actually
+  // committed. An answer carried over from the muster that nobody confirmed
+  // before the deadline is off the roster — that is the deadline's whole job.
   const nextList = next ? rsvps.filter((r) => r.competition_id === next.id) : [];
   const counts = { in: 0, out: 0, maybe: 0 };
+  let lapsed = 0;
+  let pending = 0;
   for (const r of nextList) {
+    const state = next ? confirmState(r, next) : "confirmed";
+    if (state === "lapsed") {
+      lapsed++;
+      continue;
+    }
+    if (state === "pending") pending++;
     if (r.status === "in") counts.in++;
     else if (r.status === "out") counts.out++;
     else if (r.status === "maybe") counts.maybe++;
@@ -234,6 +254,20 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     }
   }
 
+  // Missed confirmations are the President's problem, not the Court's: the
+  // system reports them and a human decides whether it matters. Approving
+  // somebody back on is a Captain's call too.
+  if (lapsed > 0 && next && profile.is_admin) {
+    actions.push({
+      source: (next.title || gameById(next.game).name).toUpperCase(),
+      label: `${lapsed} never confirmed — off the roster`,
+      href: `/hq/operations/${next.id}`,
+      cta: "Review",
+      tone: "alert",
+      scope: "president",
+    });
+  }
+
   // ── Live activity — system events, not a social feed ──────────────────────
   const feed: HqOverview["feed"] = activity.items.slice(0, 14).map((it) => {
     switch (it.kind) {
@@ -282,6 +316,11 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     nextRsvps: {
       ...counts,
       undecided: Math.max(0, profiles.length - counts.in - counts.out - counts.maybe),
+      /** Carried from the muster, deadline gone, off the roster. */
+      lapsed,
+      /** Carried from the muster, clock still running. */
+      pending,
+      confirmBy: next?.confirm_by ?? null,
     },
     upcoming,
     recent: fixtures.recent,

@@ -154,6 +154,9 @@ export function hqSampleNextOp(): {
   game: string;
   title: string;
   roster: { in: number; maybe: number; out: number; undecided: number; total: number };
+  confirmBy: string | null;
+  lapsed: number;
+  pending: number;
 } | null {
   if (process.env.NODE_ENV === "production") return null;
   const w = WEEK[0];
@@ -166,6 +169,11 @@ export function hqSampleNextOp(): {
     game: w.game,
     title: w.title,
     roster: { in: 4, maybe: 1, out: 1, undecided: 0, total: 6 },
+    // Shows the confirmation window in every state at once: some still to
+    // answer, one who let the deadline go.
+    confirmBy: new Date(Date.now() + 9 * 3600 * 1000).toISOString(),
+    lapsed: 1,
+    pending: 2,
   };
 }
 
