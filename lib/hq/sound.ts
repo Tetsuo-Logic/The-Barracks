@@ -96,23 +96,25 @@ function blip(opts: {
   osc.stop(now + opts.ms / 1000 + 0.02);
 }
 
+// Levels are deliberately well above where they started. A 16ms tick at 2%
+// gain is technically a sound and practically silence on laptop speakers —
+// which is what "the sound doesn't work" turned out to mean. High frequencies
+// also get rolled off badly by small drivers, so the key click sits lower and
+// drops in pitch, the way a real key does.
+
 /** One keystroke. Detuned a little each time so a line doesn't sound looped. */
 export function playKey() {
-  blip({
-    freq: 1500 + Math.random() * 420,
-    ms: 16,
-    gain: 0.022,
-    type: "square",
-  });
+  const f = 820 + Math.random() * 260;
+  blip({ freq: f, to: f * 0.55, ms: 30, gain: 0.09, type: "square" });
 }
 
 /** A line of output landing — softer and lower than a keystroke. */
 export function playLine() {
-  blip({ freq: 620, to: 880, ms: 45, gain: 0.02, type: "triangle" });
+  blip({ freq: 480, to: 700, ms: 70, gain: 0.07, type: "triangle" });
 }
 
 /** The lock giving. Two notes, the second a fifth up. */
 export function playGranted() {
-  blip({ freq: 660, ms: 90, gain: 0.05, type: "triangle" });
-  window.setTimeout(() => blip({ freq: 990, to: 1320, ms: 260, gain: 0.055, type: "triangle" }), 90);
+  blip({ freq: 660, ms: 120, gain: 0.13, type: "triangle" });
+  window.setTimeout(() => blip({ freq: 990, to: 1320, ms: 300, gain: 0.14, type: "triangle" }), 100);
 }
