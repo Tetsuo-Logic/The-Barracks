@@ -9,6 +9,7 @@ import { StatusStrip } from "@/components/hq/StatusStrip";
 import { SignalLock } from "@/components/hq/SignalLock";
 import { Countdown } from "@/components/hq/Countdown";
 import { GameInsignia } from "@/components/hq/GameInsignia";
+import { TerminalHint } from "@/components/hq/TerminalHint";
 import { hqSampleActions, hqSampleWeek, hqSampleNextOp } from "@/lib/hq/future/actions";
 
 export const metadata = { title: "Command · Barracks HQ" };
@@ -251,17 +252,15 @@ export default async function CommandPage({
                           <div className="flex min-w-0 items-center gap-4">
                             <GameInsignia game={hero.game} size={60} />
                             <div className="min-w-0">
-                              <p
-                                className="hq-readout font-bold leading-[1.02]"
-                                style={{ fontSize: heroTitleSize }}
-                                title={hero.title}
-                              >
-                                {heroLabel}
-                              </p>
-                              <p
-                                className="hq-mono mt-2 truncate text-[17px] uppercase tracking-[0.12em] text-ink-soft"
-                                title={hero.title}
-                              >
+                              <TerminalHint text={hero.title} className="inline-block">
+                                <p
+                                  className="hq-readout font-bold leading-[1.02]"
+                                  style={{ fontSize: heroTitleSize }}
+                                >
+                                  {heroLabel}
+                                </p>
+                              </TerminalHint>
+                              <p className="hq-mono mt-2 truncate text-[17px] uppercase tracking-[0.12em] text-ink-soft">
                                 {hero.time}
                                 {heroSubtitle ? ` · ${heroSubtitle}` : ""}
                                 {hero.stake ? ` · ${hero.stake}` : ""}
@@ -339,12 +338,11 @@ export default async function CommandPage({
                       {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
                     </span>
                     <GameInsignia game={c.game} size={30} />
-                    <span
-                      className="hq-readout min-w-0 flex-1 truncate text-[27px] font-bold uppercase leading-none tracking-[0.02em]"
-                      title={compHeading(c)}
-                    >
-                      {gameById(c.game).name}
-                    </span>
+                    <TerminalHint text={compHeading(c)} className="flex-1">
+                      <span className="hq-readout block truncate text-[27px] font-bold uppercase leading-none tracking-[0.02em]">
+                        {gameById(c.game).name}
+                      </span>
+                    </TerminalHint>
                     <Countdown
                       iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
                       size="27px"
