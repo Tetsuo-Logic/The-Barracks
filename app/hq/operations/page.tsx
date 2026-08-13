@@ -590,10 +590,12 @@ function FilterChip({ href, label, active }: { href: string; label: string; acti
   );
 }
 
+// Row rhythm matched to the Action Required panel — that list reads well
+// because rows have room, not just because the surface is lifted.
 function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`hq-label px-3 py-2 text-left font-semibold ${className}`}>{children}</th>;
+  return <th className={`hq-label px-4 py-2.5 text-left font-semibold ${className}`}>{children}</th>;
 }
 
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 align-middle ${className}`}>{children}</td>;
+  return <td className={`px-4 py-2.5 align-middle ${className}`}>{children}</td>;
 }
