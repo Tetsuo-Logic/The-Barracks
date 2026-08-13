@@ -136,7 +136,7 @@ export default async function OperationsPage({
   const sampleHistory = hqSampleHistory();
 
   return (
-    <div style={{ maxWidth: PAGE_WIDTH }}>
+    <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
       <PageHead
         eyebrow="Command"
         title="Operations"

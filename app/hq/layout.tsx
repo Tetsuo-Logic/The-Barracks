@@ -77,8 +77,14 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 px-6 py-6" style={{ maxWidth: 1760 }}>
-          {children}
+        {/* The content column is centred in whatever space is left beside the
+            rail, and capped, so HQ reads the same on a laptop and on an
+            ultrawide instead of stretching to the edge of the monitor. Pages
+            that want to be narrower still centre themselves inside this. */}
+        <main className="min-w-0 flex-1 px-6 py-6">
+          <div className="mx-auto w-full" style={{ maxWidth: 1500 }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>
