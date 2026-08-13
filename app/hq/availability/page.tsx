@@ -2,20 +2,25 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { getPlanning, type PlanningRequest, type Stage } from "@/lib/hq/planning";
-import { Panel, PageHead, Nil, Proto, Tag } from "@/components/hq/Kit";
+import { Panel, PageHead, Proto } from "@/components/hq/Kit";
 import { Lifecycle } from "@/components/hq/availability/Lifecycle";
-import { RequestCard } from "@/components/hq/availability/RequestCard";
+import { RequestDetail } from "@/components/hq/availability/RequestDetail";
+import { RequestQueue, type QueueGroup } from "@/components/hq/availability/RequestQueue";
 
 export const metadata = { title: "Command planning · Barracks HQ" };
 
-const PAGE_WIDTH = 1180;
+const PAGE_WIDTH = 1500;
 
 // ── COMMAND PLANNING ───────────────────────────────────────────────────────
 // Where completed squad requests arrive for the President to deploy.
 //
-// Answer first, evidence second. The matrix that used to be the front door is
-// still here — one level down, behind the request it belongs to, where it's
-// evidence for a decision rather than a decision to be worked out.
+// Master/detail, like the inbox on Headquarters: everything waiting is listed
+// on the right, and picking one opens it beside rather than navigating away.
+// Selection lives in ?req= so a view is linkable and the HQ inbox can deep-link
+// straight to a request.
+//
+// Answer first, evidence second — the recommendation leads, and the reasoning
+// and alternatives sit under it in plain sight rather than behind toggles.
 //
 // Requests never wait for each other: each is scored against the calendar as it
 // stands right now, so deploying one immediately changes what the next
@@ -66,7 +71,7 @@ export default async function PlanningPage({
 
   // A Captain sees their own squads only, and sees them without the Barracks
   // calendar folded in — that weighting is Command's job, not theirs.
-  const mine = isPresident
+  const mine: PlanningRequest[] = isPresident
     ? all
     : all
         .filter((r) => planning.captainOf.includes(r.squadId) || r.demo)
@@ -84,13 +89,41 @@ export default async function PlanningPage({
   const submitted = by("submitted");
   const gathering = [...by("ready"), ...by("open"), ...by("requested")];
   const deployed = by("deployed");
-  const highlight = sp.req ?? null;
 
   // The President's queue is SUBMITTED; the Captain's is everything before it.
   const queue = isPresident ? submitted : gathering;
-  const queueLabel = isPresident ? "Awaiting deployment" : "In your squads";
   const rest = isPresident ? gathering : submitted;
-  const restLabel = isPresident ? "In the squads" : "With Command";
+
+  // Selection: the URL wins, then the first thing actually waiting on this role.
+  const selected =
+    mine.find((r) => r.id === sp.req) ?? queue[0] ?? rest[0] ?? deployed[0] ?? null;
+
+  const href = (id: string) => {
+    const q = new URLSearchParams();
+    if (sp.as) q.set("as", sp.as);
+    if (sp.demo) q.set("demo", sp.demo);
+    q.set("req", id);
+    return `/hq/availability?${q.toString()}`;
+  };
+  const evidenceHref = (id: string) =>
+    `/hq/availability/${encodeURIComponent(id)}${sp.as ? `?as=${sp.as}` : ""}`;
+
+  const toItems = (rs: PlanningRequest[]) =>
+    rs.map((r) => ({ r, href: href(r.id), active: selected?.id === r.id }));
+
+  const groups: QueueGroup[] = [
+    {
+      label: isPresident ? "Awaiting deployment" : "In your squads",
+      tone: "alert",
+      items: toItems(queue),
+    },
+    {
+      label: isPresident ? "In the squads" : "With command",
+      tone: "warn",
+      items: toItems(rest),
+    },
+    { label: "Recently deployed", tone: "live", items: toItems(deployed) },
+  ];
 
   return (
     <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
@@ -120,8 +153,7 @@ export default async function PlanningPage({
         {queue.length > 0 ? (
           <>
             <span className="text-ink">{queue.length}</span> operation
-            {queue.length === 1 ? "" : "s"}{" "}
-            {isPresident ? "awaiting deployment" : "being arranged"}
+            {queue.length === 1 ? "" : "s"} {isPresident ? "awaiting deployment" : "being arranged"}
           </>
         ) : (
           <>Nothing {isPresident ? "awaiting deployment" : "being arranged"}</>
@@ -130,18 +162,21 @@ export default async function PlanningPage({
 
       <Lifecycle
         counts={counts}
+        active={selected?.stage}
         owns={isPresident ? ["submitted", "deployed"] : ["requested", "open", "ready"]}
       />
 
-      {/* ── THE QUEUE ────────────────────────────────────────────────────── */}
-      <section className="mb-6">
-        <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
-          {queueLabel}
-        </h2>
-
-        {queue.length === 0 ? (
+      {/* Detail left, inbox right — the same shape as Headquarters. */}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.75fr)_minmax(330px,1fr)]">
+        {selected ? (
+          <RequestDetail
+            request={selected}
+            canDeploy={isPresident && selected.stage === "submitted"}
+            evidenceHref={evidenceHref(selected.id)}
+          />
+        ) : (
           <Panel tier="quiet">
-            <div className="flex min-h-[180px] flex-col items-center justify-center px-5 text-center">
+            <div className="flex min-h-[280px] flex-col items-center justify-center px-5 text-center">
               <span className="text-[26px]" aria-hidden>
                 ✓
               </span>
@@ -158,71 +193,10 @@ export default async function PlanningPage({
               </p>
             </div>
           </Panel>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {queue.map((r, i) => (
-              <RequestCard
-                key={r.id}
-                request={r as PlanningRequest}
-                canDeploy={isPresident}
-                open={highlight === r.id}
-                highlight={highlight === r.id}
-                i={i}
-              />
-            ))}
-          </div>
         )}
-      </section>
 
-      {/* ── THE REST OF THE PIPELINE ─────────────────────────────────────── */}
-      {rest.length > 0 && (
-        <section className="mb-6">
-          <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
-            {restLabel}
-          </h2>
-          <div className="flex flex-col gap-5">
-            {rest.map((r, i) => (
-              <RequestCard key={r.id} request={r as PlanningRequest} canDeploy={false} i={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── DEPLOYED ─────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
-          Recently deployed
-        </h2>
-        <Panel tier="quiet">
-          {deployed.length === 0 ? (
-            <Nil>Nothing deployed from a muster yet</Nil>
-          ) : (
-            <div className="flex flex-col">
-              {deployed.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-rule/60 py-2.5 last:border-0"
-                >
-                  <span className="w-6 shrink-0 text-center">{r.emoji}</span>
-                  <span className="hq-readout min-w-0 flex-1 truncate text-[15px] font-bold uppercase tracking-[0.02em]">
-                    {r.title}
-                  </span>
-                  <span className="hq-mono shrink-0 text-[12px] uppercase tracking-[0.08em] text-ink-soft">
-                    {r.deployed?.iso}
-                    {r.deployed?.time ? ` · ${r.deployed.time.slice(0, 5)}` : ""}
-                  </span>
-                  <Tag tone="live">Deployed</Tag>
-                  {r.deployed?.compId && (
-                    <Link href={`/hq/operations/${r.deployed.compId}`} className="hq-label hover:text-ink">
-                      Open →
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </section>
+        <RequestQueue groups={groups} />
+      </div>
     </div>
   );
 }
