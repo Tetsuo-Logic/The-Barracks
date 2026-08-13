@@ -135,15 +135,32 @@ export type SampleWeekRow = {
   time: string;
 };
 
-const WEEK: { inDays: number; emoji: string; title: string; time: string }[] = [
-  { inDays: 1, emoji: "⚽", title: "FIFA — Friday league night", time: "21:00" },
-  { inDays: 2, emoji: "🏎️", title: "F1 — Silverstone GP", time: "19:30" },
-  { inDays: 3, emoji: "🎮", title: "COD — Sunday session", time: "20:30" },
-  { inDays: 4, emoji: "🎮", title: "COD — ranked push", time: "20:00" },
-  { inDays: 5, emoji: "⛳", title: "Threeball — midweek 9", time: "18:45" },
-  { inDays: 6, emoji: "⚽", title: "FIFA — cup replay vs The Shed", time: "21:15" },
-  { inDays: 7, emoji: "🏎️", title: "F1 — Monza qualifying", time: "19:00" },
+const WEEK: { inDays: number; emoji: string; game: string; title: string; time: string }[] = [
+  { inDays: 1, emoji: "⚽", game: "fifa", title: "FIFA — Friday league night", time: "21:00" },
+  { inDays: 2, emoji: "🏎️", game: "gta", title: "F1 — Silverstone GP", time: "19:30" },
+  { inDays: 3, emoji: "🎮", game: "cod", title: "COD — Sunday session", time: "20:30" },
+  { inDays: 4, emoji: "🎮", game: "cod", title: "COD — ranked push", time: "20:00" },
+  { inDays: 5, emoji: "⛳", game: "threeball", title: "Threeball — midweek 9", time: "18:45" },
+  { inDays: 6, emoji: "⚽", game: "fifa", title: "FIFA — cup replay vs The Shed", time: "21:15" },
+  { inDays: 7, emoji: "🏎️", game: "gta", title: "F1 — Monza qualifying", time: "19:00" },
 ];
+
+/** The soonest filler night, shaped for the HQ hero. Lets the "up next" layout
+ *  be judged while every real Operation on the board is already running. Empty
+ *  in production, and the hero tags it DEMO. */
+export function hqSampleNextOp(): { iso: string; time: string; game: string; title: string } | null {
+  if (process.env.NODE_ENV === "production") return null;
+  const w = WEEK[0];
+  const d = new Date();
+  d.setDate(d.getDate() + w.inDays);
+  const p = (v: number) => String(v).padStart(2, "0");
+  return {
+    iso: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+    time: w.time,
+    game: w.game,
+    title: w.title,
+  };
+}
 
 // ── Operations register ────────────────────────────────────────────────────
 // Filler for the Operations page so the Upcoming and History tables can be

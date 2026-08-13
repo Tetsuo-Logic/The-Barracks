@@ -4,12 +4,12 @@ import { getHqOverview } from "@/lib/hq/overview";
 import { resolveViewRole, canSee } from "@/lib/hq/role";
 import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
-import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
+import { Panel, Dot, Tag, PageHead, Nil, Proto } from "@/components/hq/Kit";
 import { StatusStrip } from "@/components/hq/StatusStrip";
 import { SignalLock } from "@/components/hq/SignalLock";
 import { Countdown } from "@/components/hq/Countdown";
 import { GameInsignia } from "@/components/hq/GameInsignia";
-import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
+import { hqSampleActions, hqSampleWeek, hqSampleNextOp } from "@/lib/hq/future/actions";
 
 export const metadata = { title: "Command · Barracks HQ" };
 
@@ -37,12 +37,41 @@ export default async function CommandPage({
   const actions = [...o.actions, ...samples].filter((a) => canSee(view, a.scope));
   const sampleCount = samples.filter((a) => canSee(view, a.scope)).length;
 
-  // Is the thing on the hero actually under way? Once it is, the roll call is
-  // history — the roster bar answers "will we have enough?", which stops being
-  // a question the moment the night starts.
-  const heroLive = o.next != null && o.live.some((l) => l.id === o.next!.id);
-  const nextGame = o.next ? gameById(o.next.game) : null;
-  const nextIso = o.next ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}` : null;
+  // The big treatment belongs to what's COMING. An Operation under way is a
+  // row — the roster bar answers "will we have enough?", which stops being a
+  // question the moment the night starts, and a running night doesn't need the
+  // whole panel to say so.
+  const realNext = o.next && !o.live.some((l) => l.id === o.next!.id) ? o.next : null;
+  // Dev-only: lets the up-next layout be judged while every real Operation on
+  // the board is already running. Tagged DEMO, and null in production.
+  const demoNext = realNext ? null : hqSampleNextOp();
+
+  const hero = realNext
+    ? {
+        id: realNext.id,
+        iso: realNext.date,
+        time: (realNext.tee_time ?? "20:00").slice(0, 5),
+        game: realNext.game,
+        title: compHeading(realNext),
+        stake: realNext.stake,
+        squad: Boolean(realNext.squad_id),
+        demo: false,
+      }
+    : demoNext
+      ? {
+          id: null,
+          iso: demoNext.iso,
+          time: demoNext.time,
+          game: demoNext.game,
+          title: demoNext.title,
+          stake: null,
+          squad: false,
+          demo: true,
+        }
+      : null;
+
+  const heroGame = hero ? gameById(hero.game) : null;
+  const heroIso = hero ? `${hero.iso}T${hero.time}:00` : null;
   const rosterPct = o.profiles.length
     ? Math.round((o.nextRsvps.in / o.profiles.length) * 100)
     : 0;
@@ -141,8 +170,8 @@ export default async function CommandPage({
           <Panel
             i={0}
             scan="dash"
-            sweep={Boolean(o.next)}
-            tier={o.next ? "primary" : "quiet"}
+            sweep={o.live.length > 0 || hero != null}
+            tier={o.live.length > 0 || hero ? "primary" : "quiet"}
             label={
               o.live.length > 1
                 ? `In progress · ${o.live.length}`
@@ -159,178 +188,167 @@ export default async function CommandPage({
               />
             }
             right={
-              o.next && (
-                <Link href={`/hq/operations/${o.next.id}`} className="hq-label hover:text-ink">
+              o.live[0] && (
+                <Link href={`/hq/operations/${o.live[0].id}`} className="hq-label hover:text-ink">
                   Open room →
                 </Link>
               )
             }
           >
-            {o.next && nextIso ? (
-              /* Departure board: identity on the left, the clock dominating the
-                 right, and the roster reading full width beneath both. */
-              <div
-                className="flex flex-col justify-center gap-6 py-5"
-                style={{ minHeight: heroLive ? 180 : 290 }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
-                  <div className="flex min-w-0 flex-1 items-center gap-7">
-                    {/* Date plate — deliberately built, deliberately secondary.
-                        Hairline rules and a framed tile give it structure so it
-                        reads as issued stock rather than three loose words. */}
-                    <div
-                      className="shrink-0 text-center"
-                      style={{
-                        border: "1px solid var(--color-rule)",
-                        borderRadius: 3,
-                        background: "rgba(255,255,255,0.015)",
-                        minWidth: 116,
-                        /* The countdown carries a caption beneath it, so
-                           centring the two blocks against each other leaves the
-                           day numeral sitting ~12px below the clock's. Lift the
-                           plate by exactly that, as a transform rather than a
-                           margin so the row's height doesn't change: the two big
-                           numerals are what the eye pairs, not the boxes. */
-                        transform: "translateY(-12px)",
-                      }}
-                    >
-                      <div
-                        className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
-                        style={{ borderBottom: "1px solid var(--color-rule)" }}
-                      >
-                        {heroDate(o.next.date).dow}
-                      </div>
-                      {/* The day carries the plate. Extra vertical padding on top
-                          of the size — a big numeral in a tight box still reads
-                          small, because the plate is what you see first. */}
-                      <div
-                        className="hq-readout font-bold leading-[0.9] py-4"
-                        style={{ fontSize: "clamp(62px, 4.9vw, 84px)", color: "var(--color-flag)" }}
-                      >
-                        {heroDate(o.next.date).day}
-                      </div>
-                      <div
-                        className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
-                        style={{ borderTop: "1px solid var(--color-rule)" }}
-                      >
-                        {heroDate(o.next.date).mon}
-                      </div>
-                    </div>
-
-                    <div className="flex min-w-0 items-center gap-4">
-                      <GameInsignia game={o.next.game} size={60} />
-                      <div className="min-w-0">
-                      <p
-                        className="hq-readout font-bold leading-[1.02]"
-                        style={{ fontSize: "clamp(38px, 3.2vw, 52px)" }}
-                      >
-                        {compHeading(o.next)}
-                      </p>
-                      <p className="hq-mono mt-2 text-[17px] uppercase tracking-[0.12em] text-ink-soft">
-                        {nextGame?.name}
-                        {o.next.tee_time ? ` · ${shortTime(o.next.tee_time)}` : ""}
-                        {o.next.stake ? ` · ${o.next.stake}` : ""}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        <Tag tone={o.next.started_at ? "live" : "idle"}>
-                          {o.next.finished_at
-                            ? "Archived"
-                            : o.next.started_at
-                              ? "Room live"
-                              : "Standing by"}
-                        </Tag>
-                        {o.next.squad_id && <Tag tone="warn">Squad operation</Tag>}
-                      </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0">
-                    <Countdown
-                      iso={nextIso}
-                      size="clamp(44px, 4.3vw, 80px)"
-                      labelAlign="right"
-                    />
-                  </div>
-                </div>
-
-                {!heroLive && (
-                <div className="border-t border-rule pt-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="hq-label">Roster</span>
-                    <span className="hq-mono text-[14px]">
-                      <span className="font-bold" style={{ color: "var(--color-moss)" }}>
-                        {o.nextRsvps.in} in
-                      </span>
-                      <span className="text-ink-soft">
-                        {" "}
-                        · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
-                        {o.nextRsvps.undecided} silent
-                      </span>
-                    </span>
-                  </div>
-                  <div className="hq-meter" style={{ height: 7 }}>
-                    <span
-                      style={{
-                        width: `${rosterPct}%`,
-                        backgroundColor:
-                          rosterPct >= 60 ? "var(--color-moss)" : "var(--color-sand)",
-                      }}
-                    />
-                  </div>
-                </div>
-                )}
-
-                {/* Everything else under way. The hero can only carry one, and
-                    a night with three Operations running must still say so. */}
-                {o.live.slice(1).map((c) => (
+            {o.live.length > 0 || (hero && heroIso) ? (
+              <div className="flex flex-col gap-3 py-4">
+                {/* Everything under way, each as its own row. A running night
+                    doesn't need the whole panel — it needs to be visibly on. */}
+                {o.live.map((c) => (
                   <Link
                     key={c.id}
                     href={`/hq/operations/${c.id}`}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
-                    style={{ borderColor: "color-mix(in srgb, var(--color-moss) 40%, transparent)" }}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                    style={{
+                      borderColor: "color-mix(in srgb, var(--color-moss) 42%, transparent)",
+                      background: "rgba(61,220,132,0.05)",
+                    }}
                   >
-                    <span className="hq-label shrink-0 flex items-center gap-1.5" style={{ color: "var(--color-moss)" }}>
+                    <span
+                      className="hq-label flex shrink-0 items-center gap-1.5"
+                      style={{ color: "var(--color-moss)" }}
+                    >
                       <Dot tone="live" pulse />
-                      Also running
+                      Running
                     </span>
                     <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
                       {heroDate(c.date).dow} {heroDate(c.date).day}
                       {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
                     </span>
-                    <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
+                    <span className="w-6 shrink-0 text-center">{gameById(c.game).emoji}</span>
+                    <span className="hq-readout min-w-0 flex-1 truncate text-[17px] font-bold uppercase tracking-[0.02em]">
                       {compHeading(c)}
                     </span>
                     <Countdown
                       iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
-                      size="19px"
+                      size="21px"
                       caption={false}
                     />
                     <span className="hq-label shrink-0 opacity-70">Open →</span>
                   </Link>
                 ))}
 
-                {/* Queued behind whatever's running. Without this the hero stays
-                    pinned to what kicked off and the next Operation has nowhere
-                    to appear. */}
-                {o.upNext && (
-                  <Link
-                    href={`/hq/operations/${o.upNext.id}`}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
-                    style={{ borderColor: "color-mix(in srgb, var(--color-sand) 34%, transparent)" }}
-                  >
-                    <span className="hq-label shrink-0" style={{ color: "var(--color-sand)" }}>
-                      Up next
-                    </span>
-                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
-                      {heroDate(o.upNext.date).dow} {heroDate(o.upNext.date).day}
-                      {o.upNext.tee_time ? ` · ${shortTime(o.upNext.tee_time)}` : ""}
-                    </span>
-                    <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
-                      {compHeading(o.upNext)}
-                    </span>
-                    <span className="hq-label shrink-0 opacity-70">Open →</span>
-                  </Link>
+                {/* ── UP NEXT ──────────────────────────────────────────────
+                    The big departure-board treatment, kept for the Operation
+                    that hasn't happened yet: identity left, clock dominating
+                    the right, roster full width beneath both. */}
+                {hero && heroIso && (
+                  <div className={o.live.length > 0 ? "mt-1 border-t border-rule pt-4" : ""}>
+                    {o.live.length > 0 && (
+                      <p className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
+                        Up next
+                      </p>
+                    )}
+                    <div
+                      className="flex flex-col justify-center gap-6"
+                      style={{ minHeight: o.live.length > 0 ? 230 : 270 }}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
+                        <div className="flex min-w-0 flex-1 items-center gap-7">
+                          {/* Date plate — deliberately built, deliberately
+                              secondary. Hairline rules and a framed tile give it
+                              structure so it reads as issued stock rather than
+                              three loose words. */}
+                          <div
+                            className="shrink-0 text-center"
+                            style={{
+                              border: "1px solid var(--color-rule)",
+                              borderRadius: 3,
+                              background: "rgba(255,255,255,0.015)",
+                              minWidth: 116,
+                              /* The countdown carries a caption beneath it, so
+                                 centring the two blocks leaves the day numeral
+                                 ~12px below the clock's. Lift the plate by
+                                 exactly that, as a transform rather than a
+                                 margin so the row's height doesn't change: the
+                                 two big numerals are what the eye pairs. */
+                              transform: "translateY(-12px)",
+                            }}
+                          >
+                            <div
+                              className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                              style={{ borderBottom: "1px solid var(--color-rule)" }}
+                            >
+                              {heroDate(hero.iso).dow}
+                            </div>
+                            <div
+                              className="hq-readout py-4 font-bold leading-[0.9]"
+                              style={{ fontSize: "clamp(62px, 4.9vw, 84px)", color: "var(--color-flag)" }}
+                            >
+                              {heroDate(hero.iso).day}
+                            </div>
+                            <div
+                              className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                              style={{ borderTop: "1px solid var(--color-rule)" }}
+                            >
+                              {heroDate(hero.iso).mon}
+                            </div>
+                          </div>
+
+                          <div className="flex min-w-0 items-center gap-4">
+                            <GameInsignia game={hero.game} size={60} />
+                            <div className="min-w-0">
+                              <p
+                                className="hq-readout font-bold leading-[1.02]"
+                                style={{ fontSize: "clamp(38px, 3.2vw, 52px)" }}
+                              >
+                                {hero.title}
+                              </p>
+                              <p className="hq-mono mt-2 text-[17px] uppercase tracking-[0.12em] text-ink-soft">
+                                {heroGame?.name}
+                                {` · ${hero.time}`}
+                                {hero.stake ? ` · ${hero.stake}` : ""}
+                              </p>
+                              <div className="mt-3 flex flex-wrap gap-1.5">
+                                <Tag tone="idle">Standing by</Tag>
+                                {hero.squad && <Tag tone="warn">Squad operation</Tag>}
+                                {hero.demo && <Proto>Demo</Proto>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          <Countdown iso={heroIso} size="clamp(44px, 4.3vw, 80px)" labelAlign="right" />
+                        </div>
+                      </div>
+
+                      {/* Roster is a pre-start question, so it belongs to this
+                          block and nowhere else. Meaningless for demo filler,
+                          which has no roll call behind it. */}
+                      {!hero.demo && (
+                        <div className="border-t border-rule pt-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="hq-label">Roster</span>
+                            <span className="hq-mono text-[14px]">
+                              <span className="font-bold" style={{ color: "var(--color-moss)" }}>
+                                {o.nextRsvps.in} in
+                              </span>
+                              <span className="text-ink-soft">
+                                {" "}
+                                · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
+                                {o.nextRsvps.undecided} silent
+                              </span>
+                            </span>
+                          </div>
+                          <div className="hq-meter" style={{ height: 7 }}>
+                            <span
+                              style={{
+                                width: `${rosterPct}%`,
+                                backgroundColor:
+                                  rosterPct >= 60 ? "var(--color-moss)" : "var(--color-sand)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
