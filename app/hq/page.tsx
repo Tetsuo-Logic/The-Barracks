@@ -6,6 +6,7 @@ import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
+import { GameInsignia } from "@/components/hq/GameInsignia";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
 import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
 
@@ -142,23 +143,46 @@ export default async function CommandPage({
               <div className="flex flex-col justify-center gap-6 py-5" style={{ minHeight: 290 }}>
                 <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
                   <div className="flex min-w-0 items-center gap-6">
-                    <div className="shrink-0 text-center">
-                      <div className="hq-label">{heroDate(o.next.date).dow}</div>
+                    {/* Date plate — deliberately built, deliberately secondary.
+                        Hairline rules and a framed tile give it structure so it
+                        reads as issued stock rather than three loose words. */}
+                    <div
+                      className="shrink-0 text-center"
+                      style={{
+                        border: "1px solid var(--color-rule)",
+                        borderRadius: 3,
+                        background: "rgba(255,255,255,0.015)",
+                        minWidth: 92,
+                      }}
+                    >
                       <div
-                        className="hq-readout font-bold leading-[0.8]"
-                        style={{ fontSize: "clamp(64px, 5vw, 86px)", color: "var(--color-flag)" }}
+                        className="hq-mono py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                        style={{ borderBottom: "1px solid var(--color-rule)" }}
+                      >
+                        {heroDate(o.next.date).dow}
+                      </div>
+                      <div
+                        className="hq-readout font-bold leading-[0.95] py-1.5"
+                        style={{ fontSize: "clamp(46px, 3.6vw, 62px)", color: "var(--color-flag)" }}
                       >
                         {heroDate(o.next.date).day}
                       </div>
-                      <div className="hq-label">{heroDate(o.next.date).mon}</div>
+                      <div
+                        className="hq-mono py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                        style={{ borderTop: "1px solid var(--color-rule)" }}
+                      >
+                        {heroDate(o.next.date).mon}
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <GameInsignia game={o.next.game} size={48} />
+                      <div className="min-w-0">
                       <p
                         className="hq-readout font-bold leading-[1.05]"
                         style={{ fontSize: "clamp(30px, 2.5vw, 40px)" }}
                       >
-                        {nextGame?.emoji} {compHeading(o.next)}
+                        {compHeading(o.next)}
                       </p>
                       <p className="hq-mono mt-2 text-[15px] uppercase tracking-[0.12em] text-ink-soft">
                         {nextGame?.name}
@@ -174,6 +198,7 @@ export default async function CommandPage({
                               : "Standing by"}
                         </Tag>
                         {o.next.squad_id && <Tag tone="warn">Squad operation</Tag>}
+                      </div>
                       </div>
                     </div>
                   </div>
