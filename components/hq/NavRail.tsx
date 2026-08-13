@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import type { HqScope } from "@/lib/hq/role";
 
 // The rail is part of the system, not a website sidebar: grouped by command
 // function, monospaced, with a live status block pinned to the bottom.
 
-type Item = { href: string; label: string; badge?: number; proto?: boolean };
+type Item = {
+  href: string;
+  label: string;
+  badge?: number;
+  proto?: boolean;
+  /** Roles this item is for. Omitted = everyone. A member has no useful
+   *  Planning screen — nights are arranged in their squad — so the rail simply
+   *  doesn't offer it rather than offering a locked door. */
+  roles?: HqScope[];
+};
 type Group = { title: string; items: Item[] };
 
 export const NAV: Group[] = [
@@ -16,7 +26,7 @@ export const NAV: Group[] = [
       { href: "/hq", label: "Headquarters" },
       { href: "/hq/calendar", label: "Calendar" },
       { href: "/hq/operations", label: "Operations" },
-      { href: "/hq/availability", label: "Planning" },
+      { href: "/hq/availability", label: "Planning", roles: ["captain", "president"] },
       { href: "/hq/comms", label: "Comms" },
     ],
   },
@@ -60,16 +70,24 @@ export const NAV: Group[] = [
   },
 ];
 
-export function NavRail({ actions }: { actions: number }) {
+export function NavRail({ actions, role }: { actions: number; role: HqScope }) {
   const path = usePathname();
+  // Follow the dev role preview too, so hiding can actually be tested.
+  const asked = useSearchParams().get("as") as HqScope | null;
+  const allowed: HqScope[] =
+    role === "president" ? ["president", "captain", "member"] : role === "captain" ? ["captain", "member"] : ["member"];
+  const view: HqScope = asked && allowed.includes(asked) ? asked : role;
 
   return (
     <nav className="flex h-full flex-col gap-5 overflow-y-auto px-3 pb-5 pt-4">
-      {NAV.map((g) => (
+      {NAV.map((g) => {
+        const items = g.items.filter((it) => !it.roles || it.roles.includes(view));
+        if (items.length === 0) return null;
+        return (
         <div key={g.title}>
           <p className="hq-label mb-1.5 px-3 opacity-60">{g.title}</p>
           <div className="flex flex-col gap-0.5">
-            {g.items.map((it) => {
+            {items.map((it) => {
               const active = it.href === "/hq" ? path === "/hq" : path.startsWith(it.href);
               const badge = it.href === "/hq" && actions > 0 ? actions : undefined;
               return (
@@ -97,7 +115,8 @@ export function NavRail({ actions }: { actions: number }) {
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }

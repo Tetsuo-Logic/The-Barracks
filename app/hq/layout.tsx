@@ -27,6 +27,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
 
   const roster = (profiles ?? []) as Pick<Profile, "id" | "name" | "nickname">[];
   const callsign = profile.nickname || profile.name;
+  const realRole = await realRoleOf(profile);
 
   // A User has 0..n memberships. Only the live Barracks is wired; the others
   // exist so multi-Barracks switching can be experienced (lib/hq/future).
@@ -43,7 +44,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
         barracks={barracks}
         callsign={callsign}
         online={Math.max(1, Math.round(roster.length * 0.55))}
-        realRole={await realRoleOf(profile)}
+        realRole={realRole}
       />
 
       <div className="flex" style={{ minHeight: "calc(100dvh - var(--hq-bar))" }}>
@@ -58,7 +59,7 @@ export default async function HqLayout({ children }: { children: ReactNode }) {
           {/* min-h-0 lets the nav actually scroll inside the flex column instead
               of pushing the status block off the bottom of the rail. */}
           <div className="min-h-0 flex-1">
-            <NavRail actions={0} />
+            <NavRail actions={0} role={realRole} />
           </div>
           <div className="shrink-0 border-t border-rule bg-[rgba(8,12,10,0.9)] px-4 py-3">
             <p className="hq-label flex items-center gap-1.5">
