@@ -67,6 +67,17 @@
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(245, 182, 61, 0.03), 0 18px 46px -28px rgba(0, 0, 0, 0.9);
 }
+/* Tailwind v4 emits its utilities inside `@layer utilities`, and this file is
+   unlayered — and unlayered CSS beats layered CSS outright, whatever the source
+   order or specificity. So `.hq-panel`'s `position: relative` silently wins over
+   an `absolute`/`fixed` utility on the same element.
+   The floating menus (Barracks switcher, role preview) were landing in normal
+   flow because of it, stretching their wrapper inside the 52px top bar until
+   half the menu sat above the viewport, unreachable. Restate the intent at a
+   specificity that survives. */
+.hq-panel.absolute { position: absolute; }
+.hq-panel.fixed { position: fixed; }
+
 /* Corner ticks — the tactical bracket that makes a box feel like an instrument */
 .hq-panel::before,
 .hq-panel::after {

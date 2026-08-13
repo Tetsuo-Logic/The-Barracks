@@ -52,7 +52,7 @@ export default async function CommandPage({
           <div className="mb-1 flex items-center gap-2.5">
             {/* Crest slot — user-uploaded or generated, later. */}
             <span
-              className="hq-readout text-[15px] font-bold uppercase leading-none tracking-[0.2em]"
+              className="hq-readout text-[19px] font-bold uppercase leading-none tracking-[0.2em]"
               style={{ color: "var(--color-sand)" }}
             >
               {o.barracks.name}
@@ -70,6 +70,7 @@ export default async function CommandPage({
           </div>
         }
         title="Headquarters"
+        titleSize={36}
         right={
           <>
             {isPresident && (
