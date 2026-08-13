@@ -167,23 +167,26 @@ export default async function CommandPage({
                         border: "1px solid var(--color-rule)",
                         borderRadius: 3,
                         background: "rgba(255,255,255,0.015)",
-                        minWidth: 92,
+                        minWidth: 116,
                       }}
                     >
                       <div
-                        className="hq-mono py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                        className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
                         style={{ borderBottom: "1px solid var(--color-rule)" }}
                       >
                         {heroDate(o.next.date).dow}
                       </div>
+                      {/* The day carries the plate. Extra vertical padding on top
+                          of the size — a big numeral in a tight box still reads
+                          small, because the plate is what you see first. */}
                       <div
-                        className="hq-readout font-bold leading-[0.95] py-1.5"
-                        style={{ fontSize: "clamp(46px, 3.6vw, 62px)", color: "var(--color-flag)" }}
+                        className="hq-readout font-bold leading-[0.9] py-4"
+                        style={{ fontSize: "clamp(62px, 4.9vw, 84px)", color: "var(--color-flag)" }}
                       >
                         {heroDate(o.next.date).day}
                       </div>
                       <div
-                        className="hq-mono py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
+                        className="hq-mono py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft"
                         style={{ borderTop: "1px solid var(--color-rule)" }}
                       >
                         {heroDate(o.next.date).mon}
