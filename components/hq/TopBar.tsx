@@ -67,7 +67,10 @@ export function TopBar({
               onClick={() => setOpen(false)}
               aria-label="Close"
             />
-            <div className="hq-panel absolute left-0 top-[calc(100%+8px)] z-20 w-[280px] p-1.5">
+            {/* See RoleSwitch: an arbitrary calc without spaces around `+` is
+                invalid CSS, so Tailwind drops the rule and the menu loses its
+                offset entirely. */}
+            <div className="hq-panel absolute left-0 top-full z-20 mt-2 w-[280px] p-1.5">
               <p className="hq-label px-2.5 py-1.5">Your Barracks</p>
               {barracks.map((b) => (
                 <button

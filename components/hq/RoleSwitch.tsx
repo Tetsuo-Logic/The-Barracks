@@ -60,7 +60,11 @@ export function RoleSwitch({ real }: { real: HqScope }) {
       {open && (
         <>
           <button className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} aria-label="Close" />
-          <div className="hq-panel absolute right-0 top-[calc(100%+6px)] z-20 w-[220px] p-1.5">
+          {/* top-full + margin, not an arbitrary calc: CSS requires whitespace
+              around `+` inside calc(), so `top-[calc(100%+6px)]` is invalid and
+              Tailwind emits no rule at all — the menu then falls back to
+              `top: auto` and lands over the top bar, out of reach. */}
+          <div className="hq-panel absolute right-0 top-full z-20 mt-1.5 w-[220px] p-1.5">
             <p className="hq-label px-2.5 py-1.5 opacity-70">Preview role · dev</p>
             {ROLES.filter((r) => allowed.includes(r.key)).map((r) => (
               <button

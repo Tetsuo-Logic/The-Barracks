@@ -99,11 +99,14 @@ export function Photos({
 
       {error && <p className="mt-3 text-sm text-flag">{error}</p>}
 
-      {/* camera button pinned bottom-right of the tab content */}
+      {/* Camera button, pinned bottom-right of the tab content. The underscores
+          in the calc are Tailwind's spaces: CSS needs whitespace around `+`, and
+          without it the value is invalid and no rule is emitted at all — which
+          left this button unpinned. */}
       <button
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-5 z-10 rounded-full bg-ink px-5 py-3 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper shadow-[var(--shadow-card)] disabled:opacity-60"
+        className="fixed bottom-[calc(84px_+_env(safe-area-inset-bottom))] right-5 z-10 rounded-full bg-ink px-5 py-3 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper shadow-[var(--shadow-card)] disabled:opacity-60"
       >
         {busy ? (progress ?? "Working") : "+ Photo"}
       </button>
