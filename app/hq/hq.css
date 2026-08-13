@@ -144,73 +144,77 @@
   background: rgba(255, 255, 255, 0.012);
 }
 
-/* ── Contrast pass — scoped, Operations only ─────────────────────────────
-   The page didn't need lighter surfaces; greying them headed straight for the
-   SaaS look we don't want. What was actually failing is that everything sat in
-   one dim tone, so nothing separated.
+/* ── Contrast system (global) ────────────────────────────────────────────
+   Proven on Operations, now applied across HQ.
 
-   So: surfaces stay black, and contrast does the work — body text white,
-   panel titles and column headers amber, only genuinely tertiary content left
-   dim. Muted row actions stay grey; they're not headers, and colouring them
-   would make everything shout again. No layout changes, no added borders.
-   Scoped to .hq-surface so it can be judged before going global. */
-.hq-surface {
-  /* One white, used everywhere. Half a dozen near-whites was the actual
-     problem: text looked arbitrarily dim depending on which cell it sat in.
-     Hierarchy comes from amber headers, size and weight — not from grading
-     white into shades. Genuinely tertiary marks (DEMO tags, placeholders) set
-     their own colour explicitly and stay dim. */
+   The interface never needed lighter surfaces — greying them headed straight
+   for the SaaS look we're avoiding. What was failing is that everything sat in
+   one dim tone, so nothing separated. Surfaces stay black and contrast does the
+   work instead:
+
+     · one white, used for all body text — half a dozen near-whites was the
+       real problem, since text read as arbitrarily dim depending on where it
+       sat. Hierarchy comes from amber, size and weight, never from grading
+       white into shades.
+     · panel titles and column headers are always amber — the labels are how
+       you navigate a dense page, so they carry the colour.
+     · muted row actions stay grey: they're not headers, and colouring them
+       would make everything shout again.
+     · genuinely tertiary marks (DEMO tags, PROTO chips, placeholders) set
+       their own colour explicitly and stay dim.
+
+   No layout changes, and no borders added anywhere. */
+.hq {
   --color-ink: #ffffff;
   --color-ink-soft: #ffffff;
   --color-rule: #2b3831;
-  /* Redeclaring the variable isn't enough: `.hq` already computed `color` from
-     the old value and children inherit that computed colour, not the variable.
-     This re-computes it, which is what actually turns the body text white. */
-  color: var(--color-ink);
 }
 
 /* Panels stay black, with an amber edge — the boxes are the structure, so the
    structure is what carries the colour. */
-.hq-surface .hq-panel {
+.hq .hq-panel {
   background: linear-gradient(180deg, #101715 0%, #0b100e 100%);
   border-color: color-mix(in srgb, var(--color-sand) 42%, transparent);
 }
-.hq-surface .hq-panel::before,
-.hq-surface .hq-panel::after { opacity: 0.85; }
-.hq-surface .hq-panel-head {
+.hq .hq-panel::before,
+.hq .hq-panel::after { opacity: 0.85; }
+.hq .hq-panel-head {
   background: rgba(255, 255, 255, 0.022);
   border-bottom-color: color-mix(in srgb, var(--color-sand) 26%, transparent);
 }
-.hq-surface .hq-panel-quiet {
+.hq .hq-panel-quiet {
   background: linear-gradient(180deg, #0e1412 0%, #0a0f0d 100%);
   border-color: color-mix(in srgb, var(--color-sand) 34%, transparent);
 }
 /* Live keeps its green edge — green means running, and that distinction is
    worth more than edge-colour consistency. */
-.hq-surface .hq-panel-live {
+.hq .hq-panel-live {
   border-color: color-mix(in srgb, var(--color-moss) 45%, transparent);
 }
 
-/* Panel titles and column headers are amber — the labels are the navigation
-   through a dense page, so they carry the colour. Muted call-to-actions in a
-   row are NOT headers and stay grey, or everything shouts again. */
-.hq-surface .hq-panel-head .hq-label,
-.hq-surface thead .hq-label {
+.hq .hq-panel-head .hq-label,
+.hq thead .hq-label {
   color: var(--color-sand);
   opacity: 1;
 }
 
 /* Rows: white text on black, with dividers and hover doing the separating. */
-.hq-surface tbody tr { border-color: rgba(255, 255, 255, 0.07) !important; }
-.hq-surface tbody tr:hover { background: rgba(255, 255, 255, 0.055) !important; }
+.hq tbody tr { border-color: rgba(255, 255, 255, 0.07) !important; }
+.hq tbody tr:hover { background: rgba(255, 255, 255, 0.055) !important; }
 
-.hq-surface input,
-.hq-surface select {
+.hq input,
+.hq select {
   background-color: #101614;
   border-color: #33403a;
   color: var(--color-ink);
 }
-.hq-surface input::placeholder { color: #7f9187; }
+.hq input::placeholder { color: #7f9187; }
+
+/* The rail keeps its own hierarchy: with body text now white, nav items would
+   otherwise all read as active. Pinned explicitly rather than riding ink-soft. */
+.hq .hq-nav-item { color: #8d9d94; }
+.hq .hq-nav-item:hover,
+.hq .hq-nav-item[data-active="true"] { color: var(--color-ink); }
 
 /* ── Labels & readouts ──────────────────────────────────────────────────── */
 .hq-label {

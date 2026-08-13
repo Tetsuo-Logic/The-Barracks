@@ -14,6 +14,7 @@ export function Panel({
   sweep = false,
   i = 0,
   pad = true,
+  fill = false,
   tier = "default",
 }: {
   label?: string;
@@ -24,6 +25,10 @@ export function Panel({
   sweep?: boolean;
   i?: number;
   pad?: boolean;
+  /** Take the full height of the grid cell and let the body absorb the slack,
+   *  so a panel can bottom out level with the column beside it instead of
+   *  ending wherever its content happens to stop. */
+  fill?: boolean;
   /** Rank on the page. Exactly one `primary` per screen; `quiet` for reference
    *  data that should recede; `live` for something actually happening now.
    *  Amber (`primary`) means significance/action, green (`live`) means running —
@@ -33,7 +38,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`hq-panel hq-panel-${tier} hq-rise ${className}`}
+      className={`hq-panel hq-panel-${tier} hq-rise ${fill ? "flex h-full flex-col" : ""} ${className}`}
       style={{ ["--i" as string]: i }}
     >
       {(label || right) && (
@@ -45,7 +50,9 @@ export function Panel({
           {right && <div className="flex shrink-0 items-center gap-2">{right}</div>}
         </header>
       )}
-      <div className={pad ? "p-4" : ""}>{children}</div>
+      <div className={`${pad ? "p-4" : ""} ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+        {children}
+      </div>
     </section>
   );
 }

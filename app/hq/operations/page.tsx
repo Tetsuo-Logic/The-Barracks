@@ -137,10 +137,7 @@ export default async function OperationsPage({
   const sampleHistory = hqSampleHistory();
 
   return (
-    /* hq-surface: the lifted surface/contrast system, scoped to this page so it
-       can be compared against the rest of HQ before going global. Visual only —
-       no layout or content changes. */
-    <div className="hq-surface relative mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
+    <div className="relative mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>
       <PageHead
         eyebrow="Command"
         title="Operations"

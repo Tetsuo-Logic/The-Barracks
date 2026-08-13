@@ -127,7 +127,9 @@ export default async function CommandPage({
       </div>
 
       {/* LEFT wider: the night, then the week. RIGHT narrower: the inbox. */}
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.75fr)_minmax(340px,1fr)]">
+      {/* items-stretch, not items-start: the inbox is told to fill its cell so
+          it bottoms out level with This Week rather than stopping short. */}
+      <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.75fr)_minmax(340px,1fr)]">
         <div className="flex flex-col gap-5">
           {/* ── TONIGHT / NEXT ─────────────────────────────────────────── */}
           <Panel
@@ -294,14 +296,14 @@ export default async function CommandPage({
                         href={`/hq/operations/${comp.id}`}
                         className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.025)]"
                       >
-                        <span className="hq-mono w-16 shrink-0 text-xs uppercase tracking-[0.08em] text-ink-soft">
+                        <span className="hq-mono w-16 shrink-0 text-[13px] uppercase tracking-[0.08em] text-ink-soft">
                           {hd.dow} {hd.day}
                         </span>
                         <span className="w-6 shrink-0 text-center">{g.emoji}</span>
                         <span className="min-w-0 flex-1 truncate text-[13px]">
                           {compHeading(comp)}
                         </span>
-                        <span className="hq-mono shrink-0 text-xs text-ink-soft">
+                        <span className="hq-mono shrink-0 text-[13px] text-ink-soft">
                           {shortTime(comp.tee_time) || "—"}
                         </span>
                         {idx === 0 && <Tag tone="live">Next</Tag>}
@@ -314,14 +316,14 @@ export default async function CommandPage({
                 {hqSampleWeek().map((w) => (
                   <div
                     key={`${w.dow}-${w.title}`}
-                    className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0 opacity-70"
+                    className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0"
                   >
-                    <span className="hq-mono w-16 shrink-0 text-xs uppercase tracking-[0.08em] text-ink-soft">
+                    <span className="hq-mono w-16 shrink-0 text-[13px] uppercase tracking-[0.08em] text-ink-soft">
                       {w.dow} {w.day}
                     </span>
                     <span className="w-6 shrink-0 text-center">{w.emoji}</span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">{w.title}</span>
-                    <span className="hq-mono shrink-0 text-xs text-ink-soft">{w.time}</span>
+                    <span className="hq-mono shrink-0 text-[13px] text-ink-soft">{w.time}</span>
                     <span
                       className="hq-mono shrink-0 rounded-[3px] border border-dashed px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]"
                       style={{ borderColor: "#4b5a52", color: "#6d8076" }}
@@ -363,9 +365,10 @@ export default async function CommandPage({
             </>
           }
           pad={false}
+          fill
         >
           {actions.length === 0 ? (
-            <div className="flex min-h-[280px] flex-col items-center justify-center px-5 text-center">
+            <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-5 text-center">
               <span className="text-[26px]" aria-hidden>
                 ✓
               </span>
@@ -378,11 +381,12 @@ export default async function CommandPage({
               <p className="hq-label mt-1.5 opacity-70">Nothing needs you right now</p>
             </div>
           ) : (
-            /* Roughly nine rows before it scrolls, and it keeps its footprint
-               with only one — this is a primary component, not a status chip. */
+            /* Runs to the bottom of the left column and scrolls past that, and
+               it keeps its footprint with only one row — this is a primary
+               component, not a status chip. */
             <ul
-              className="flex flex-col divide-y divide-rule/60 overflow-y-auto"
-              style={{ minHeight: 280, maxHeight: 580 }}
+              className="flex min-h-0 flex-1 flex-col divide-y divide-rule/60 overflow-y-auto"
+              style={{ minHeight: 280 }}
             >
               {actions.map((a, i) => (
                 <li key={`${a.href}-${i}`}>

@@ -139,7 +139,10 @@ const WEEK: { inDays: number; emoji: string; title: string; time: string }[] = [
   { inDays: 1, emoji: "⚽", title: "FIFA — Friday league night", time: "21:00" },
   { inDays: 2, emoji: "🏎️", title: "F1 — Silverstone GP", time: "19:30" },
   { inDays: 3, emoji: "🎮", title: "COD — Sunday session", time: "20:30" },
+  { inDays: 4, emoji: "🎮", title: "COD — ranked push", time: "20:00" },
   { inDays: 5, emoji: "⛳", title: "Threeball — midweek 9", time: "18:45" },
+  { inDays: 6, emoji: "⚽", title: "FIFA — cup replay vs The Shed", time: "21:15" },
+  { inDays: 7, emoji: "🏎️", title: "F1 — Monza qualifying", time: "19:00" },
 ];
 
 // ── Operations register ────────────────────────────────────────────────────
