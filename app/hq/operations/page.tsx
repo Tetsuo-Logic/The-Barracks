@@ -517,7 +517,9 @@ export default async function OperationsPage({
  *  plainly leads nowhere. Marked so it can't pass as real history. */
 function SampleRow({ op, kind }: { op: SampleOp; kind: "upcoming" | "history" }) {
   return (
-    <tr className="border-b border-rule/40 opacity-60 last:border-0">
+    // Not dimmed. These rows have to read exactly like real ones or they can't
+    // be used to judge the design — the DEMO tag carries the boundary instead.
+    <tr className="border-b border-rule/40 last:border-0">
       <Td>
         <span className="hq-mono text-[12px] text-ink-soft">{op.date}</span>
       </Td>
@@ -531,6 +533,14 @@ function SampleRow({ op, kind }: { op: SampleOp; kind: "upcoming" | "history" })
           <GameInsignia game={op.game} size={kind === "upcoming" ? 22 : 20} tone="var(--color-ink-soft)" />
           <span className="truncate text-[13px]">{op.title}</span>
           {op.scrubbed && <Tag tone="alert">Scrubbed</Tag>}
+          {kind === "history" && (
+            <span
+              className="hq-mono shrink-0 rounded-[3px] border border-dashed px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]"
+              style={{ borderColor: "#4b5a52", color: "#6d8076" }}
+            >
+              demo
+            </span>
+          )}
         </span>
       </Td>
       <Td>
