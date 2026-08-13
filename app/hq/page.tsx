@@ -1,25 +1,45 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { requireProfile } from "@/lib/auth";
-import { getHqOverview } from "@/lib/hq/overview";
+import { getHqOverview, type HqScope } from "@/lib/hq/overview";
 import { gameById, compHeading } from "@/lib/games";
-import { heroDate, shortTime, relativeTime } from "@/lib/dates";
-import { Panel, Stat, Dot, Tag, Row, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
+import { heroDate, shortTime } from "@/lib/dates";
+import { Panel, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
-import { presenceFor, PRESENCE_TONE } from "@/lib/hq/future/systems";
+import { RoleSwitch } from "@/components/hq/RoleSwitch";
 
 export const metadata = { title: "Command · Barracks HQ" };
 
-// The command overview. Answers one question on sight: what is happening in my
-// Barracks? Everything on this screen is real except presence (adapter).
-export default async function CommandPage() {
-  const profile = await requireProfile();
+// ── HEADQUARTERS ───────────────────────────────────────────────────────────
+// Three things, deliberately. The page answers, in order:
+//   WHAT'S NEXT?  →  WHAT DO I NEED TO DO?  →  WHAT ELSE IS COMING?
+// Empty space below is intentional — this is not a widget board.
+
+const VISIBLE_TO: Record<HqScope, HqScope[]> = {
+  president: ["member", "captain", "president"],
+  captain: ["member", "captain"],
+  member: ["member"],
+};
+
+export default async function CommandPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string }>;
+}) {
+  const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
   const o = await getHqOverview(profile);
 
-  const nextGame = o.next ? gameById(o.next.game) : null;
-  const nextIso = o.next
-    ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}`
-    : null;
+  // Dev role preview. A view filter only — never widens what you may actually
+  // do, and every server action still checks the real role.
+  const asked = sp.as as HqScope | undefined;
+  const allowed: HqScope[] = VISIBLE_TO[o.realRole];
+  const view: HqScope = asked && allowed.includes(asked) ? asked : o.realRole;
 
+  const isPresident = view === "president";
+  const actions = o.actions.filter((a) => VISIBLE_TO[view].includes(a.scope));
+
+  const nextGame = o.next ? gameById(o.next.game) : null;
+  const nextIso = o.next ? `${o.next.date}T${(o.next.tee_time ?? "20:00:00").slice(0, 8)}` : null;
   const rosterPct = o.profiles.length
     ? Math.round((o.nextRsvps.in / o.profiles.length) * 100)
     : 0;
@@ -31,19 +51,26 @@ export default async function CommandPage() {
         title="Headquarters"
         right={
           <>
-            <Link
-              href="/hq/operations/new"
-              className="hq-label rounded-[3px] px-3 py-2 font-semibold"
-              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-            >
-              + Deploy operation
-            </Link>
-            <Link
-              href="/hq/comms"
-              className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
-            >
-              Send comms
-            </Link>
+            <Suspense fallback={null}>
+              <RoleSwitch value={view} real={o.realRole} />
+            </Suspense>
+            {isPresident && (
+              <>
+                <Link
+                  href="/hq/operations/new"
+                  className="hq-label rounded-[3px] px-3 py-2 font-semibold"
+                  style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
+                >
+                  + Deploy operation
+                </Link>
+                <Link
+                  href="/hq/comms"
+                  className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
+                >
+                  Send comms
+                </Link>
+              </>
+            )}
           </>
         }
       >
@@ -57,26 +84,20 @@ export default async function CommandPage() {
         )}
       </PageHead>
 
-      {/* ── Status line ──────────────────────────────────────────────────────
-          Six equal stat boxes made everything look equally important, so
-          nothing did. Standing figures belong on one quiet line; only a number
-          that wants something from you gets to shout. */}
-      <div className="hq-rise mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-rule py-2.5">
+      {/* Standing figures — one quiet line, never competing with the page. */}
+      <div className="hq-rise mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-rule py-2.5">
         <span className="hq-label flex items-center gap-1.5" style={{ color: "var(--color-moss)" }}>
           <Dot tone="live" pulse />
           System online
         </span>
         <span className="hq-label opacity-30">/</span>
-        <span className="hq-label">
-          {o.status.operatives} operatives · {o.status.online} online
-        </span>
+        <span className="hq-label">{o.status.operatives} operatives</span>
         <span className="hq-label opacity-30">/</span>
         <span className="hq-label">{o.status.squadsActive} squads</span>
         <span className="hq-label opacity-30">/</span>
         <span className="hq-label">
           {o.status.operationsRun} operations run · {o.status.hoursDeployed}h deployed
         </span>
-
         {o.status.operationsTonight > 0 && (
           <span
             className="hq-mono ml-auto rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
@@ -87,19 +108,21 @@ export default async function CommandPage() {
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        {/* ── Left column ──────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
-          {/* Tonight / next up */}
+      {/* LEFT wider: the night, then the week. RIGHT narrower: the inbox. */}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.75fr)_minmax(340px,1fr)]">
+        <div className="flex flex-col gap-5">
+          {/* ── TONIGHT / NEXT ─────────────────────────────────────────── */}
           <Panel
-            i={6}
+            i={0}
             sweep={Boolean(o.next)}
-            /* The night is the point of the screen — but only when there is
-               one. With an empty board it drops to reference weight so it
-               stops competing with everything else. */
             tier={o.next ? "primary" : "quiet"}
-            label={o.status.operationsTonight > 0 ? "Tonight" : "Next up"}
-            status={<Dot tone={o.status.operationsTonight > 0 ? "live" : "idle"} pulse={o.status.operationsTonight > 0} />}
+            label={o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
+            status={
+              <Dot
+                tone={o.status.operationsTonight > 0 ? "live" : "idle"}
+                pulse={o.status.operationsTonight > 0}
+              />
+            }
             right={
               o.next && (
                 <Link href={`/hq/operations/${o.next.id}`} className="hq-label hover:text-ink">
@@ -109,11 +132,11 @@ export default async function CommandPage() {
             }
           >
             {o.next && nextIso ? (
-              <div className="grid gap-6 md:grid-cols-[auto_1fr_auto]">
+              <div className="grid items-center gap-7 py-2 md:grid-cols-[auto_1fr_auto]">
                 <div className="text-center">
                   <div className="hq-label">{heroDate(o.next.date).dow}</div>
                   <div
-                    className="hq-readout text-[54px] font-bold leading-[0.85]"
+                    className="hq-readout text-[68px] font-bold leading-[0.82]"
                     style={{ color: "var(--color-flag)" }}
                   >
                     {heroDate(o.next.date).day}
@@ -122,7 +145,7 @@ export default async function CommandPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="hq-readout text-[22px] font-bold leading-tight">
+                  <p className="hq-readout text-[26px] font-bold leading-tight">
                     {nextGame?.emoji} {compHeading(o.next)}
                   </p>
                   <p className="hq-mono mt-1 text-xs uppercase tracking-[0.1em] text-ink-soft">
@@ -131,12 +154,16 @@ export default async function CommandPage() {
                     {o.next.stake ? ` · ${o.next.stake}` : ""}
                   </p>
 
-                  <div className="mt-4">
+                  <div className="mt-5">
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="hq-label">Roster</span>
                       <span className="hq-mono text-xs">
                         <span style={{ color: "var(--color-moss)" }}>{o.nextRsvps.in} in</span>
-                        <span className="text-ink-soft"> · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out · {o.nextRsvps.undecided} silent</span>
+                        <span className="text-ink-soft">
+                          {" "}
+                          · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
+                          {o.nextRsvps.undecided} silent
+                        </span>
                       </span>
                     </div>
                     <Meter pct={rosterPct} tone={rosterPct >= 60 ? "live" : "warn"} />
@@ -144,190 +171,147 @@ export default async function CommandPage() {
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Tag tone={o.next.started_at ? "live" : "idle"}>
-                      {o.next.finished_at ? "Archived" : o.next.started_at ? "Room live" : "Standing by"}
+                      {o.next.finished_at
+                        ? "Archived"
+                        : o.next.started_at
+                          ? "Room live"
+                          : "Standing by"}
                     </Tag>
                     {o.next.squad_id && <Tag tone="warn">Squad operation</Tag>}
-                    {o.next.for_cup && <Tag tone="warn">Counts for the cup</Tag>}
                   </div>
                 </div>
 
-                <div className="shrink-0 border-l border-rule pl-6">
+                <div className="shrink-0 border-l border-rule pl-7">
                   <Countdown iso={nextIso} />
                 </div>
               </div>
             ) : (
-              <Nil>No operation on the board — deploy one</Nil>
+              <div className="py-10 text-center">
+                <p className="hq-readout text-[20px] font-bold uppercase tracking-[0.04em] text-ink-soft">
+                  No operation on the board
+                </p>
+                {isPresident && (
+                  <Link
+                    href="/hq/operations/new"
+                    className="hq-label mt-4 inline-block rounded-[3px] px-4 py-2.5 font-semibold"
+                    style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
+                  >
+                    + Deploy operation
+                  </Link>
+                )}
+              </div>
             )}
           </Panel>
 
-          {/* This week */}
+          {/* ── THIS WEEK ──────────────────────────────────────────────── */}
           <Panel
-            i={7}
+            i={1}
             label="This week"
-            right={<Link href="/hq/calendar" className="hq-label hover:text-ink">Calendar →</Link>}
+            right={
+              <Link href="/hq/calendar" className="hq-label hover:text-ink">
+                Calendar →
+              </Link>
+            }
           >
             {o.upcoming.length === 0 && !o.next ? (
               <Nil>Nothing scheduled</Nil>
             ) : (
               <div className="flex flex-col">
-                {[o.next, ...o.upcoming].filter(Boolean).slice(0, 6).map((c, idx) => {
-                  const comp = c!;
-                  const g = gameById(comp.game);
-                  const hd = heroDate(comp.date);
-                  return (
-                    <Link
-                      key={comp.id}
-                      href={`/hq/operations/${comp.id}`}
-                      className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.025)]"
-                    >
-                      <span className="hq-mono w-14 shrink-0 text-xs uppercase tracking-[0.08em] text-ink-soft">
-                        {hd.dow} {hd.day}
-                      </span>
-                      <span className="w-6 shrink-0 text-center">{g.emoji}</span>
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{compHeading(comp)}</span>
-                      <span className="hq-mono shrink-0 text-xs text-ink-soft">
-                        {shortTime(comp.tee_time) || "—"}
-                      </span>
-                      {idx === 0 && <Tag tone="live">Next</Tag>}
-                    </Link>
-                  );
-                })}
+                {[o.next, ...o.upcoming]
+                  .filter(Boolean)
+                  .slice(0, 6)
+                  .map((c, idx) => {
+                    const comp = c!;
+                    const g = gameById(comp.game);
+                    const hd = heroDate(comp.date);
+                    return (
+                      <Link
+                        key={comp.id}
+                        href={`/hq/operations/${comp.id}`}
+                        className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.025)]"
+                      >
+                        <span className="hq-mono w-16 shrink-0 text-xs uppercase tracking-[0.08em] text-ink-soft">
+                          {hd.dow} {hd.day}
+                        </span>
+                        <span className="w-6 shrink-0 text-center">{g.emoji}</span>
+                        <span className="min-w-0 flex-1 truncate text-[13px]">
+                          {compHeading(comp)}
+                        </span>
+                        <span className="hq-mono shrink-0 text-xs text-ink-soft">
+                          {shortTime(comp.tee_time) || "—"}
+                        </span>
+                        {idx === 0 && <Tag tone="live">Next</Tag>}
+                      </Link>
+                    );
+                  })}
               </div>
             )}
           </Panel>
-
-          {/* Live activity */}
-          <Panel
-            i={8}
-            label="Live activity"
-            status={<Dot tone="live" pulse />}
-            right={<Link href="/hq/archives" className="hq-label hover:text-ink">Archives →</Link>}
-          >
-            {o.feed.length === 0 ? (
-              <Nil>No system activity</Nil>
-            ) : (
-              <ul className="flex flex-col">
-                {o.feed.map((f, i) => (
-                  <li
-                    key={`${f.at}-${i}`}
-                    className="hq-rise flex items-center gap-3 border-b border-rule/50 py-1.5 last:border-0"
-                    style={{ ["--i" as string]: i }}
-                  >
-                    <Dot tone={f.tone} />
-                    <span className="hq-mono min-w-0 flex-1 truncate text-[11px] tracking-[0.06em]">
-                      {f.text}
-                    </span>
-                    <span className="hq-mono shrink-0 text-[10px] text-ink-soft">
-                      {relativeTime(f.at)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
         </div>
 
-        {/* ── Right column ─────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
-          {/* Action required */}
-          <Panel
-            i={9}
-            label="Action required"
-            status={<Dot tone={o.actions.length ? "alert" : "idle"} pulse={o.actions.length > 0} />}
-            right={
-              <span className="hq-mono text-xs" style={{ color: o.actions.length ? "var(--color-flag)" : "var(--color-ink-soft)" }}>
-                {o.actions.length}
+        {/* ── ACTION REQUIRED ──────────────────────────────────────────────
+            A real inbox, not a status box. Never collapses to nothing: with
+            one item it still holds its ground, with none it says ALL CLEAR. */}
+        <Panel
+          i={2}
+          tier={actions.length > 0 ? "primary" : "default"}
+          label="Action required"
+          status={<Dot tone={actions.length ? "alert" : "live"} pulse={actions.length > 0} />}
+          right={
+            <span
+              className="hq-readout text-[15px] font-bold"
+              style={{ color: actions.length ? "var(--color-flag)" : "var(--color-moss)" }}
+            >
+              {actions.length}
+            </span>
+          }
+          pad={false}
+        >
+          {actions.length === 0 ? (
+            <div className="flex min-h-[280px] flex-col items-center justify-center px-5 text-center">
+              <span className="text-[26px]" aria-hidden>
+                ✓
               </span>
-            }
-          >
-            {o.actions.length === 0 ? (
-              <Nil>Nothing outstanding</Nil>
-            ) : (
-              <ul className="flex flex-col gap-1.5">
-                {o.actions.slice(0, 7).map((a, i) => (
-                  <li key={i}>
-                    <Link
-                      href={a.href}
-                      className="flex items-start gap-2.5 rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft"
-                    >
-                      <Dot tone={a.tone} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] text-ink">{a.label}</span>
-                        <span className="hq-mono block truncate text-[11px] text-ink-soft">{a.detail}</span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          {/* Command status */}
-          <Panel i={10} label="Command status">
-            <Row k="President" v={o.president?.name ?? "Vacant"} tone={o.president ? "warn" : "idle"} />
-            {o.captains.length === 0 ? (
-              <Row k="Captains" v="No squads formed" tone="info" />
-            ) : (
-              o.captains.map((c) => (
-                <Row
-                  key={c.squad}
-                  k={c.squad}
-                  v={c.captain ? `${c.captain.name} · ${c.members}` : `No captain · ${c.members}`}
-                  tone={c.captain ? "live" : "idle"}
-                />
-              ))
-            )}
-            <Link href="/hq/leadership" className="hq-label mt-3 block hover:text-ink">
-              Leadership →
-            </Link>
-          </Panel>
-
-          {/* Presence */}
-          <Panel
-            i={11}
-            label="Presence"
-            right={<Proto />}
-          >
-            <ul className="flex flex-col gap-1">
-              {o.profiles.slice(0, 8).map((p, i) => {
-                const state = presenceFor(p.id, i);
-                return (
-                  <li key={p.id} className="flex items-center gap-2.5 py-1">
-                    <Dot tone={PRESENCE_TONE[state]} pulse={state === "deployed"} />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
-                      {p.id === profile.id ? "You" : p.name}
-                    </span>
-                    <span className="hq-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
-                      {state}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </Panel>
-
-          {/* Quick actions */}
-          <Panel i={12} label="Quick actions">
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { href: "/hq/operations/new", label: "Deploy operation" },
-                { href: "/hq/comms", label: "Send comms" },
-                { href: "/hq/radar", label: "Add radar contact" },
-                { href: "/hq/court", label: "Open the court" },
-                { href: "/hq/find-opponent", label: "Find opponent" },
-                { href: "/hq/availability", label: "Call a muster" },
-              ].map((a) => (
-                <Link
-                  key={a.href + a.label}
-                  href={a.href}
-                  className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors hover:border-sand hover:text-ink"
-                >
-                  {a.label}
-                </Link>
-              ))}
+              <p
+                className="hq-readout mt-2 text-[17px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--color-moss)" }}
+              >
+                All clear
+              </p>
+              <p className="hq-label mt-1.5 opacity-70">Nothing needs you right now</p>
             </div>
-          </Panel>
-        </div>
+          ) : (
+            /* Holds roughly five rows before scrolling, and keeps its footprint
+               with only one — this is a primary component, not a status chip. */
+            <ul
+              className="flex flex-col divide-y divide-rule/60 overflow-y-auto"
+              style={{ minHeight: 280, maxHeight: 400 }}
+            >
+              {actions.map((a, i) => (
+                <li key={`${a.href}-${i}`}>
+                  <Link
+                    href={a.href}
+                    className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                  >
+                    <Dot tone={a.tone} />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className="hq-mono block text-[10px] font-semibold uppercase tracking-[0.14em]"
+                        style={{ color: "var(--color-sand)" }}
+                      >
+                        {a.source}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[13px] text-ink">{a.label}</span>
+                    </span>
+                    <span className="hq-label shrink-0 opacity-60 transition-opacity group-hover:opacity-100">
+                      {a.cta} →
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
       </div>
     </div>
   );

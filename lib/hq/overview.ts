@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getFixturesData, getInbox, getSquads, getActivityFeed } from "@/lib/queries";
 import { computeService } from "@/lib/service";
+import { gameById } from "@/lib/games";
 import type { Profile, Competition, Rsvp, Mutiny, Complaint, Trial } from "@/lib/types";
 
 // Headquarters reads the *same* domain layer as the phone — this file only
@@ -18,6 +19,19 @@ export type CommandStatus = {
   operationsRun: number;
 };
 
+/** Who an action belongs to. Drives both the real render and the dev role
+ *  preview — a member never sees a President's approvals, and so on. */
+export type HqScope = "member" | "captain" | "president";
+
+export type HqAction = {
+  source: string; // where it came from: "COD SQUAD", "THE BOARD"…
+  label: string; // what's being asked of you
+  href: string;
+  cta: string; // RESPOND · APPROVE · REVIEW
+  tone: "alert" | "warn" | "info";
+  scope: HqScope;
+};
+
 export type HqOverview = {
   profile: Profile;
   profiles: Profile[];
@@ -29,7 +43,9 @@ export type HqOverview = {
   president: Profile | null;
   captains: { squad: string; game: string; captain: Profile | null; members: number }[];
   squads: Awaited<ReturnType<typeof getSquads>>;
-  actions: { label: string; detail: string; href: string; tone: "alert" | "warn" | "info" }[];
+  actions: HqAction[];
+  /** The caller's real standing — the dev role switch defaults to this. */
+  realRole: HqScope;
   feed: { at: string; text: string; tone: "live" | "warn" | "alert" | "info" }[];
 };
 
@@ -75,46 +91,72 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
   }));
 
   // ── Action required — only things genuinely on someone's plate ────────────
-  const actions: HqOverview["actions"] = [];
+  const actions: HqAction[] = [];
+  const squadName = (s: (typeof squads)[number]) =>
+    (s.squad.name || s.squad.game).toUpperCase();
+
   for (const b of inbox.asks) {
     actions.push({
-      label: b.kind === "dates" ? "Availability requested" : "Question awaiting answer",
-      detail: b.title || b.body,
+      source: "COMMS",
+      label: b.kind === "dates" ? "Availability requested — pick your nights" : b.title || b.body,
       href: "/hq/comms",
+      cta: "Respond",
       tone: "warn",
+      scope: "member",
     });
   }
   for (const c of inbox.rsvpNeeded) {
     actions.push({
-      label: "Roll call outstanding",
-      detail: `${c.title || c.game} · ${c.date}`,
+      source: (c.title || gameById(c.game).name).toUpperCase(),
+      label: "Operation roll call outstanding",
       href: `/hq/operations/${c.id}`,
+      cta: "Respond",
       tone: "alert",
+      scope: "member",
     });
   }
   for (const s of squads) {
+    const iCaptain = s.captainId === profile.id;
+
     if (s.muster?.muster.status === "open" && s.mine && !s.muster.myResponse) {
       actions.push({
-        label: "Muster awaiting your nights",
-        detail: s.squad.name || s.squad.game,
+        source: squadName(s),
+        label: "Muster — select your available nights",
         href: "/hq/availability",
+        cta: "Respond",
         tone: "warn",
+        scope: "member",
       });
     }
     if (s.muster?.muster.status === "proposed" && profile.is_admin) {
       actions.push({
+        source: squadName(s),
         label: "Night proposed — approve to deploy",
-        detail: s.squad.name || s.squad.game,
         href: "/hq/operations",
+        cta: "Approve",
         tone: "alert",
+        scope: "president",
       });
     }
-    if (s.nightRequests.length > 0) {
+    if (s.nightRequests.length > 0 && (iCaptain || profile.is_admin)) {
       actions.push({
-        label: "Squad wants a night on",
-        detail: `${s.nightRequests.length} × ${s.squad.name || s.squad.game}`,
+        source: squadName(s),
+        label: `${s.nightRequests.length} operative${s.nightRequests.length === 1 ? "" : "s"} want a night on`,
         href: "/hq/squads",
+        cta: "Review",
         tone: "info",
+        scope: iCaptain ? "captain" : "president",
+      });
+    }
+    if (s.muster?.muster.status === "open" && iCaptain) {
+      const answered = s.muster.responses.length;
+      actions.push({
+        source: squadName(s),
+        label: `Muster running — ${answered}/${s.members.length} answered`,
+        href: "/hq/availability",
+        cta: "Review",
+        tone: "info",
+        scope: "captain",
       });
     }
   }
@@ -171,6 +213,11 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     captains,
     squads,
     actions,
+    realRole: profile.is_admin || profile.is_president
+      ? "president"
+      : squads.some((s) => s.captainId === profile.id)
+        ? "captain"
+        : "member",
     feed,
   };
 }
