@@ -71,6 +71,13 @@ export default async function CommandPage({
       : null;
 
   const heroGame = hero ? gameById(hero.game) : null;
+  // The headline is the GAME, not the Operation's name. "FIFA" reads at a
+  // glance; "FIFA - Friday league night" wrapped to four lines and looked like
+  // a layout fault. The full name goes on the line beneath and in the tooltip.
+  const heroLabel = heroGame?.name ?? hero?.title ?? "";
+  const heroSubtitle = hero && hero.title !== heroLabel ? hero.title : null;
+  const heroTitleSize =
+    heroLabel.length <= 16 ? "clamp(38px, 3.2vw, 52px)" : "clamp(28px, 2.4vw, 40px)";
   const heroIso = hero ? `${hero.iso}T${hero.time}:00` : null;
   const rosterPct = o.profiles.length
     ? Math.round((o.nextRsvps.in / o.profiles.length) * 100)
@@ -172,15 +179,7 @@ export default async function CommandPage({
             scan="dash"
             sweep={o.live.length > 0 || hero != null}
             tier={o.live.length > 0 || hero ? "primary" : "quiet"}
-            label={
-              o.live.length > 1
-                ? `In progress · ${o.live.length}`
-                : o.live.length === 1
-                  ? "In progress"
-                  : o.status.operationsTonight > 0
-                    ? "Tonight"
-                    : "Next deployment"
-            }
+            label={o.status.operationsTonight > 0 ? "Tonight" : "Next deployment"}
             status={
               <Dot
                 tone={o.live.length > 0 || o.status.operationsTonight > 0 ? "live" : "idle"}
@@ -188,65 +187,24 @@ export default async function CommandPage({
               />
             }
             right={
-              o.live[0] && (
-                <Link href={`/hq/operations/${o.live[0].id}`} className="hq-label hover:text-ink">
-                  Open room →
+              hero?.id && (
+                <Link href={`/hq/operations/${hero.id}`} className="hq-label hover:text-ink">
+                  Open operation →
                 </Link>
               )
             }
           >
             {o.live.length > 0 || (hero && heroIso) ? (
               <div className="flex flex-col gap-3 py-4">
-                {/* Everything under way, each as its own row. A running night
-                    doesn't need the whole panel — it needs to be visibly on. */}
-                {o.live.map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/hq/operations/${c.id}`}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
-                    style={{
-                      borderColor: "color-mix(in srgb, var(--color-moss) 42%, transparent)",
-                      background: "rgba(61,220,132,0.05)",
-                    }}
-                  >
-                    <span
-                      className="hq-label flex shrink-0 items-center gap-1.5"
-                      style={{ color: "var(--color-moss)" }}
-                    >
-                      <Dot tone="live" pulse />
-                      Running
-                    </span>
-                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
-                      {heroDate(c.date).dow} {heroDate(c.date).day}
-                      {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
-                    </span>
-                    <span className="w-6 shrink-0 text-center">{gameById(c.game).emoji}</span>
-                    <span className="hq-readout min-w-0 flex-1 truncate text-[17px] font-bold uppercase tracking-[0.02em]">
-                      {compHeading(c)}
-                    </span>
-                    <Countdown
-                      iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
-                      size="21px"
-                      caption={false}
-                    />
-                    <span className="hq-label shrink-0 opacity-70">Open →</span>
-                  </Link>
-                ))}
-
                 {/* ── UP NEXT ──────────────────────────────────────────────
                     The big departure-board treatment, kept for the Operation
                     that hasn't happened yet: identity left, clock dominating
                     the right, roster full width beneath both. */}
                 {hero && heroIso && (
-                  <div className={o.live.length > 0 ? "mt-1 border-t border-rule pt-4" : ""}>
-                    {o.live.length > 0 && (
-                      <p className="hq-label mb-3" style={{ color: "var(--color-sand)" }}>
-                        Up next
-                      </p>
-                    )}
+                  <div>
                     <div
                       className="flex flex-col justify-center gap-6"
-                      style={{ minHeight: o.live.length > 0 ? 230 : 270 }}
+                      style={{ minHeight: hero.demo ? 165 : 250 }}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
                         <div className="flex min-w-0 flex-1 items-center gap-7">
@@ -295,13 +253,17 @@ export default async function CommandPage({
                             <div className="min-w-0">
                               <p
                                 className="hq-readout font-bold leading-[1.02]"
-                                style={{ fontSize: "clamp(38px, 3.2vw, 52px)" }}
+                                style={{ fontSize: heroTitleSize }}
+                                title={hero.title}
                               >
-                                {hero.title}
+                                {heroLabel}
                               </p>
-                              <p className="hq-mono mt-2 text-[17px] uppercase tracking-[0.12em] text-ink-soft">
-                                {heroGame?.name}
-                                {` · ${hero.time}`}
+                              <p
+                                className="hq-mono mt-2 truncate text-[17px] uppercase tracking-[0.12em] text-ink-soft"
+                                title={hero.title}
+                              >
+                                {hero.time}
+                                {heroSubtitle ? ` · ${heroSubtitle}` : ""}
                                 {hero.stake ? ` · ${hero.stake}` : ""}
                               </p>
                               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -350,6 +312,53 @@ export default async function CommandPage({
                     </div>
                   </div>
                 )}
+                {/* Under way, beneath what's coming. A running night needs to
+                    be visibly on, not to take the whole panel. */}
+                {o.live.length > 0 && (
+                  <p
+                    className={`hq-label ${hero ? "mt-2 border-t border-rule pt-4" : ""}`}
+                    style={{ color: "var(--color-moss)" }}
+                  >
+                    Running now · {o.live.length}
+                  </p>
+                )}
+                {o.live.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/hq/operations/${c.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                    style={{
+                      borderColor: "color-mix(in srgb, var(--color-moss) 42%, transparent)",
+                      background: "rgba(61,220,132,0.05)",
+                    }}
+                  >
+                    <span
+                      className="hq-label flex shrink-0 items-center gap-1.5"
+                      style={{ color: "var(--color-moss)" }}
+                    >
+                      <Dot tone="live" pulse />
+                      Running
+                    </span>
+                    <span className="hq-mono shrink-0 text-[13px] uppercase tracking-[0.08em]">
+                      {heroDate(c.date).dow} {heroDate(c.date).day}
+                      {c.tee_time ? ` · ${shortTime(c.tee_time)}` : ""}
+                    </span>
+                    <span className="w-6 shrink-0 text-center">{gameById(c.game).emoji}</span>
+                    <span
+                      className="hq-readout min-w-0 flex-1 truncate text-[17px] font-bold uppercase tracking-[0.02em]"
+                      title={compHeading(c)}
+                    >
+                      {gameById(c.game).name}
+                    </span>
+                    <Countdown
+                      iso={`${c.date}T${(c.tee_time ?? "20:00:00").slice(0, 8)}`}
+                      size="21px"
+                      caption={false}
+                    />
+                    <span className="hq-label shrink-0 opacity-70">Open →</span>
+                  </Link>
+                ))}
+
               </div>
             ) : (
               <div className="py-10 text-center">
