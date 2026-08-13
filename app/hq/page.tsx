@@ -7,7 +7,7 @@ import { heroDate, shortTime } from "@/lib/dates";
 import { Panel, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
-import { hqSampleActions } from "@/lib/hq/future/actions";
+import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
 
 export const metadata = { title: "Command · Barracks HQ" };
 
@@ -137,7 +137,10 @@ export default async function CommandPage({
             }
           >
             {o.next && nextIso ? (
-              <div className="grid items-center gap-7 py-2 md:grid-cols-[auto_1fr_auto]">
+              <div
+                className="grid items-center gap-7 py-6 md:grid-cols-[auto_1fr_auto]"
+                style={{ minHeight: 250 }}
+              >
                 <div className="text-center">
                   <div className="hq-label">{heroDate(o.next.date).dow}</div>
                   <div
@@ -249,6 +252,28 @@ export default async function CommandPage({
                       </Link>
                     );
                   })}
+
+                {/* Dev-only filler so the list can be judged at length. Not
+                    links — these operations don't exist. */}
+                {hqSampleWeek().map((w) => (
+                  <div
+                    key={`${w.dow}-${w.title}`}
+                    className="flex items-center gap-4 border-b border-rule/60 py-2.5 last:border-0 opacity-70"
+                  >
+                    <span className="hq-mono w-16 shrink-0 text-xs uppercase tracking-[0.08em] text-ink-soft">
+                      {w.dow} {w.day}
+                    </span>
+                    <span className="w-6 shrink-0 text-center">{w.emoji}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{w.title}</span>
+                    <span className="hq-mono shrink-0 text-xs text-ink-soft">{w.time}</span>
+                    <span
+                      className="hq-mono shrink-0 rounded-[3px] border border-dashed px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]"
+                      style={{ borderColor: "#4b5a52", color: "#6d8076" }}
+                    >
+                      demo
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </Panel>
@@ -297,11 +322,11 @@ export default async function CommandPage({
               <p className="hq-label mt-1.5 opacity-70">Nothing needs you right now</p>
             </div>
           ) : (
-            /* Holds roughly five rows before scrolling, and keeps its footprint
+            /* Roughly nine rows before it scrolls, and it keeps its footprint
                with only one — this is a primary component, not a status chip. */
             <ul
               className="flex flex-col divide-y divide-rule/60 overflow-y-auto"
-              style={{ minHeight: 280, maxHeight: 400 }}
+              style={{ minHeight: 280, maxHeight: 580 }}
             >
               {actions.map((a, i) => (
                 <li key={`${a.href}-${i}`}>

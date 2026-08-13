@@ -121,3 +121,39 @@ export function hqSampleActions(): HqAction[] {
   if (process.env.NODE_ENV === "production") return [];
   return SAMPLES;
 }
+
+// ── This week ──────────────────────────────────────────────────────────────
+// Filler so the upcoming list can be judged with more than one row. These are
+// deliberately NOT linkable — the operations don't exist, and a row that leads
+// to a broken page is worse than a row that plainly doesn't lead anywhere.
+
+export type SampleWeekRow = {
+  dow: string;
+  day: string;
+  emoji: string;
+  title: string;
+  time: string;
+};
+
+const WEEK: { inDays: number; emoji: string; title: string; time: string }[] = [
+  { inDays: 1, emoji: "⚽", title: "FIFA — Friday league night", time: "21:00" },
+  { inDays: 2, emoji: "🏎️", title: "F1 — Silverstone GP", time: "19:30" },
+  { inDays: 3, emoji: "🎮", title: "COD — Sunday session", time: "20:30" },
+  { inDays: 5, emoji: "⛳", title: "Threeball — midweek 9", time: "18:45" },
+];
+
+export function hqSampleWeek(): SampleWeekRow[] {
+  if (process.env.NODE_ENV === "production") return [];
+  const base = new Date();
+  return WEEK.map((w) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() + w.inDays);
+    return {
+      dow: d.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase(),
+      day: String(d.getDate()),
+      emoji: w.emoji,
+      title: w.title,
+      time: w.time,
+    };
+  });
+}
