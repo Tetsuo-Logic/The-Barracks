@@ -9,10 +9,13 @@ export function Countdown({
   label = "Until deployment",
   /** Any CSS length — pass a clamp() so the hero scales with the viewport. */
   size = "40px",
+  /** Sit the caption under the seconds rather than under the hours. */
+  labelAlign = "left",
 }: {
   iso: string;
   label?: string;
   size?: string;
+  labelAlign?: "left" | "right";
 }) {
   const [left, setLeft] = useState<string>("--:--:--");
   const [past, setPast] = useState(false);
@@ -50,7 +53,17 @@ export function Countdown({
       >
         {left}
       </div>
-      <div className="hq-label mt-2.5">{past ? "Elapsed since kick-off" : label}</div>
+      {/* Caption carries the readout's own colour so the clock reads as one
+          unit rather than a number with a grey footnote. */}
+      <div
+        className="hq-label mt-2.5"
+        style={{
+          textAlign: labelAlign,
+          color: past ? "var(--color-moss)" : "var(--color-sand)",
+        }}
+      >
+        {past ? "Elapsed since kick-off" : label}
+      </div>
     </div>
   );
 }

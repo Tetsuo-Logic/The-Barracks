@@ -179,7 +179,11 @@ export default async function CommandPage({
                   </div>
 
                   <div className="shrink-0">
-                    <Countdown iso={nextIso} size="clamp(56px, 5.6vw, 104px)" />
+                    <Countdown
+                      iso={nextIso}
+                      size="clamp(56px, 5.6vw, 104px)"
+                      labelAlign="right"
+                    />
                   </div>
                 </div>
 
