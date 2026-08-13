@@ -4,7 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { getHqOverview, type HqScope } from "@/lib/hq/overview";
 import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
-import { Panel, Dot, Tag, Meter, PageHead, Nil } from "@/components/hq/Kit";
+import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
 import { hqSampleActions, hqSampleWeek } from "@/lib/hq/future/actions";
@@ -137,60 +137,75 @@ export default async function CommandPage({
             }
           >
             {o.next && nextIso ? (
-              <div
-                className="grid items-center gap-7 py-6 md:grid-cols-[auto_1fr_auto]"
-                style={{ minHeight: 250 }}
-              >
-                <div className="text-center">
-                  <div className="hq-label">{heroDate(o.next.date).dow}</div>
-                  <div
-                    className="hq-readout text-[68px] font-bold leading-[0.82]"
-                    style={{ color: "var(--color-flag)" }}
-                  >
-                    {heroDate(o.next.date).day}
-                  </div>
-                  <div className="hq-label">{heroDate(o.next.date).mon}</div>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="hq-readout text-[26px] font-bold leading-tight">
-                    {nextGame?.emoji} {compHeading(o.next)}
-                  </p>
-                  <p className="hq-mono mt-1 text-xs uppercase tracking-[0.1em] text-ink-soft">
-                    {nextGame?.name}
-                    {o.next.tee_time ? ` · ${shortTime(o.next.tee_time)}` : ""}
-                    {o.next.stake ? ` · ${o.next.stake}` : ""}
-                  </p>
-
-                  <div className="mt-5">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="hq-label">Roster</span>
-                      <span className="hq-mono text-xs">
-                        <span style={{ color: "var(--color-moss)" }}>{o.nextRsvps.in} in</span>
-                        <span className="text-ink-soft">
-                          {" "}
-                          · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
-                          {o.nextRsvps.undecided} silent
-                        </span>
-                      </span>
+              /* Departure board: identity on the left, the clock dominating the
+                 right, and the roster reading full width beneath both. */
+              <div className="flex flex-col justify-center gap-6 py-5" style={{ minHeight: 290 }}>
+                <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
+                  <div className="flex min-w-0 items-center gap-6">
+                    <div className="shrink-0 text-center">
+                      <div className="hq-label">{heroDate(o.next.date).dow}</div>
+                      <div
+                        className="hq-readout font-bold leading-[0.8]"
+                        style={{ fontSize: "clamp(64px, 5vw, 86px)", color: "var(--color-flag)" }}
+                      >
+                        {heroDate(o.next.date).day}
+                      </div>
+                      <div className="hq-label">{heroDate(o.next.date).mon}</div>
                     </div>
-                    <Meter pct={rosterPct} tone={rosterPct >= 60 ? "live" : "warn"} />
+
+                    <div className="min-w-0">
+                      <p
+                        className="hq-readout font-bold leading-[1.05]"
+                        style={{ fontSize: "clamp(30px, 2.5vw, 40px)" }}
+                      >
+                        {nextGame?.emoji} {compHeading(o.next)}
+                      </p>
+                      <p className="hq-mono mt-2 text-[15px] uppercase tracking-[0.12em] text-ink-soft">
+                        {nextGame?.name}
+                        {o.next.tee_time ? ` · ${shortTime(o.next.tee_time)}` : ""}
+                        {o.next.stake ? ` · ${o.next.stake}` : ""}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <Tag tone={o.next.started_at ? "live" : "idle"}>
+                          {o.next.finished_at
+                            ? "Archived"
+                            : o.next.started_at
+                              ? "Room live"
+                              : "Standing by"}
+                        </Tag>
+                        {o.next.squad_id && <Tag tone="warn">Squad operation</Tag>}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Tag tone={o.next.started_at ? "live" : "idle"}>
-                      {o.next.finished_at
-                        ? "Archived"
-                        : o.next.started_at
-                          ? "Room live"
-                          : "Standing by"}
-                    </Tag>
-                    {o.next.squad_id && <Tag tone="warn">Squad operation</Tag>}
+                  <div className="shrink-0">
+                    <Countdown iso={nextIso} size="clamp(56px, 5.6vw, 104px)" />
                   </div>
                 </div>
 
-                <div className="shrink-0 border-l border-rule pl-7">
-                  <Countdown iso={nextIso} />
+                <div className="border-t border-rule pt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="hq-label">Roster</span>
+                    <span className="hq-mono text-[14px]">
+                      <span className="font-bold" style={{ color: "var(--color-moss)" }}>
+                        {o.nextRsvps.in} in
+                      </span>
+                      <span className="text-ink-soft">
+                        {" "}
+                        · {o.nextRsvps.maybe} maybe · {o.nextRsvps.out} out ·{" "}
+                        {o.nextRsvps.undecided} silent
+                      </span>
+                    </span>
+                  </div>
+                  <div className="hq-meter" style={{ height: 7 }}>
+                    <span
+                      style={{
+                        width: `${rosterPct}%`,
+                        backgroundColor:
+                          rosterPct >= 60 ? "var(--color-moss)" : "var(--color-sand)",
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (

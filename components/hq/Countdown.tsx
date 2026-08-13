@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 
 // Live countdown to kick-off. Renders a stable placeholder on the server so
 // there's no hydration mismatch, then ticks once a second.
-export function Countdown({ iso, label = "Until deployment" }: { iso: string; label?: string }) {
+export function Countdown({
+  iso,
+  label = "Until deployment",
+  /** Any CSS length — pass a clamp() so the hero scales with the viewport. */
+  size = "40px",
+}: {
+  iso: string;
+  label?: string;
+  size?: string;
+}) {
   const [left, setLeft] = useState<string>("--:--:--");
   const [past, setPast] = useState(false);
 
@@ -32,12 +41,16 @@ export function Countdown({ iso, label = "Until deployment" }: { iso: string; la
   return (
     <div>
       <div
-        className="hq-readout text-[40px] font-bold leading-none"
-        style={{ color: past ? "var(--color-moss)" : "var(--color-sand)" }}
+        className="hq-readout font-bold leading-[0.86] tracking-[-0.02em]"
+        style={{
+          fontSize: size,
+          color: past ? "var(--color-moss)" : "var(--color-sand)",
+          textShadow: "0 0 60px color-mix(in srgb, currentColor 28%, transparent)",
+        }}
       >
         {left}
       </div>
-      <div className="hq-label mt-1.5">{past ? "Elapsed since kick-off" : label}</div>
+      <div className="hq-label mt-2.5">{past ? "Elapsed since kick-off" : label}</div>
     </div>
   );
 }
