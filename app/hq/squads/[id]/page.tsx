@@ -9,6 +9,7 @@ import { todayISO, heroDate, shortDate, shortTime, relativeTime } from "@/lib/da
 import { Panel, Stat, Dot, Tag, Row, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
 import { Avatar } from "@/components/Avatar";
 import { GamePanel, PANEL_LABEL, panelKind } from "@/components/hq/squad/GamePanel";
+import { RequestNight } from "@/components/hq/squad/RequestNight";
 import { callsign, squadRecord } from "@/components/hq/squad/proto";
 import type { Competition, Rsvp, Score, Squad } from "@/lib/types";
 
@@ -39,7 +40,7 @@ export default async function SquadDossierPage({
   const profile = await requireProfile();
   // Planning is a Captain/President surface — a member never sees a route into
   // it, here or anywhere else. Follows the dev role preview so it's testable.
-  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+  const viewRole = resolveViewRole(sp.as, await realRoleOf(profile));
 
   const squads = await getSquads(profile.id);
   const view = squads.find((s) => s.squad.id === id);
@@ -65,6 +66,13 @@ export default async function SquadDossierPage({
   const scores = (scoreRows ?? []) as Score[];
 
   const { squad, members, captainId, mine, nightRequests, muster } = view;
+  // Captaincy is per-squad. Running COD Squad grants nothing over FIFA Squad,
+  // so the Captain's controls here are gated on captaining THIS one — being a
+  // captain somewhere else is not a credential. RLS agrees; this only stops us
+  // offering buttons that would fail.
+  const canPlan = viewRole === "president" || captainId === profile.id;
+  // A member's own asks, for the "where did it go?" panel.
+  const myRequests = nightRequests.filter((r) => r.requester?.id === profile.id);
   const game = gameById(squad.game);
   const today = todayISO();
   const upcoming = comps.filter((c) => c.status === "upcoming" && c.date >= today);
@@ -121,9 +129,22 @@ export default async function SquadDossierPage({
         title={squad.name || `${game.name} Squad`}
         right={
           <>
+            {/* The member's action, and the same flow the card launches — one
+                behaviour, two entry points. */}
+            {mine && (
+              <RequestNight
+                squadId={squad.id}
+                squadName={squad.name || `${game.name} Squad`}
+                gameName={game.name}
+                captainName={captain?.name ?? null}
+                squadHref={`/hq/squads/${squad.id}`}
+                variant="inline"
+              />
+            )}
+            {/* The Captain's, and only theirs. */}
             {canPlan && (
               <Link
-                href="/hq/availability"
+                href="/squads"
                 className="hq-label rounded-[3px] px-3 py-2 font-semibold"
                 style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
               >
@@ -372,6 +393,48 @@ export default async function SquadDossierPage({
 
         {/* ── Right column ───────────────────────────────────────────── */}
         <div className="flex flex-col gap-4">
+          {/* Your open requests — the other half of "show where it went".
+              A member who asked for a night can see it sitting with the
+              Captain, and roughly what happens next. Real rows from
+              squad_night_requests; no state is invented. */}
+          {mine && myRequests.length > 0 && (
+            <Panel
+              i={8}
+              label="Your open requests"
+              status={<Dot tone="alert" pulse />}
+              right={<span className="hq-label">{myRequests.length}</span>}
+            >
+              <ul className="flex flex-col">
+                {myRequests.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-rule/60 py-2 last:border-0"
+                  >
+                    <span className="hq-readout shrink-0 text-[13px] font-bold uppercase tracking-[0.02em]">
+                      {game.name} night
+                    </span>
+                    {r.note && (
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-ink-soft">
+                        {r.note}
+                      </span>
+                    )}
+                    <span className="hq-mono ml-auto shrink-0 text-[11px] uppercase tracking-[0.08em]">
+                      {muster ? (
+                        <span style={{ color: "var(--color-moss)" }}>
+                          Muster called · {muster.responses.length}/{members.length} responded
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--color-sand)" }}>
+                          Sent to {captain?.name ?? "Command"} · awaiting captain
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
+
           {/* Muster */}
           <Panel
             i={9}

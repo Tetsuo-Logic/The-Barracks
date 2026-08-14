@@ -237,6 +237,7 @@ export interface SquadRequest {
   game: string;
   name: string | null;
   clan_tag: string | null;
+  captain_id: string | null; // who the requester wants to run it — see 0046
   requested_by: string | null;
   status: SquadRequestStatus;
   created_at: string;

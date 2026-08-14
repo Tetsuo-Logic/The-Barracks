@@ -794,7 +794,11 @@ export async function getSquadOptions(): Promise<SquadOption[]> {
   return (data ?? []) as SquadOption[];
 }
 
-export type SquadRequestView = SquadRequest & { requester: Profile | null };
+export type SquadRequestView = SquadRequest & {
+  requester: Profile | null;
+  /** Who the requester wants running it — seated as Captain on approval. */
+  proposedCaptain: Profile | null;
+};
 
 /** Open squad requests awaiting the President's approval. */
 export async function getSquadRequests(): Promise<SquadRequestView[]> {
@@ -807,6 +811,7 @@ export async function getSquadRequests(): Promise<SquadRequestView[]> {
   return ((reqs ?? []) as SquadRequest[]).map((r) => ({
     ...r,
     requester: r.requested_by ? byId.get(r.requested_by) ?? null : null,
+    proposedCaptain: r.captain_id ? byId.get(r.captain_id) ?? null : null,
   }));
 }
 

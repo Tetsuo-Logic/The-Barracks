@@ -3,11 +3,12 @@ import { requireProfile } from "@/lib/auth";
 import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
 import { getSquads, getSquadRequests } from "@/lib/data/queries";
-import { gameById, compHeading } from "@/lib/games";
+import { gameById, GAMES } from "@/lib/games";
 import { todayISO, shortDate, shortTime, relativeTime } from "@/lib/dates";
-import { Panel, Stat, Dot, Tag, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
-import { Avatar } from "@/components/Avatar";
-import { squadRecord } from "@/components/hq/squad/proto";
+import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
+import { RequestNight } from "@/components/hq/squad/RequestNight";
+import { JoinSquad } from "@/components/hq/squad/JoinSquad";
+import { RequestSquad } from "@/components/hq/squad/RequestSquad";
 import { PANEL_LABEL, panelKind } from "@/components/hq/squad/GamePanel";
 import type { Competition } from "@/lib/types";
 
@@ -22,17 +23,26 @@ export default async function SquadsPage({
   searchParams: Promise<{ as?: string }>;
 }) {
   const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
-  // Planning is a Captain/President surface — a member never sees a route into
-  // it, here or anywhere else. Follows the dev role preview so it's testable.
-  const canPlan = resolveViewRole(sp.as, await realRoleOf(profile)) !== "member";
+  // Forming a squad is a Barracks act, not a squad act: RLS only lets a group
+  // admin insert into `squads`, so captaincy of one squad grants nothing here.
+  // Everyone else asks the President instead.
+  const isPresident = resolveViewRole(sp.as, await realRoleOf(profile)) === "president";
 
   const supabase = await createClient();
 
-  const [squads, requests, { data: compRows }] = await Promise.all([
+  const [squads, requests, { data: compRows }, { data: profileRows }] = await Promise.all([
     getSquads(profile.id),
     profile.is_admin ? getSquadRequests() : Promise.resolve([]),
     supabase.from("competitions").select("*").order("date", { ascending: true }),
+    supabase.from("profiles").select("id, name").order("name"),
   ]);
+
+  // For the request form: who could captain it, and what could it play.
+  const people = ((profileRows ?? []) as { id: string; name: string }[]).map((p) => ({
+    id: p.id,
+    name: p.name,
+  }));
+  const gameOptions = GAMES.map((g) => ({ id: g.id, name: g.name }));
 
   const comps = (compRows ?? []) as Competition[];
   const today = todayISO();
@@ -45,11 +55,6 @@ export default async function SquadsPage({
   }
 
   const assigned = new Set(squads.flatMap((s) => s.members.map((m) => m.profile.id)));
-  const mustersLive = squads.filter((s) => s.muster).length;
-  const nightsWanted = squads.reduce((n, s) => n + s.nightRequests.length, 0);
-  const scheduled = comps.filter(
-    (c) => c.squad_id && c.status === "upcoming" && c.date >= today,
-  ).length;
   const mine = squads.filter((s) => s.mine).length;
 
   return (
@@ -58,61 +63,26 @@ export default async function SquadsPage({
         eyebrow="Barracks"
         title="Squads"
         right={
-          <>
-            {canPlan && (
-              <Link
-                href="/hq/availability"
-                className="hq-label rounded-[3px] px-3 py-2 font-semibold"
-                style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-              >
-                Call a muster
-              </Link>
-            )}
+          /* No page-level "call a muster": a muster belongs to one squad and
+             is called from inside it. Forming a squad genuinely is a Barracks
+             action — and only the President's. */
+          isPresident ? (
             <Link
               href="/squads"
-              className="hq-label rounded-[3px] border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:text-ink"
+              className="hq-label rounded-[3px] px-3 py-2 font-semibold"
+              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
             >
-              Form / disband
+              + Form squad
             </Link>
-          </>
+          ) : (
+            <RequestSquad games={gameOptions} people={people} meId={profile.id} />
+          )
         }
       >
         {squads.length} squad{squads.length === 1 ? "" : "s"} on strength ·{" "}
         <span className="text-ink">{assigned.size}</span> operatives assigned
         {mine > 0 && <> · you serve in {mine}</>}
       </PageHead>
-
-      {/* ── Status strip ─────────────────────────────────────────────────── */}
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <Panel i={0}>
-          <Stat value={squads.length} label="Squads formed" />
-        </Panel>
-        <Panel i={1}>
-          <Stat value={assigned.size} label="Operatives assigned" />
-        </Panel>
-        <Panel i={2}>
-          <Stat
-            value={mustersLive}
-            label="Musters live"
-            tone={mustersLive > 0 ? "warn" : undefined}
-          />
-        </Panel>
-        <Panel i={3}>
-          <Stat
-            value={nightsWanted}
-            label="Nights wanted"
-            tone={nightsWanted > 0 ? "alert" : undefined}
-          />
-        </Panel>
-        <Panel i={4}>
-          <Stat
-            value={scheduled}
-            label="Squad operations"
-            sub="On the board"
-            tone={scheduled > 0 ? "live" : undefined}
-          />
-        </Panel>
-      </div>
 
       {/* ── Formation requests awaiting the President ─────────────────────── */}
       {requests.length > 0 && (
@@ -140,6 +110,11 @@ export default async function SquadsPage({
                       {r.name || `${g.name} Squad`}
                       {r.clan_tag && <span className="ml-2 text-ink-soft">[{r.clan_tag}]</span>}
                     </span>
+                    {r.proposedCaptain && (
+                      <span className="hq-mono shrink-0 text-[11px]" style={{ color: "var(--color-sand)" }}>
+                        Captain: {r.proposedCaptain.name}
+                      </span>
+                    )}
                     <span className="hq-mono shrink-0 text-[11px] text-ink-soft">
                       {r.requester?.name ?? "Someone"} · {relativeTime(r.created_at)}
                     </span>
@@ -163,9 +138,7 @@ export default async function SquadsPage({
             const g = gameById(s.squad.game);
             const all = bySquad.get(s.squad.id) ?? [];
             const upcoming = all.filter((c) => c.status === "upcoming" && c.date >= today);
-            const run = all.filter((c) => c.status === "played").length;
             const captain = s.members.find((m) => m.is_captain)?.profile ?? null;
-            const rec = squadRecord(s.squad.id);
             const mu = s.muster?.muster ?? null;
             const answered = s.muster?.responses.length ?? 0;
 
@@ -177,168 +150,103 @@ export default async function SquadsPage({
                 : `Muster open · ${answered}/${s.members.length} answered`;
 
             return (
-              <Link key={s.squad.id} href={`/hq/squads/${s.squad.id}`} className="group block">
-                <Panel
-                  i={7 + i}
-                  className="h-full transition-shadow group-hover:shadow-[0_0_0_1px_var(--color-sand)]"
-                >
-                  {/* Head */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[18px] leading-none">{g.emoji}</span>
-                        {s.squad.clan_tag && (
-                          <span
-                            className="hq-mono rounded-[3px] border px-1.5 py-0.5 text-[11px] font-bold leading-none"
-                            style={{
-                              borderColor: "color-mix(in srgb, var(--color-sand) 45%, transparent)",
-                              backgroundColor: "color-mix(in srgb, var(--color-sand) 11%, transparent)",
-                              color: "var(--color-sand)",
-                            }}
-                          >
-                            [{s.squad.clan_tag}]
-                          </span>
-                        )}
-                        <h2 className="hq-readout truncate text-[18px] font-bold uppercase leading-none">
-                          {s.squad.name || `${g.name} Squad`}
-                        </h2>
-                      </div>
-                      <p className="hq-mono mt-1.5 text-[11px] uppercase tracking-[0.1em] text-ink-soft">
-                        {g.name} · {PANEL_LABEL[panelKind(s.squad.game)]}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      {s.mine && <Tag tone="live">Yours</Tag>}
-                      {s.nightRequests.length > 0 && (
-                        <Tag tone="alert" solid>
-                          {s.nightRequests.length} night{s.nightRequests.length === 1 ? "" : "s"} wanted
-                        </Tag>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Roster */}
-                  <div className="mt-3 flex items-center gap-3">
-                    <div className="flex shrink-0 items-center">
-                      {s.members.slice(0, 6).map((m, idx) => (
+              /* Not a link wrapper any more: the card now carries its own
+                 buttons, and a button inside an anchor is a broken target. */
+              <Panel key={s.squad.id} i={7 + i} className="flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {s.squad.clan_tag && (
                         <span
-                          key={m.profile.id}
-                          className="rounded-full"
-                          style={{
-                            marginLeft: idx === 0 ? 0 : -7,
-                            boxShadow: "0 0 0 2px #0b100e",
-                            outline: m.is_captain ? "1px solid var(--color-sand)" : "none",
-                            outlineOffset: 1,
-                            borderRadius: 99,
-                          }}
-                          title={`${m.profile.name}${m.is_captain ? " · Captain" : ""}`}
+                          className="hq-mono shrink-0 text-[12px] font-bold tracking-[0.1em]"
+                          style={{ color: "var(--color-sand)" }}
                         >
-                          <Avatar
-                            name={m.profile.name}
-                            avatarUrl={m.profile.avatar_url}
-                            colour={m.profile.colour}
-                            size={24}
-                          />
-                        </span>
-                      ))}
-                      {s.members.length > 6 && (
-                        <span className="hq-mono ml-2 text-[11px] text-ink-soft">
-                          +{s.members.length - 6}
+                          [{s.squad.clan_tag}]
                         </span>
                       )}
-                      {s.members.length === 0 && (
-                        <span className="hq-mono text-[11px] uppercase tracking-[0.1em] text-ink-soft">
-                          No operatives
-                        </span>
-                      )}
+                      <h2 className="hq-readout truncate text-[19px] font-bold uppercase leading-none">
+                        {s.squad.name || `${g.name} Squad`}
+                      </h2>
                     </div>
-                    <div className="min-w-0 flex-1 text-right">
-                      <p className="hq-label">Captain</p>
-                      <p
-                        className="hq-mono truncate text-[12px]"
-                        style={{ color: captain ? "var(--color-sand)" : "var(--color-ink-soft)" }}
-                      >
-                        {captain ? captain.name : "Vacant"}
-                      </p>
-                    </div>
+                    <p className="hq-mono mt-1.5 text-[11px] uppercase tracking-[0.1em] text-ink-soft">
+                      {g.name} · {PANEL_LABEL[panelKind(s.squad.game)]}
+                    </p>
                   </div>
+                  {s.mine && <Tag tone="live">Yours</Tag>}
+                </div>
 
-                  {/* Muster */}
-                  <div className="mt-3 flex items-center gap-2 border-t border-rule/60 pt-2.5">
-                    <Dot tone={musterTone} pulse={mu?.status === "proposed"} />
-                    <span className="hq-mono min-w-0 flex-1 truncate text-[11px] uppercase tracking-[0.08em] text-ink-soft">
-                      {musterText}
+                {/* Who runs it and how many there are — the two facts you want
+                    before deciding whether to ask them for a game. */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1">
+                  <span className="hq-mono text-[12px]">
+                    <span className="hq-label">Captain </span>
+                    <span style={{ color: captain ? "var(--color-sand)" : "var(--color-ink-soft)" }}>
+                      {captain ? captain.name : "Vacant"}
                     </span>
-                  </div>
+                  </span>
+                  <span className="hq-mono text-[12px] text-ink-soft">
+                    {s.members.length} operative{s.members.length === 1 ? "" : "s"}
+                  </span>
+                </div>
 
-                  {/* Upcoming operations */}
-                  <div className="mt-2.5">
-                    <p className="hq-label mb-1">Upcoming operations</p>
-                    {upcoming.length === 0 ? (
-                      <p className="hq-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft opacity-70">
-                        Nothing on the board
-                      </p>
-                    ) : (
-                      <ul className="flex flex-col">
-                        {upcoming.slice(0, 2).map((c) => (
-                          <li key={c.id} className="flex items-center gap-2.5 py-0.5">
-                            <span className="hq-mono w-14 shrink-0 text-[11px] text-ink-soft">
-                              {shortDate(c.date)}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-[12px]">
-                              {compHeading(c)}
-                            </span>
-                            <span className="hq-mono shrink-0 text-[11px] text-ink-soft">
-                              {shortTime(c.tee_time) || "—"}
-                            </span>
-                          </li>
-                        ))}
-                        {upcoming.length > 2 && (
-                          <li className="hq-mono py-0.5 text-[11px] text-ink-soft">
-                            +{upcoming.length - 2} more
-                          </li>
-                        )}
-                      </ul>
+                {/* Only when there's something to say. A card that always shows
+                    every row is a dashboard again. */}
+                {(mu || upcoming[0] || s.nightRequests.length > 0) && (
+                  <div className="mt-3 flex flex-col gap-1.5 border-t border-rule/60 pt-3">
+                    {mu && (
+                      <span className="flex items-center gap-2">
+                        <Dot tone={musterTone} pulse={mu.status === "proposed"} />
+                        <span className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--color-sand)" }}>
+                          {musterText}
+                        </span>
+                      </span>
+                    )}
+                    {upcoming[0] && (
+                      <span className="flex items-center gap-2">
+                        <Dot tone="live" />
+                        <span className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]">
+                          Next operation · {shortDate(upcoming[0].date)}
+                          {shortTime(upcoming[0].tee_time) ? ` · ${shortTime(upcoming[0].tee_time)}` : ""}
+                        </span>
+                      </span>
+                    )}
+                    {s.nightRequests.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <Dot tone="alert" />
+                        <span className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--color-flag)" }}>
+                          {s.nightRequests.length} night
+                          {s.nightRequests.length === 1 ? "" : "s"} wanted
+                        </span>
+                      </span>
                     )}
                   </div>
+                )}
 
-                  {/* Record — prototype */}
-                  <div className="mt-3 border-t border-rule/60 pt-2.5">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="hq-label">Battle record</span>
-                      <span className="flex items-center gap-2">
-                        <span className="hq-mono text-[11px]">
-                          {rec.form.map((f, k) => (
-                            <span
-                              key={k}
-                              style={{
-                                color: f === "W" ? "var(--color-moss)" : "var(--color-flag)",
-                                marginLeft: k === 0 ? 0 : 3,
-                              }}
-                            >
-                              {f}
-                            </span>
-                          ))}
-                        </span>
-                        <Proto />
-                      </span>
-                    </div>
-                    <Meter pct={rec.pct} tone={rec.pct >= 50 ? "live" : "alert"} />
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="hq-mono text-[11px] text-ink-soft">
-                        {rec.won}W · {rec.lost}L · {rec.pct}%
-                      </span>
-                      <span className="hq-mono text-[11px] text-ink-soft">
-                        {run} operation{run === 1 ? "" : "s"} run
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="hq-label mt-3 text-right opacity-60 transition-opacity group-hover:opacity-100">
-                    Open dossier →
-                  </p>
-                </Panel>
-              </Link>
+                {/* The actions. Request a night is the member's whole reason
+                    for being here, so it leads and everything else is a link. */}
+                <div className="mt-auto flex flex-col gap-2 pt-4">
+                  {s.mine ? (
+                    <RequestNight
+                      squadId={s.squad.id}
+                      squadName={s.squad.name || `${g.name} Squad`}
+                      gameName={g.name}
+                      captainName={captain?.name ?? null}
+                      squadHref={`/hq/squads/${s.squad.id}`}
+                    />
+                  ) : (
+                    <JoinSquad
+                      squadId={s.squad.id}
+                      squadName={s.squad.name || `${g.name} Squad`}
+                    />
+                  )}
+                  <Link
+                    href={`/hq/squads/${s.squad.id}`}
+                    className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors hover:border-ink-soft hover:text-ink"
+                  >
+                    Open squad →
+                  </Link>
+                </div>
+              </Panel>
             );
           })}
         </div>

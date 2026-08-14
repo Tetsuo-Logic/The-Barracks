@@ -92,7 +92,7 @@ export async function setCaptain(db: Db, squadId: string, userId: string): Promi
 // A member proposes a squad — it goes to the President to approve.
 export async function requestSquad(
   db: Db,
-  input: { game: string; name?: string; clanTag?: string },
+  input: { game: string; name?: string; clanTag?: string; captainId?: string },
 ): Promise<Result> {
   const {
     data: { user },
@@ -108,9 +108,21 @@ export async function requestSquad(
     game: input.game,
     name: input.name?.trim() || null,
     clan_tag: input.clanTag?.trim() || null,
+    captain_id: input.captainId || null,
     requested_by: user.id,
   });
   if (error) return { ok: false, error: "Couldn't send the request." };
+
+  // The President is the one who can act on it, so tell them.
+  const { data: me } = await db.from("profiles").select("name").eq("id", user.id).single();
+  const who = (me as { name?: string })?.name ?? "Someone";
+  const { data: admins } = await db.from("profiles").select("id").eq("is_admin", true).neq("id", user.id);
+  await sendToPlayers(((admins ?? []) as { id: string }[]).map((a) => a.id), "new_comp", {
+    title: "⚑ Squad requested",
+    body: `${who} wants ${input.name?.trim() || gameById(input.game).name}. Approve to form it.`,
+    url: "/hq/squads",
+    tag: `squadreq-${user.id}`,
+  });
   return { ok: true };
 }
 
@@ -120,18 +132,37 @@ export async function approveRequest(db: Db, requestId: string): Promise<Result>
   if (!req) return { ok: false, error: "Request not found." };
   const r = req as SquadRequest;
 
-  const { error: sErr } = await db.from("squads").insert({
-    group_id: r.group_id,
-    game: r.game,
-    name: r.name,
-    clan_tag: r.clan_tag,
-  });
-  if (sErr && !/duplicate|unique/i.test(sErr.message)) {
-    return { ok: false, error: "Couldn't form the squad. Are you the President?" };
+  // Forms the squad AND seats the proposed Captain. squad_members is
+  // self-insert only, so seating somebody else has to happen in the definer
+  // function — see 0046_squad_request_captain.
+  const { error } = await db.rpc("approve_squad_request", { p_request: requestId });
+  if (error) {
+    return {
+      ok: false,
+      error: /permitted/i.test(error.message)
+        ? "Only the President can form a squad."
+        : "Couldn't form the squad.",
+    };
   }
 
-  const { error } = await db.from("squad_requests").update({ status: "approved" }).eq("id", requestId);
-  if (error) return { ok: false, error: "Couldn't approve the request." };
+  // Tell the requester it's formed, and the new Captain that it's theirs.
+  const label = r.name || gameById(r.game).name;
+  if (r.captain_id) {
+    await sendToPlayers([r.captain_id], "new_comp", {
+      title: `🎖 ${label}: you have the captaincy`,
+      body: "The President approved the squad. Call a muster when you're ready.",
+      url: "/hq/squads",
+      tag: `squad-${requestId}`,
+    });
+  }
+  if (r.requested_by && r.requested_by !== r.captain_id) {
+    await sendToPlayers([r.requested_by], "new_comp", {
+      title: `✅ ${label} formed`,
+      body: "Your squad request was approved.",
+      url: "/hq/squads",
+      tag: `squad-${requestId}`,
+    });
+  }
   return { ok: true };
 }
 
