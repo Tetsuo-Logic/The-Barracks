@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setAttendance } from "@/app/actions/operations";
+import { approveLate, nudgeUnconfirmed } from "@/app/actions/roster";
 import { Avatar } from "@/components/Avatar";
 import { Tag, Meter } from "@/components/hq/Kit";
 
@@ -15,6 +16,8 @@ export type RosterEntry = {
   attended: boolean | null;
   captain: boolean;
   acting: boolean;
+  /** Where they stand against the confirmation window — see lib/rsvp. */
+  confirm: "confirmed" | "pending" | "lapsed" | null;
 };
 
 // Roll call. Expected (said in) vs present vs no-show, and — for the CO — the
@@ -25,23 +28,44 @@ export function RollCall({
   isCO,
   me,
   locked,
+  confirmBy,
 }: {
   compId: string;
   roster: RosterEntry[];
   isCO: boolean;
   me: string;
   locked: boolean;
+  /** The confirmation deadline, if this Operation came from a muster. */
+  confirmBy?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const expected = roster.filter((r) => r.rsvp === "in").length;
+  // Lapsed answers don't count as expected — that's what the deadline is for.
+  const expected = roster.filter((r) => r.rsvp === "in" && r.confirm !== "lapsed").length;
   const present = roster.filter((r) => r.attended === true).length;
   const noShow = roster.filter((r) => r.attended === false).length;
   const unrolled = roster.filter((r) => r.attended == null).length;
   const pct = expected ? Math.round((present / expected) * 100) : 0;
+
+  const pendingCount = roster.filter((r) => r.confirm === "pending").length;
+  const lapsedCount = roster.filter((r) => r.confirm === "lapsed").length;
+
+  function run(fn: () => Promise<{ ok: true } | { ok: false; error: string }>, id: string) {
+    setBusyId(id);
+    setError(null);
+    startTransition(async () => {
+      const res = await fn();
+      setBusyId(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   function mark(playerId: string, isPresent: boolean) {
     setBusyId(playerId);
@@ -67,6 +91,38 @@ export function RollCall({
       </div>
       <Meter pct={pct} tone={pct >= 60 ? "live" : "warn"} />
 
+      {/* The confirmation window, stated where the roster is read. Answers
+          carried over from the muster aren't commitments until someone says so
+          themselves — this is where a Captain can see who still owes one. */}
+      {(pendingCount > 0 || lapsedCount > 0) && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-rule pt-3">
+          <span className="hq-mono text-[11px] uppercase tracking-[0.1em]">
+            {pendingCount > 0 && (
+              <span style={{ color: "var(--color-sand)" }}>{pendingCount} to confirm</span>
+            )}
+            {pendingCount > 0 && lapsedCount > 0 && <span className="text-ink-soft"> · </span>}
+            {lapsedCount > 0 && (
+              <span style={{ color: "var(--color-flag)" }}>{lapsedCount} missed the window</span>
+            )}
+            {confirmBy && (
+              <span className="text-ink-soft">
+                {" "}
+                · by {new Date(confirmBy).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </span>
+          {isCO && pendingCount > 0 && (
+            <button
+              disabled={pending && busyId === "nudge"}
+              onClick={() => run(() => nudgeUnconfirmed(compId), "nudge")}
+              className="hq-label ml-auto shrink-0 rounded-[3px] border border-rule px-2.5 py-1.5 transition-colors hover:border-sand hover:text-ink disabled:opacity-50"
+            >
+              Chase the {pendingCount}
+            </button>
+          )}
+        </div>
+      )}
+
       <ul className="mt-3 flex flex-col">
         {roster.map((p) => (
           <li key={p.id} className="flex items-center gap-2.5 border-b border-rule/50 py-1.5 last:border-0">
@@ -88,6 +144,35 @@ export function RollCall({
               }}
             >
               {p.rsvp ?? "silent"}
+            </span>
+            <span className="w-[112px] shrink-0 text-right">
+              {p.confirm === "pending" ? (
+                <span
+                  className="hq-mono text-[10px] uppercase tracking-[0.1em]"
+                  style={{ color: "var(--color-sand)" }}
+                >
+                  Unconfirmed
+                </span>
+              ) : p.confirm === "lapsed" ? (
+                isCO ? (
+                  <button
+                    disabled={pending && busyId === p.id}
+                    onClick={() => run(() => approveLate(compId, p.id), p.id)}
+                    className="hq-mono rounded-[3px] border px-2 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors disabled:opacity-50"
+                    style={{ borderColor: "var(--color-flag)", color: "var(--color-flag)" }}
+                    title="They missed the confirmation window — put them back on"
+                  >
+                    Approve late
+                  </button>
+                ) : (
+                  <span
+                    className="hq-mono text-[10px] uppercase tracking-[0.1em]"
+                    style={{ color: "var(--color-flag)" }}
+                  >
+                    Missed window
+                  </span>
+                )
+              ) : null}
             </span>
             {isCO && !locked ? (
               <span className="flex shrink-0 gap-1">

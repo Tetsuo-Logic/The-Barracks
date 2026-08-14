@@ -6,7 +6,7 @@ import { effectiveAdmin } from "@/lib/permissions";
 import { getCompetitionDetail } from "@/lib/data";
 import { gameById, compHeading } from "@/lib/games";
 import { heroDate, shortTime } from "@/lib/dates";
-import { isClosed } from "@/lib/rsvp";
+import { isClosed, confirmState } from "@/lib/rsvp";
 import { Panel, Stat, Dot, Tag, Row, PageHead, Nil, Proto } from "@/components/hq/Kit";
 import { Countdown } from "@/components/hq/Countdown";
 import { RoomRealtime } from "@/components/hq/room/RoomRealtime";
@@ -81,6 +81,7 @@ export default async function OperationRoomPage({
       colour: p.colour,
       rsvp: (r?.status as "in" | "out" | "maybe" | undefined) ?? null,
       attended: r?.attended ?? null,
+      confirm: r ? confirmState(r, comp) : null,
       captain: p.id === squadCaptainId,
       acting: p.id === comp.acting_captain_id,
     };
@@ -241,6 +242,7 @@ export default async function OperationRoomPage({
               <RollCall
                 compId={comp.id}
                 roster={rollCall}
+                confirmBy={comp.confirm_by}
                 isCO={isCO}
                 me={profile.id}
                 locked={finished || scrubbed}

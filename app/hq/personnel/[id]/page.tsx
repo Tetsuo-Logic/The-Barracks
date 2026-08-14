@@ -7,6 +7,7 @@ import { gameById, compHeading } from "@/lib/games";
 import { shortDate, relativeTime } from "@/lib/dates";
 import { Avatar } from "@/components/Avatar";
 import { Panel, Stat, Dot, Tag, Row, Meter, PageHead, Nil, Proto } from "@/components/hq/Kit";
+import { confirmState } from "@/lib/rsvp";
 import { MEDALS, ELECTION, presenceFor, PRESENCE_TONE } from "@/lib/hq/future/systems";
 import type { Competition, Complaint, Mutiny, Profile, Trial } from "@/lib/domain";
 
@@ -61,7 +62,10 @@ export default async function ServiceRecordPage({
     getSquads(me.id),
     supabase.from("profiles").select("*"),
     supabase.from("competitions").select("*"),
-    supabase.from("rsvps").select("competition_id, status, attended, updated_at").eq("player_id", id),
+    supabase
+      .from("rsvps")
+      .select("competition_id, status, attended, confirmed_at, approved_late, updated_at")
+      .eq("player_id", id),
     supabase.from("squad_members").select("squad_id, is_captain, created_at").eq("user_id", id),
     supabase.from("warnings").select("id, reason, trial_id, created_by, created_at").eq("player_id", id),
     supabase.from("strikes").select("id, reason, competition_id, created_by, created_at").eq("player_id", id),
@@ -93,6 +97,8 @@ export default async function ServiceRecordPage({
     competition_id: string;
     status: string;
     attended: boolean | null;
+    confirmed_at: string | null;
+    approved_late: boolean;
     updated_at: string;
   }[];
   const members = (memberRows ?? []) as {
@@ -153,6 +159,15 @@ export default async function ServiceRecordPage({
     .map((r) => compById.get(r.competition_id)!)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
   const called = svc.operations + svc.noShows;
+
+  // Missed confirmations. Said they could do the night at muster, were carried
+  // onto the roster, then let the window close without a word. It goes on the
+  // record because it's the quiet version of a no-show: nobody is inconvenienced
+  // on the night, but the Captain planned around a number that wasn't real.
+  const missedConfirmations = rsvps.filter((r) => {
+    const comp = compById.get(r.competition_id);
+    return comp != null && confirmState(r, comp) === "lapsed";
+  }).length;
   const reliability = called > 0 ? Math.round((svc.operations / called) * 100) : 0;
 
   // ── The service timeline ─────────────────────────────────────────────────
@@ -359,7 +374,7 @@ export default async function ServiceRecordPage({
       </Panel>
 
       {/* ── Service statistics ─────────────────────────────────────────── */}
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-7">
         <Panel i={1}>
           <Stat value={svc.operations} label="Operations attended" tone="live" />
         </Panel>
@@ -373,9 +388,17 @@ export default async function ServiceRecordPage({
           <Stat value={svc.noShows} label="No-shows" tone={svc.noShows > 0 ? "warn" : undefined} />
         </Panel>
         <Panel i={5}>
-          <Stat value={captaincies.length} label="Captaincies" tone={captaincies.length ? "warn" : undefined} />
+          <Stat
+            value={missedConfirmations}
+            label="Missed confirmations"
+            sub={missedConfirmations > 0 ? "Offered the night, never confirmed" : undefined}
+            tone={missedConfirmations > 0 ? "alert" : undefined}
+          />
         </Panel>
         <Panel i={6}>
+          <Stat value={captaincies.length} label="Captaincies" tone={captaincies.length ? "warn" : undefined} />
+        </Panel>
+        <Panel i={7}>
           <Stat
             value={record.strikes}
             label="Strikes"
