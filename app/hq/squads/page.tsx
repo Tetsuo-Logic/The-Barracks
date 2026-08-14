@@ -246,22 +246,24 @@ export default async function SquadsPage({
               return (
                 <div
                   key={s.squad.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.02)]"
+                  className="group relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
                 >
-                  <span className="w-6 shrink-0 text-center">{g.emoji}</span>
+                  <Link
+                    href={`/hq/squads/${s.squad.id}`}
+                    aria-label={`Open ${name}`}
+                    className="absolute inset-0 z-0"
+                  />
+                  <span className="relative z-10 w-6 shrink-0 text-center">{g.emoji}</span>
 
                   {/* Squad, then your relationship to it — the two things you
                       scan for before anything else. */}
-                  <Link
-                    href={`/hq/squads/${s.squad.id}`}
-                    className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em] hover:text-sand"
-                  >
+                  <span className="hq-readout relative z-10 min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em] group-hover:text-sand">
                     {name}
-                  </Link>
+                  </span>
                   <span className="w-[52px] shrink-0">{s.mine && <Tag tone="live">Yours</Tag>}</span>
 
                   <span className="hq-mono w-[150px] shrink-0 truncate text-[12px] uppercase tracking-[0.06em] text-ink-soft">
-                    {captain ? `CPT ${captain.name}` : "No captain"}
+                    {captain ? `⭐ ${captain.name}` : "No captain"}
                   </span>
                   <span className="hq-mono w-[62px] shrink-0 text-[12px] uppercase tracking-[0.06em] text-ink-soft">
                     {s.members.length} ops
@@ -287,7 +289,7 @@ export default async function SquadsPage({
                   </span>
 
                   {/* The action depends entirely on whether it's yours. */}
-                  <span className="ml-auto flex shrink-0 items-center gap-2">
+                  <span className="relative z-10 ml-auto flex shrink-0 items-center gap-2">
                     {s.mine ? (
                       <RequestNight
                         squadId={s.squad.id}
@@ -326,11 +328,23 @@ export default async function SquadsPage({
                 ? `Night proposed · ${mu.chosen_date ? shortDate(mu.chosen_date) : "TBC"}`
                 : `Muster open · ${answered}/${s.members.length} answered`;
 
+            const cardName = s.squad.name || `${g.name} Squad`;
             return (
-              /* Not a link wrapper any more: the card now carries its own
-                 buttons, and a button inside an anchor is a broken target. */
-              <Panel key={s.squad.id} i={7 + i} className="flex h-full flex-col">
-                <div className="flex items-start justify-between gap-3">
+              /* Clickable anywhere, via a link laid over the card rather than
+                 wrapped around it — the card carries buttons, and a button
+                 inside an anchor is a broken target. The actions sit above the
+                 overlay, so they still get their own clicks. */
+              <Panel
+                key={s.squad.id}
+                i={7 + i}
+                className="group flex h-full flex-col transition-shadow hover:shadow-[0_0_0_1px_var(--color-sand)]"
+              >
+                <Link
+                  href={`/hq/squads/${s.squad.id}`}
+                  aria-label={`Open ${cardName}`}
+                  className="absolute inset-0 z-0 rounded-[4px]"
+                />
+                <div className="relative z-10 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
                       {s.squad.clan_tag && (
@@ -358,7 +372,7 @@ export default async function SquadsPage({
                   <span className="hq-mono text-[12px]">
                     <span className="hq-label">Captain </span>
                     <span style={{ color: captain ? "var(--color-sand)" : "var(--color-ink-soft)" }}>
-                      {captain ? captain.name : "Vacant"}
+                      {captain ? `⭐ ${captain.name}` : "Vacant"}
                     </span>
                   </span>
                   <span className="hq-mono text-[12px] text-ink-soft">
@@ -403,7 +417,7 @@ export default async function SquadsPage({
 
                 {/* The actions. Request a night is the member's whole reason
                     for being here, so it leads and everything else is a link. */}
-                <div className="mt-auto flex flex-col gap-2 pt-4">
+                <div className="relative z-10 mt-auto flex flex-col gap-2 pt-4">
                   {s.mine ? (
                     <RequestNight
                       squadId={s.squad.id}
@@ -420,7 +434,7 @@ export default async function SquadsPage({
                   )}
                   <Link
                     href={`/hq/squads/${s.squad.id}`}
-                    className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors hover:border-ink-soft hover:text-ink"
+                    className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors group-hover:border-sand group-hover:text-ink"
                   >
                     Open squad →
                   </Link>

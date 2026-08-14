@@ -590,7 +590,7 @@ export default async function SquadDossierPage({
 
           {/* Chain of command */}
           <Panel i={12} label="Chain of command">
-            <Row k="Captain" v={captain?.name ?? "Vacant"} tone={captain ? "warn" : "idle"} />
+            <Row k="Captain" v={captain ? `⭐ ${captain.name}` : "Vacant"} tone={captain ? "warn" : "idle"} />
             <Row
               k="Clan tag"
               v={squad.clan_tag ? `[${squad.clan_tag}]` : "None set"}
