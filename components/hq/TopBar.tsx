@@ -5,6 +5,7 @@ import Link from "next/link";
 import { RoleSwitch } from "@/components/hq/RoleSwitch";
 import { QuickComms } from "@/components/hq/comms/QuickComms";
 import { Portal } from "@/components/hq/Portal";
+import { AccountMenu } from "@/components/hq/AccountMenu";
 import type { QuickTransmission } from "@/lib/hq/comms";
 import type { HqScope } from "@/lib/hq/role";
 
@@ -149,13 +150,7 @@ export function TopBar({
         >
           ▣ Barracks TV
         </Link>
-        <span
-          className="hq-mono flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
-          style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-          title={callsign}
-        >
-          {callsign.slice(0, 2).toUpperCase()}
-        </span>
+        <AccountMenu callsign={callsign} role={realRole} />
       </div>
     </header>
   );

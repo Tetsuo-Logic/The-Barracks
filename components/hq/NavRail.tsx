@@ -72,7 +72,11 @@ export const NAV: Group[] = [
 ];
 
 export function NavRail({ actions, role }: { actions: number; role: HqScope }) {
-  const path = usePathname();
+  // On the HQ origin the root is rewritten to /hq by middleware, so the browser
+  // reports "/" and nothing matched — landing on localhost:3001 left the rail
+  // with no active item and no section open.
+  const raw = usePathname();
+  const path = raw === "/" ? "/hq" : raw;
   // Follow the dev role preview too, so hiding can actually be tested.
   const asked = useSearchParams().get("as") as HqScope | null;
   const allowed: HqScope[] =
