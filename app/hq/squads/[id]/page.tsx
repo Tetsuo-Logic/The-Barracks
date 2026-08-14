@@ -10,6 +10,7 @@ import { Panel, Stat, Dot, Tag, Row, Meter, PageHead, Nil, Proto } from "@/compo
 import { Avatar } from "@/components/Avatar";
 import { GamePanel, PANEL_LABEL, panelKind } from "@/components/hq/squad/GamePanel";
 import { RequestNight } from "@/components/hq/squad/RequestNight";
+import { LeaveSquad } from "@/components/hq/squad/LeaveSquad";
 import { callsign, squadRecord } from "@/components/hq/squad/proto";
 import type { Competition, Rsvp, Score, Squad } from "@/lib/types";
 
@@ -150,6 +151,14 @@ export default async function SquadDossierPage({
               >
                 Call a muster
               </Link>
+            )}
+            {/* Membership management belongs here, not in the directory. */}
+            {mine && (
+              <LeaveSquad
+                squadId={squad.id}
+                isCaptain={captainId === profile.id}
+                memberCount={members.length}
+              />
             )}
             <Link
               href="/hq/squads"

@@ -60,6 +60,24 @@ export async function leaveSquad(db: Db, squadId: string): Promise<Result> {
     data: { user },
   } = await db.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
+
+  // A Captain walking out leaves the squad with nobody able to call a muster,
+  // approve a night or answer a request — the squad is still there but nothing
+  // can happen in it. Hand the captaincy over first. Last one out is fine:
+  // there's nobody to hand it to.
+  const { data: rows } = await db
+    .from("squad_members")
+    .select("user_id, is_captain")
+    .eq("squad_id", squadId);
+  const members = (rows ?? []) as { user_id: string; is_captain: boolean }[];
+  const me = members.find((m) => m.user_id === user.id);
+  if (me?.is_captain && members.length > 1) {
+    return {
+      ok: false,
+      error: "You're the Captain — hand the captaincy to someone else before you leave.",
+    };
+  }
+
   const { error } = await db.from("squad_members").delete().eq("squad_id", squadId).eq("user_id", user.id);
   if (error) return { ok: false, error: "Couldn't leave." };
   return { ok: true };

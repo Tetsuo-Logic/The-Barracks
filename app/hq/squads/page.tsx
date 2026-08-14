@@ -20,6 +20,9 @@ export const metadata = { title: "Squads · Barracks HQ" };
 /** What's happening with this squad, in one line. Precedence is deliberate:
  *  a night being decided outranks a night on the board, which outranks somebody
  *  asking for one. QUIET is a real answer, not a gap. */
+const LIST_COLS =
+  "grid grid-cols-[2rem_minmax(150px,1.5fr)_5.5rem_minmax(120px,1fr)_5.5rem_minmax(150px,1.1fr)_15rem] items-center gap-3";
+
 type SquadState = { text: string; tone: "live" | "warn" | "alert" | "idle" };
 
 function stateOf(
@@ -224,91 +227,118 @@ export default async function SquadsPage({
         <section className="hq-panel hq-rise">
           <header className="hq-panel-head">
             <h2 className="hq-label">
-              {shown.length} squad{shown.length === 1 ? "" : "s"}
+              Squad directory — {shown.length} squad{shown.length === 1 ? "" : "s"}
+              {query && <span className="text-ink-soft"> of {squads.length}</span>}
             </h2>
           </header>
-          <div className="flex flex-col">
-            {shown.map((s) => {
-              const g = gameById(s.squad.game);
-              const captain = s.members.find((m) => m.is_captain)?.profile ?? null;
-              const all = bySquad.get(s.squad.id) ?? [];
-              const nextOp = all
-                .filter((c) => c.status === "upcoming" && c.date >= today)
-                .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
-              const st = stateOf(
-                s.muster?.muster ?? null,
-                s.muster?.responses.length ?? 0,
-                s.members.length,
-                nextOp,
-                s.nightRequests.length,
-              );
-              const name = s.squad.name || `${g.name} Squad`;
-              return (
-                <div
-                  key={s.squad.id}
-                  className="group relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
-                >
-                  <Link
-                    href={`/hq/squads/${s.squad.id}`}
-                    aria-label={`Open ${name}`}
-                    className="absolute inset-0 z-0"
-                  />
-                  <span className="relative z-10 w-6 shrink-0 text-center">{g.emoji}</span>
 
-                  {/* Squad, then your relationship to it — the two things you
-                      scan for before anything else. */}
-                  <span className="hq-readout relative z-10 min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em] group-hover:text-sand">
-                    {name}
-                  </span>
-                  <span className="w-[52px] shrink-0">{s.mine && <Tag tone="live">Yours</Tag>}</span>
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: 940 }}>
+              {/* Named columns: a directory you can read without being told
+                  what each field is. */}
+              <div
+                className={`${LIST_COLS} border-b border-rule px-4 py-2`}
+                style={{ background: "rgba(255,255,255,0.022)" }}
+              >
+                <span className="hq-label" aria-hidden />
+                <span className="hq-label">Squad name</span>
+                <span className="hq-label">Clan tag</span>
+                <span className="hq-label">Captain</span>
+                <span className="hq-label">Operatives</span>
+                <span className="hq-label">Status</span>
+                <span className="hq-label text-right">Action</span>
+              </div>
 
-                  <span className="hq-mono w-[150px] shrink-0 truncate text-[12px] uppercase tracking-[0.06em] text-ink-soft">
-                    {captain ? `⭐ ${captain.name}` : "No captain"}
-                  </span>
-                  <span className="hq-mono w-[62px] shrink-0 text-[12px] uppercase tracking-[0.06em] text-ink-soft">
-                    {s.members.length} ops
-                  </span>
+              {shown.map((s) => {
+                const g = gameById(s.squad.game);
+                const captain = s.members.find((m) => m.is_captain)?.profile ?? null;
+                const all = bySquad.get(s.squad.id) ?? [];
+                const nextOp = all
+                  .filter((c) => c.status === "upcoming" && c.date >= today)
+                  .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+                const st = stateOf(
+                  s.muster?.muster ?? null,
+                  s.muster?.responses.length ?? 0,
+                  s.members.length,
+                  nextOp,
+                  s.nightRequests.length,
+                );
+                const name = s.squad.name || `${g.name} Squad`;
+                return (
+                  <div
+                    key={s.squad.id}
+                    className={`${LIST_COLS} group relative border-b border-rule/60 px-4 py-3 transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]`}
+                  >
+                    {/* Over the row, not around it — the row holds buttons. */}
+                    <Link
+                      href={`/hq/squads/${s.squad.id}`}
+                      aria-label={`Open ${name}`}
+                      className="absolute inset-0 z-0"
+                    />
 
-                  <span className="flex w-[190px] shrink-0 items-center gap-2">
-                    <Dot tone={st.tone} pulse={st.tone === "alert"} />
-                    <span
-                      className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]"
-                      style={{
-                        color:
-                          st.tone === "idle"
-                            ? "var(--color-ink-soft)"
-                            : st.tone === "live"
-                              ? "var(--color-moss)"
-                              : st.tone === "alert"
-                                ? "var(--color-flag)"
-                                : "var(--color-sand)",
-                      }}
-                    >
-                      {st.text}
+                    <span className="relative z-10 text-center">{g.emoji}</span>
+
+                    <span className="relative z-10 flex min-w-0 items-center gap-2">
+                      <span className="hq-readout min-w-0 truncate text-[16px] font-bold uppercase tracking-[0.02em] group-hover:text-sand">
+                        {name}
+                      </span>
+                      {s.mine && <Tag tone="live">Yours</Tag>}
                     </span>
-                  </span>
 
-                  {/* The action depends entirely on whether it's yours. */}
-                  <span className="relative z-10 ml-auto flex shrink-0 items-center gap-2">
-                    {s.mine ? (
-                      <RequestNight
-                        squadId={s.squad.id}
-                        squadName={name}
-                        gameName={g.name}
-                        captainName={captain?.name ?? null}
-                        squadHref={`/hq/squads/${s.squad.id}`}
-                        variant="inline"
-                      />
-                    ) : (
-                      <JoinSquad squadId={s.squad.id} squadName={name} variant="inline" />
-                    )}
-                    <Link href={`/hq/squads/${s.squad.id}`} className="hq-label hover:text-ink">
-                      Open →
-                    </Link>
-                  </span>
-                </div>
-              );
-            })}
+                    <span
+                      className="hq-mono relative z-10 truncate text-[12px] font-bold tracking-[0.1em]"
+                      style={{ color: s.squad.clan_tag ? "var(--color-sand)" : "var(--color-ink-soft)" }}
+                    >
+                      {s.squad.clan_tag ? `[${s.squad.clan_tag}]` : "—"}
+                    </span>
+
+                    <span className="hq-mono relative z-10 truncate text-[12px] uppercase tracking-[0.06em] text-ink-soft">
+                      {captain ? `⭐ ${captain.name}` : "No captain"}
+                    </span>
+
+                    <span className="hq-mono relative z-10 text-[13px]">{s.members.length}</span>
+
+                    <span className="relative z-10 flex min-w-0 items-center gap-2">
+                      <Dot tone={st.tone} pulse={st.tone === "alert"} />
+                      <span
+                        className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]"
+                        style={{
+                          color:
+                            st.tone === "idle"
+                              ? "var(--color-ink-soft)"
+                              : st.tone === "live"
+                                ? "var(--color-moss)"
+                                : st.tone === "alert"
+                                  ? "var(--color-flag)"
+                                  : "var(--color-sand)",
+                        }}
+                      >
+                        {st.text}
+                      </span>
+                    </span>
+
+                    {/* The action depends entirely on whether it's yours. */}
+                    <span className="relative z-10 flex shrink-0 items-center justify-end gap-2">
+                      {s.mine ? (
+                        <RequestNight
+                          squadId={s.squad.id}
+                          squadName={name}
+                          gameName={g.name}
+                          captainName={captain?.name ?? null}
+                          squadHref={`/hq/squads/${s.squad.id}`}
+                          variant="inline"
+                        />
+                      ) : (
+                        <JoinSquad squadId={s.squad.id} squadName={name} variant="inline" />
+                      )}
+                      <Link href={`/hq/squads/${s.squad.id}`} className="hq-label hover:text-ink">
+                        Open →
+                      </Link>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       ) : (
