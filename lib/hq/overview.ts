@@ -78,6 +78,7 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     squads,
     activity,
     { data: allComps },
+    { data: openSquadReqs },
     { data: allRsvps },
     { data: membership },
   ] = await Promise.all([
@@ -86,6 +87,7 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
     getSquads(profile.id),
     getActivityFeed(profile.id, profile.is_admin),
     supabase.from("competitions").select("*"),
+    supabase.from("squad_requests").select("*").eq("status", "open"),
     supabase.from("rsvps").select("*"),
     // The caller's Barracks. A User may hold 0..n memberships; this surface
     // commands one at a time, so take the membership we're rendering for.
@@ -252,6 +254,20 @@ export async function getHqOverview(profile: Profile): Promise<HqOverview> {
         scope: "captain",
       });
     }
+  }
+
+  // A squad can only be formed by the President, so an open request is work
+  // sitting on their desk — it belongs in the one place they look for work.
+  for (const r of (openSquadReqs ?? []) as { id: string; game: string; name: string | null }[]) {
+    if (!profile.is_admin) break;
+    actions.push({
+      source: "THE BARRACKS",
+      label: `New squad requested — ${r.name || gameById(r.game).name}`,
+      href: "/hq/squads",
+      cta: "Review",
+      tone: "warn",
+      scope: "president",
+    });
   }
 
   // Missed confirmations are the President's problem, not the Court's: the

@@ -4,7 +4,7 @@ import { resolveViewRole, realRoleOf } from "@/lib/hq/role";
 import { createClient } from "@/lib/supabase/server";
 import { getSquads, getSquadRequests } from "@/lib/data/queries";
 import { gameById, GAMES } from "@/lib/games";
-import { todayISO, shortDate, shortTime, relativeTime } from "@/lib/dates";
+import { todayISO, shortDate, shortTime, relativeTime, heroDate } from "@/lib/dates";
 import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { RequestNight } from "@/components/hq/squad/RequestNight";
 import { JoinSquad } from "@/components/hq/squad/JoinSquad";
@@ -17,6 +17,31 @@ export const metadata = { title: "Squads · Barracks HQ" };
 // Squads overview — every fighting unit in the Barracks on one board. Squads,
 // members, captains, musters, night nudges and operations are all real; the
 // battle record is the one prototype and is marked as such.
+/** What's happening with this squad, in one line. Precedence is deliberate:
+ *  a night being decided outranks a night on the board, which outranks somebody
+ *  asking for one. QUIET is a real answer, not a gap. */
+type SquadState = { text: string; tone: "live" | "warn" | "alert" | "idle" };
+
+function stateOf(
+  muster: { status: string; chosen_date: string | null } | null,
+  answered: number,
+  size: number,
+  nextOp: Competition | undefined,
+  requests: number,
+): SquadState {
+  if (muster?.status === "proposed") return { text: "Night proposed", tone: "alert" };
+  if (muster) return { text: `Muster open · ${answered}/${size} answered`, tone: "warn" };
+  if (nextOp) {
+    const hd = heroDate(nextOp.date);
+    const t = shortTime(nextOp.tee_time);
+    return { text: `Op ${hd.dow} ${hd.day}${t ? ` · ${t}` : ""}`, tone: "live" };
+  }
+  if (requests > 0) {
+    return { text: `${requests} night request${requests === 1 ? "" : "s"}`, tone: "alert" };
+  }
+  return { text: "Quiet", tone: "idle" };
+}
+
 export default async function SquadsPage({
   searchParams,
 }: {
@@ -100,7 +125,7 @@ export default async function SquadsPage({
           )
         }
       >
-        {squads.length} squad{squads.length === 1 ? "" : "s"} on strength ·{" "}
+        Every squad in the Barracks · {squads.length} on strength ·{" "}
         <span className="text-ink">{assigned.size}</span> operatives assigned
         {mine > 0 && <> · you serve in {mine}</>}
       </PageHead>
@@ -206,42 +231,74 @@ export default async function SquadsPage({
             {shown.map((s) => {
               const g = gameById(s.squad.game);
               const captain = s.members.find((m) => m.is_captain)?.profile ?? null;
-              const mu = s.muster?.muster ?? null;
+              const all = bySquad.get(s.squad.id) ?? [];
+              const nextOp = all
+                .filter((c) => c.status === "upcoming" && c.date >= today)
+                .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+              const st = stateOf(
+                s.muster?.muster ?? null,
+                s.muster?.responses.length ?? 0,
+                s.members.length,
+                nextOp,
+                s.nightRequests.length,
+              );
+              const name = s.squad.name || `${g.name} Squad`;
               return (
                 <div
                   key={s.squad.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0 transition-colors hover:bg-[rgba(255,255,255,0.02)]"
                 >
                   <span className="w-6 shrink-0 text-center">{g.emoji}</span>
-                  <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
-                    {s.squad.name || `${g.name} Squad`}
-                  </span>
-                  {s.mine && <Tag tone="live">Yours</Tag>}
-                  <span className="hq-mono w-[150px] shrink-0 truncate text-[12px] text-ink-soft">
+
+                  {/* Squad, then your relationship to it — the two things you
+                      scan for before anything else. */}
+                  <Link
+                    href={`/hq/squads/${s.squad.id}`}
+                    className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em] hover:text-sand"
+                  >
+                    {name}
+                  </Link>
+                  <span className="w-[52px] shrink-0">{s.mine && <Tag tone="live">Yours</Tag>}</span>
+
+                  <span className="hq-mono w-[150px] shrink-0 truncate text-[12px] uppercase tracking-[0.06em] text-ink-soft">
                     {captain ? `CPT ${captain.name}` : "No captain"}
                   </span>
-                  <span className="hq-mono w-[70px] shrink-0 text-[12px] text-ink-soft">
-                    {s.members.length} op{s.members.length === 1 ? "" : "s"}
+                  <span className="hq-mono w-[62px] shrink-0 text-[12px] uppercase tracking-[0.06em] text-ink-soft">
+                    {s.members.length} ops
                   </span>
-                  <span className="hq-mono w-[110px] shrink-0 text-[11px] uppercase tracking-[0.08em]" style={{ color: mu ? "var(--color-sand)" : undefined }}>
-                    {mu ? (mu.status === "proposed" ? "Night proposed" : "Muster open") : "—"}
+
+                  <span className="flex w-[190px] shrink-0 items-center gap-2">
+                    <Dot tone={st.tone} pulse={st.tone === "alert"} />
+                    <span
+                      className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]"
+                      style={{
+                        color:
+                          st.tone === "idle"
+                            ? "var(--color-ink-soft)"
+                            : st.tone === "live"
+                              ? "var(--color-moss)"
+                              : st.tone === "alert"
+                                ? "var(--color-flag)"
+                                : "var(--color-sand)",
+                      }}
+                    >
+                      {st.text}
+                    </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-2">
+
+                  {/* The action depends entirely on whether it's yours. */}
+                  <span className="ml-auto flex shrink-0 items-center gap-2">
                     {s.mine ? (
                       <RequestNight
                         squadId={s.squad.id}
-                        squadName={s.squad.name || `${g.name} Squad`}
+                        squadName={name}
                         gameName={g.name}
                         captainName={captain?.name ?? null}
                         squadHref={`/hq/squads/${s.squad.id}`}
                         variant="inline"
                       />
                     ) : (
-                      <JoinSquad
-                        squadId={s.squad.id}
-                        squadName={s.squad.name || `${g.name} Squad`}
-                        variant="inline"
-                      />
+                      <JoinSquad squadId={s.squad.id} squadName={name} variant="inline" />
                     )}
                     <Link href={`/hq/squads/${s.squad.id}`} className="hq-label hover:text-ink">
                       Open →
@@ -330,12 +387,14 @@ export default async function SquadsPage({
                         </span>
                       </span>
                     )}
+                    {/* "nights wanted" read as a stat. It's a request somebody
+                        made and the Captain has to answer. */}
                     {s.nightRequests.length > 0 && (
                       <span className="flex items-center gap-2">
-                        <Dot tone="alert" />
+                        <Dot tone="alert" pulse />
                         <span className="hq-mono truncate text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--color-flag)" }}>
-                          {s.nightRequests.length} night
-                          {s.nightRequests.length === 1 ? "" : "s"} wanted
+                          {s.nightRequests.length} night request
+                          {s.nightRequests.length === 1 ? "" : "s"}
                         </span>
                       </span>
                     )}
