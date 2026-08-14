@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { requestNight } from "@/app/actions/squads";
 import { Portal } from "@/components/hq/Portal";
+import { TypeLine } from "@/components/hq/TypeLine";
 
 // REQUEST A NIGHT — the member's one big action.
 //
@@ -129,9 +130,9 @@ export function RequestNight({
             >
             {!sent ? (
               <>
-                <header className="hq-panel-head">
-                  <h2 className="hq-label truncate" style={{ color: "var(--color-sand)" }}>
-                    Request a {gameName} night
+                <header className="hq-panel-head" style={{ minHeight: 52 }}>
+                  <h2 className="min-w-0 truncate">
+                    <TypeLine text={`Request a ${gameName} night`} size="21px" />
                   </h2>
                   <button onClick={reset} className="hq-label hover:text-ink" aria-label="Close">
                     ✕
@@ -140,7 +141,9 @@ export function RequestNight({
 
                 <div className="flex flex-col gap-4 p-5">
                   <div>
-                    <p className="hq-label mb-2">When would you like to play?</p>
+                    <p className="hq-label mb-2" style={{ color: "var(--color-ink)" }}>
+                      When would you like to play?
+                    </p>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(
                         [
@@ -207,12 +210,13 @@ export function RequestNight({
                   )}
 
                   <div>
-                    <label className="hq-label mb-1.5 block">Anything to add?</label>
+                    <label className="hq-label mb-1.5 block" style={{ color: "var(--color-ink)" }}>
+                      Anything to add?
+                    </label>
                     <textarea
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       rows={2}
-                      placeholder="Ranked Friday if everyone's about"
                       className="hq-mono w-full resize-none rounded-[3px] border px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-sand"
                       style={{ borderColor: "var(--color-rule)" }}
                     />
@@ -244,9 +248,9 @@ export function RequestNight({
                  Naming who has it and what happens next is the whole point:
                  the old flow closed silently and left you guessing. */
               <>
-                <header className="hq-panel-head">
-                  <h2 className="hq-label" style={{ color: "var(--color-moss)" }}>
-                    ✓ Request sent
+                <header className="hq-panel-head" style={{ minHeight: 52 }}>
+                  <h2 className="min-w-0 truncate">
+                    <TypeLine text="✓ Request sent" size="21px" />
                   </h2>
                 </header>
                 <div className="flex flex-col gap-3 p-5">

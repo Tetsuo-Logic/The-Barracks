@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { requestSquad } from "@/app/actions/squads";
 import { Portal } from "@/components/hq/Portal";
+import { TypeLine } from "@/components/hq/TypeLine";
 
 // REQUEST A SQUAD — the member's route to a new squad.
 //
@@ -92,9 +93,9 @@ export function RequestSquad({
             <div role="dialog" aria-modal className="hq-panel pointer-events-auto w-[min(520px,94vw)]">
               {!sent ? (
                 <>
-                  <header className="hq-panel-head">
-                    <h2 className="hq-label" style={{ color: "var(--color-sand)" }}>
-                      Request a squad
+                  <header className="hq-panel-head" style={{ minHeight: 52 }}>
+                    <h2 className="min-w-0 truncate">
+                      <TypeLine text="Request a squad" size="21px" />
                     </h2>
                     <button onClick={reset} className="hq-label hover:text-ink" aria-label="Close">
                       ✕
@@ -182,9 +183,9 @@ export function RequestSquad({
                 </>
               ) : (
                 <>
-                  <header className="hq-panel-head">
-                    <h2 className="hq-label" style={{ color: "var(--color-moss)" }}>
-                      ✓ Request sent
+                  <header className="hq-panel-head" style={{ minHeight: 52 }}>
+                    <h2 className="min-w-0 truncate">
+                      <TypeLine text="✓ Request sent" size="21px" />
                     </h2>
                   </header>
                   <div className="flex flex-col gap-3 p-5">

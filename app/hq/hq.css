@@ -25,6 +25,16 @@
   color-scheme: dark;
 }
 
+/* A portalled overlay needs .hq for its tokens and panel rules, but must not
+   repaint the whole page — so it opts out of the surface and the scanlines. */
+.hq-portal {
+  min-height: 0;
+}
+.hq-portal::before,
+.hq-portal::after {
+  display: none;
+}
+
 /* The command surface: sits over the body's mobile gradient and replaces it. */
 .hq::before {
   content: "";
