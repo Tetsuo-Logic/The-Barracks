@@ -10,6 +10,7 @@ import { RequestNight } from "@/components/hq/squad/RequestNight";
 import { JoinSquad } from "@/components/hq/squad/JoinSquad";
 import { RequestSquad } from "@/components/hq/squad/RequestSquad";
 import { FormSquad } from "@/components/hq/squad/FormSquad";
+import { RuleSquadRequest } from "@/components/hq/squad/RuleSquadRequest";
 import { PANEL_LABEL, panelKind } from "@/components/hq/squad/GamePanel";
 import type { Competition } from "@/lib/types";
 
@@ -130,45 +131,70 @@ export default async function SquadsPage({
         {mine > 0 && <> · you serve in {mine}</>}
       </PageHead>
 
-      {/* ── Formation requests awaiting the President ─────────────────────── */}
+      {/* ── Formation requests awaiting the President ───────────────────────
+          The end of the request-a-squad journey. It used to point at the phone
+          to actually rule on one, which meant the last step happened somewhere
+          else; the details and the decision are in the same place now. */}
       {requests.length > 0 && (
         <div className="mb-4">
           <Panel
             i={5}
-            label="Formation requests"
+            tier="primary"
+            label={`Squad requests awaiting your ruling — ${requests.length}`}
             status={<Dot tone="alert" pulse />}
-            right={
-              <Link href="/squads" className="hq-label hover:text-ink">
-                Rule on them →
-              </Link>
-            }
           >
             <ul className="flex flex-col">
               {requests.map((r) => {
                 const g = gameById(r.game);
+                const label = r.name || `${g.name} Squad`;
                 return (
                   <li
                     key={r.id}
-                    className="flex items-center gap-3 border-b border-rule/60 py-1.5 last:border-0"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 py-3 last:border-0"
                   >
-                    <span className="w-6 shrink-0 text-center">{g.emoji}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
-                      {r.name || `${g.name} Squad`}
-                      {r.clan_tag && <span className="ml-2 text-ink-soft">[{r.clan_tag}]</span>}
-                    </span>
-                    {r.proposedCaptain && (
-                      <span className="hq-mono shrink-0 text-[11px]" style={{ color: "var(--color-sand)" }}>
-                        Captain: {r.proposedCaptain.name}
+                    <span className="w-6 shrink-0 text-center text-[16px]">{g.emoji}</span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="hq-readout truncate text-[16px] font-bold uppercase tracking-[0.02em]">
+                          {label}
+                        </span>
+                        {r.clan_tag && (
+                          <span
+                            className="hq-mono text-[12px] font-bold tracking-[0.1em]"
+                            style={{ color: "var(--color-sand)" }}
+                          >
+                            [{r.clan_tag}]
+                          </span>
+                        )}
                       </span>
-                    )}
-                    <span className="hq-mono shrink-0 text-[11px] text-ink-soft">
-                      {r.requester?.name ?? "Someone"} · {relativeTime(r.created_at)}
+                      {/* Everything the ruling turns on, on one line. */}
+                      <span className="hq-mono mt-1 block text-[11px] uppercase tracking-[0.08em] text-ink-soft">
+                        {g.name} · requested by {r.requester?.name ?? "someone"} ·{" "}
+                        {relativeTime(r.created_at)}
+                        {r.proposedCaptain ? (
+                          <span style={{ color: "var(--color-sand)" }}>
+                            {" "}
+                            · captain ⭐ {r.proposedCaptain.name}
+                          </span>
+                        ) : (
+                          <span> · no captain proposed</span>
+                        )}
+                      </span>
                     </span>
-                    <Tag tone="alert">Awaiting ruling</Tag>
+
+                    <RuleSquadRequest
+                      requestId={r.id}
+                      squadName={label}
+                      captainName={r.proposedCaptain?.name ?? null}
+                    />
                   </li>
                 );
               })}
             </ul>
+            <p className="hq-mono mt-2 border-t border-rule pt-2.5 text-[10px] uppercase leading-relaxed tracking-[0.1em] text-ink-soft">
+              Approving forms the squad and hands the captaincy to whoever was proposed.
+            </p>
           </Panel>
         </div>
       )}

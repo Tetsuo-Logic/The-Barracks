@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import * as squads from "@/lib/data/commands/squads";
 
 // Thin Server Action wrappers around @/lib/data/commands/squads.
-const rev = () => revalidatePath("/squads");
+const rev = () => {
+  revalidatePath("/squads");
+  // HQ reads the same squads, requests and Action Required rows.
+  revalidatePath("/hq/squads");
+  revalidatePath("/hq");
+};
 
 export async function createSquad(game: string, name?: string, clanTag?: string) {
   const res = await squads.createSquad(await createClient(), game, name, clanTag);
