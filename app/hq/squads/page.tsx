@@ -487,7 +487,11 @@ export default async function SquadsPage({
                   )}
                   <Link
                     href={`/hq/squads/${s.squad.id}`}
-                    className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors group-hover:border-sand group-hover:text-ink"
+                    /* hover, not group-hover: this lit up whenever the mouse
+                       was anywhere on the card — including over Request a
+                       night — which read as though it were the active target.
+                       The card still shows its own hover ring. */
+                    className="hq-label rounded-[3px] border border-rule px-3 py-2.5 text-center transition-colors hover:border-sand hover:text-ink"
                   >
                     Open squad →
                   </Link>
