@@ -144,6 +144,59 @@ export async function requestSquad(
   return { ok: true };
 }
 
+/**
+ * The President forming a squad outright.
+ *
+ * Deliberately the same path as a request that gets approved: write the
+ * request, approve it immediately. That reuses approve_squad_request, which is
+ * the only thing able to seat a Captain — squad_members is self-insert only, so
+ * a plain `insert into squads` can form a squad but can't give anybody control
+ * of it. One route for "a squad comes into existence", and it leaves the
+ * approval on record.
+ */
+export async function formSquad(
+  db: Db,
+  input: { game: string; name?: string; clanTag?: string; captainId?: string },
+): Promise<Result> {
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  if (!input.game) return { ok: false, error: "Pick a game." };
+  if (!input.name?.trim()) return { ok: false, error: "Name the squad." };
+  const groupId = await currentGroup(db);
+  if (!groupId) return { ok: false, error: "No Barracks found." };
+
+  const { data: req, error: rErr } = await db
+    .from("squad_requests")
+    .insert({
+      group_id: groupId,
+      game: input.game,
+      name: input.name.trim(),
+      clan_tag: input.clanTag?.trim() || null,
+      captain_id: input.captainId || null,
+      requested_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (rErr || !req) return { ok: false, error: "Couldn't form the squad." };
+
+  const { error } = await db.rpc("approve_squad_request", {
+    p_request: (req as { id: string }).id,
+  });
+  if (error) {
+    // Leave no half-formed request behind if the approval was refused.
+    await db.from("squad_requests").delete().eq("id", (req as { id: string }).id);
+    return {
+      ok: false,
+      error: /permitted/i.test(error.message)
+        ? "Only the President can form a squad."
+        : "Couldn't form the squad.",
+    };
+  }
+  return { ok: true };
+}
+
 // President approves a squad request → forms the squad.
 export async function approveRequest(db: Db, requestId: string): Promise<Result> {
   const { data: req } = await db.from("squad_requests").select("*").eq("id", requestId).single();

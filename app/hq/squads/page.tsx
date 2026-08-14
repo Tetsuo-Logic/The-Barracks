@@ -9,6 +9,7 @@ import { Panel, Dot, Tag, PageHead, Nil } from "@/components/hq/Kit";
 import { RequestNight } from "@/components/hq/squad/RequestNight";
 import { JoinSquad } from "@/components/hq/squad/JoinSquad";
 import { RequestSquad } from "@/components/hq/squad/RequestSquad";
+import { FormSquad } from "@/components/hq/squad/FormSquad";
 import { PANEL_LABEL, panelKind } from "@/components/hq/squad/GamePanel";
 import type { Competition } from "@/lib/types";
 
@@ -115,14 +116,10 @@ export default async function SquadsPage({
           /* No page-level "call a muster": a muster belongs to one squad and
              is called from inside it. Forming a squad genuinely is a Barracks
              action — and only the President's. */
+          /* Same dialog either way — only the ending differs. The President
+             forms it outright; everyone else sends it up for approval. */
           isPresident ? (
-            <Link
-              href="/squads"
-              className="hq-label rounded-[3px] px-3 py-2 font-semibold"
-              style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
-            >
-              + Form squad
-            </Link>
+            <FormSquad games={gameOptions} people={people} meId={profile.id} />
           ) : (
             <RequestSquad games={gameOptions} people={people} meId={profile.id} />
           )

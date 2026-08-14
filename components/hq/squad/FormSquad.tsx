@@ -2,24 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { requestSquad } from "@/app/actions/squads";
+import { formSquad } from "@/app/actions/squads";
 import { Portal } from "@/components/hq/Portal";
 import { TypeLine } from "@/components/hq/TypeLine";
+import type { GameOption, PersonOption } from "./RequestSquad";
 
-// REQUEST A SQUAD — the member's route to a new squad.
+// FORM SQUAD — the President's version of Request a Squad.
 //
-// Forming one is the President's call: RLS only lets a group admin insert into
-// `squads`, which is why members ask rather than do. The request carries who
-// should run it, and approval seats them as Captain of that squad (0046).
+// It used to send you off to the phone's squad page to fill in an inline form.
+// Same dialog as every other request now: opened in place, same width, same
+// typed green header. Forming a squad shouldn't feel like a different product
+// from asking for one.
 //
-// Captaincy is per-squad and stays that way. Being Captain of COD Squad grants
-// nothing over FIFA Squad and no power to form more — the flag lives on the
-// squad_members row, and squad creation is admin-only at the database.
+// Behind it, `formSquad` writes the request and approves it in one go, which is
+// what lets the President seat a Captain — see the command for why that route.
 
-export type GameOption = { id: string; name: string };
-export type PersonOption = { id: string; name: string };
-
-export function RequestSquad({
+export function FormSquad({
   games,
   people,
   meId,
@@ -30,7 +28,7 @@ export function RequestSquad({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [done, setDone] = useState(false);
   const [game, setGame] = useState(games[0]?.id ?? "");
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
@@ -40,7 +38,7 @@ export function RequestSquad({
 
   function reset() {
     setOpen(false);
-    setSent(false);
+    setDone(false);
     setName("");
     setTag("");
     setCaptain(meId);
@@ -53,17 +51,17 @@ export function RequestSquad({
   function send() {
     setError(null);
     start(async () => {
-      const res = await requestSquad({
+      const res = await formSquad({
         game,
         name: name.trim(),
         clanTag: tag.trim() || undefined,
         captainId: captain || undefined,
       });
       if (!res.ok) {
-        setError(res.error ?? "Couldn't send the request.");
+        setError(res.error ?? "Couldn't form the squad.");
         return;
       }
-      setSent(true);
+      setDone(true);
       router.refresh();
     });
   }
@@ -75,10 +73,10 @@ export function RequestSquad({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="hq-label rounded-[3px] border px-3 py-2 font-semibold transition-colors"
-        style={{ borderColor: "var(--color-sand)", color: "var(--color-sand)" }}
+        className="hq-label rounded-[3px] px-3 py-2 font-semibold"
+        style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
       >
-        Request a squad
+        + Form squad
       </button>
 
       {open && (
@@ -91,11 +89,11 @@ export function RequestSquad({
           />
           <div className="pointer-events-none fixed inset-0 z-[81] flex items-center justify-center px-4">
             <div role="dialog" aria-modal className="hq-panel pointer-events-auto w-[min(520px,94vw)]">
-              {!sent ? (
+              {!done ? (
                 <>
                   <header className="hq-panel-head" style={{ minHeight: 52 }}>
                     <h2 className="min-w-0 truncate">
-                      <TypeLine text="Request a squad" size="21px" />
+                      <TypeLine text="Form a squad" size="21px" />
                     </h2>
                     <button onClick={reset} className="hq-label hover:text-ink" aria-label="Close">
                       ✕
@@ -104,7 +102,10 @@ export function RequestSquad({
 
                   <div className="flex flex-col gap-4 p-5">
                     <div>
-                      <label className="hq-label mb-1.5 block" style={{ color: "var(--color-ink)" }}>
+                      <label
+                        className="hq-label mb-1.5 block"
+                        style={{ color: "var(--color-ink)" }}
+                      >
                         Game
                       </label>
                       <select
@@ -123,9 +124,12 @@ export function RequestSquad({
 
                     <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
                       <div>
-                        <label className="hq-label mb-1.5 block" style={{ color: "var(--color-ink)" }}>
-                        Squad name
-                      </label>
+                        <label
+                          className="hq-label mb-1.5 block"
+                          style={{ color: "var(--color-ink)" }}
+                        >
+                          Squad name
+                        </label>
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
@@ -134,9 +138,12 @@ export function RequestSquad({
                         />
                       </div>
                       <div>
-                        <label className="hq-label mb-1.5 block" style={{ color: "var(--color-ink)" }}>
-                        Clan tag
-                      </label>
+                        <label
+                          className="hq-label mb-1.5 block"
+                          style={{ color: "var(--color-ink)" }}
+                        >
+                          Clan tag
+                        </label>
                         <input
                           value={tag}
                           onChange={(e) => setTag(e.target.value)}
@@ -148,8 +155,11 @@ export function RequestSquad({
                     </div>
 
                     <div>
-                      <label className="hq-label mb-1.5 block" style={{ color: "var(--color-ink)" }}>
-                        Who should captain it?
+                      <label
+                        className="hq-label mb-1.5 block"
+                        style={{ color: "var(--color-ink)" }}
+                      >
+                        Who captains it?
                       </label>
                       <select
                         value={captain}
@@ -164,7 +174,7 @@ export function RequestSquad({
                         ))}
                       </select>
                       <p className="hq-mono mt-1.5 text-[11px] text-ink-soft">
-                        They run this squad only — musters, requests and its roster. Nothing else.
+                        They run this squad only — musters, requests and its roster.
                       </p>
                     </div>
 
@@ -181,9 +191,9 @@ export function RequestSquad({
                         className="hq-readout rounded-[3px] px-5 py-3 text-[14px] font-bold uppercase tracking-[0.08em] transition-opacity disabled:opacity-40"
                         style={{ backgroundColor: "var(--color-sand)", color: "#0b100e" }}
                       >
-                        {pending ? "Sending…" : "Send to the President"}
+                        {pending ? "Forming…" : "Form squad"}
                       </button>
-                      <span className="hq-label opacity-70">Only the President can form a squad</span>
+                      <span className="hq-label opacity-70">Live the moment you press it</span>
                     </div>
                   </div>
                 </>
@@ -191,17 +201,16 @@ export function RequestSquad({
                 <>
                   <header className="hq-panel-head" style={{ minHeight: 52 }}>
                     <h2 className="min-w-0 truncate">
-                      <TypeLine text="✓ Request sent" size="21px" />
+                      <TypeLine text="✓ Squad formed" size="21px" />
                     </h2>
                   </header>
                   <div className="flex flex-col gap-3 p-5">
                     <p className="hq-readout text-[17px] font-bold uppercase tracking-[0.02em]">
-                      Sent to the President
+                      {name.trim() || "The squad"} is on strength
                     </p>
                     <p className="text-[13px] text-ink-soft">
-                      If it&apos;s approved, {name.trim() || "the squad"} is formed and{" "}
-                      <span className="text-ink">{captainName}</span> takes the captaincy — of that
-                      squad, and nothing else. You&apos;ll be told either way.
+                      <span className="text-ink">{captainName}</span> has the captaincy and can call
+                      a muster. Anyone in the Barracks can join it from the directory.
                     </p>
                     <div className="border-t border-rule pt-4">
                       <button

@@ -13,6 +13,17 @@ export async function createSquad(game: string, name?: string, clanTag?: string)
   return res;
 }
 
+export async function formSquad(input: {
+  game: string;
+  name?: string;
+  clanTag?: string;
+  captainId?: string;
+}) {
+  const res = await squads.formSquad(await createClient(), input);
+  if (res.ok) rev();
+  return res;
+}
+
 export async function requestSquad(input: { game: string; name?: string; clanTag?: string; captainId?: string }) {
   const res = await squads.requestSquad(await createClient(), input);
   if (res.ok) rev();
