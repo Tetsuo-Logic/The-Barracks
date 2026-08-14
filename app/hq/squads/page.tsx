@@ -20,7 +20,7 @@ export const metadata = { title: "Squads · Barracks HQ" };
 export default async function SquadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>;
+  searchParams: Promise<{ as?: string; q?: string; view?: string }>;
 }) {
   const [profile, sp] = await Promise.all([requireProfile(), searchParams]);
   // Forming a squad is a Barracks act, not a squad act: RLS only lets a group
@@ -43,6 +43,27 @@ export default async function SquadsPage({
     name: p.name,
   }));
   const gameOptions = GAMES.map((g) => ({ id: g.id, name: g.name }));
+
+  // Cards by default — a squad is an object, and objects read better as cards.
+  // The list is for when there are enough of them that scanning beats browsing.
+  const asList = sp.view === "list";
+  const query = (sp.q ?? "").trim().toLowerCase();
+  const shown = query
+    ? squads.filter((s) => {
+        const g = gameById(s.squad.game);
+        const cap = s.members.find((m) => m.is_captain)?.profile.name ?? "";
+        return `${s.squad.name ?? ""} ${g.name} ${s.squad.clan_tag ?? ""} ${cap}`
+          .toLowerCase()
+          .includes(query);
+      })
+    : squads;
+  const href = (patch: Record<string, string | null>) => {
+    const q = new URLSearchParams();
+    const base: Record<string, string | undefined> = { as: sp.as, q: sp.q, view: sp.view };
+    for (const [k, v] of Object.entries({ ...base, ...patch })) if (v) q.set(k, v);
+    const qs = q.toString();
+    return qs ? `/hq/squads?${qs}` : "/hq/squads";
+  };
 
   const comps = (compRows ?? []) as Competition[];
   const today = todayISO();
@@ -127,14 +148,113 @@ export default async function SquadsPage({
         </div>
       )}
 
+      {/* ── Filter and view ──────────────────────────────────────────────
+          Two controls, sitting where the eye already is after the count. */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <form action="/hq/squads" className="flex min-w-0 flex-1 items-center gap-2">
+          {sp.as && <input type="hidden" name="as" value={sp.as} />}
+          {sp.view && <input type="hidden" name="view" value={sp.view} />}
+          <input
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="Filter squads…"
+            className="hq-mono w-full max-w-[300px] rounded-[3px] border px-3 py-2 text-[12px] uppercase tracking-[0.1em] outline-none transition-colors focus:border-sand"
+            style={{ borderColor: "var(--color-rule)" }}
+          />
+          {query && (
+            <Link href={href({ q: null })} className="hq-label hover:text-ink">
+              Clear ✕
+            </Link>
+          )}
+        </form>
+
+        <span className="flex shrink-0 items-center gap-1.5">
+          {([["cards", null], ["list", "list"]] as [string, string | null][]).map(([label, v]) => {
+            const on = (v === "list") === asList;
+            return (
+              <Link
+                key={label}
+                href={href({ view: v })}
+                scroll={false}
+                className="hq-mono rounded-[3px] border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
+                style={{
+                  borderColor: on ? "var(--color-sand)" : "var(--color-rule)",
+                  backgroundColor: on ? "rgba(245,182,61,0.12)" : "transparent",
+                  color: on ? "var(--color-sand)" : "var(--color-ink-soft)",
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </span>
+      </div>
+
       {/* ── The board ────────────────────────────────────────────────────── */}
-      {squads.length === 0 ? (
+      {shown.length === 0 ? (
         <Panel i={6}>
-          <Nil>No squads formed — the Barracks fights as one</Nil>
+          <Nil>{query ? "No squad matches that" : "No squads formed — the Barracks fights as one"}</Nil>
         </Panel>
+      ) : asList ? (
+        <section className="hq-panel hq-rise">
+          <header className="hq-panel-head">
+            <h2 className="hq-label">
+              {shown.length} squad{shown.length === 1 ? "" : "s"}
+            </h2>
+          </header>
+          <div className="flex flex-col">
+            {shown.map((s) => {
+              const g = gameById(s.squad.game);
+              const captain = s.members.find((m) => m.is_captain)?.profile ?? null;
+              const mu = s.muster?.muster ?? null;
+              return (
+                <div
+                  key={s.squad.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule/60 px-4 py-3 last:border-0"
+                >
+                  <span className="w-6 shrink-0 text-center">{g.emoji}</span>
+                  <span className="hq-readout min-w-0 flex-1 truncate text-[16px] font-bold uppercase tracking-[0.02em]">
+                    {s.squad.name || `${g.name} Squad`}
+                  </span>
+                  {s.mine && <Tag tone="live">Yours</Tag>}
+                  <span className="hq-mono w-[150px] shrink-0 truncate text-[12px] text-ink-soft">
+                    {captain ? `CPT ${captain.name}` : "No captain"}
+                  </span>
+                  <span className="hq-mono w-[70px] shrink-0 text-[12px] text-ink-soft">
+                    {s.members.length} op{s.members.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="hq-mono w-[110px] shrink-0 text-[11px] uppercase tracking-[0.08em]" style={{ color: mu ? "var(--color-sand)" : undefined }}>
+                    {mu ? (mu.status === "proposed" ? "Night proposed" : "Muster open") : "—"}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {s.mine ? (
+                      <RequestNight
+                        squadId={s.squad.id}
+                        squadName={s.squad.name || `${g.name} Squad`}
+                        gameName={g.name}
+                        captainName={captain?.name ?? null}
+                        squadHref={`/hq/squads/${s.squad.id}`}
+                        variant="inline"
+                      />
+                    ) : (
+                      <JoinSquad
+                        squadId={s.squad.id}
+                        squadName={s.squad.name || `${g.name} Squad`}
+                        variant="inline"
+                      />
+                    )}
+                    <Link href={`/hq/squads/${s.squad.id}`} className="hq-label hover:text-ink">
+                      Open →
+                    </Link>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {squads.map((s, i) => {
+          {shown.map((s, i) => {
             const g = gameById(s.squad.game);
             const all = bySquad.get(s.squad.id) ?? [];
             const upcoming = all.filter((c) => c.status === "upcoming" && c.date >= today);

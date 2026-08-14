@@ -11,7 +11,16 @@ import { joinSquad } from "@/app/actions/squads";
 // question the card answers is the same one either way: what do I do about
 // this squad?
 
-export function JoinSquad({ squadId, squadName }: { squadId: string; squadName: string }) {
+export function JoinSquad({
+  squadId,
+  squadName,
+  variant = "primary",
+}: {
+  squadId: string;
+  squadName: string;
+  /** `primary` fills the card's action slot; `inline` sits in a list row. */
+  variant?: "primary" | "inline";
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +38,11 @@ export function JoinSquad({ squadId, squadName }: { squadId: string; squadName: 
         }
         disabled={pending}
         title={`Join ${squadName}`}
-        className="hq-readout w-full rounded-[3px] border px-4 py-3 text-[14px] font-bold uppercase tracking-[0.08em] transition-colors disabled:opacity-50"
+        className={
+          variant === "primary"
+            ? "hq-readout w-full rounded-[3px] border px-4 py-3 text-[14px] font-bold uppercase tracking-[0.08em] transition-colors disabled:opacity-50"
+            : "hq-label rounded-[3px] border px-3 py-2 font-semibold transition-colors disabled:opacity-50"
+        }
         style={{
           borderColor: "color-mix(in srgb, var(--color-sand) 55%, transparent)",
           backgroundColor: "rgba(245,182,61,0.1)",
