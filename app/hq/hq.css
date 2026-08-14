@@ -237,11 +237,11 @@
 }
 .hq input::placeholder { color: #7f9187; }
 
-/* The rail keeps its own hierarchy: with body text now white, nav items would
-   otherwise all read as active. Pinned explicitly rather than riding ink-soft. */
-.hq .hq-nav-item { color: #8d9d94; }
-.hq .hq-nav-item:hover,
-.hq .hq-nav-item[data-active="true"] { color: var(--color-ink); }
+/* Section headers carry the amber and the items under them are white, so the
+   rail reads as headings and their contents rather than one grey list. Active
+   still separates itself with the tint and the left bar. */
+.hq .hq-nav-item { color: var(--color-ink); }
+.hq .hq-nav-item:hover { color: var(--color-ink); }
 
 /* ── Labels & readouts ──────────────────────────────────────────────────── */
 .hq-label {
@@ -291,7 +291,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 6px 12px 6px 16px;
+  padding: 7px 12px 7px 22px;
   border-radius: 3px;
   color: var(--color-ink-soft);
   font-size: 13px;

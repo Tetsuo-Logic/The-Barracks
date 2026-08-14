@@ -14,12 +14,16 @@ export function Countdown({
   /** Drop the caption entirely — for compact rows where the context is
    *  already stated beside the readout. */
   caption = true,
+  /** Force a colour. Left alone, a countdown runs amber and turns green once
+   *  it's elapsed. */
+  colour,
 }: {
   iso: string;
   label?: string;
   size?: string;
   labelAlign?: "left" | "right";
   caption?: boolean;
+  colour?: string;
 }) {
   const [left, setLeft] = useState<string>("--:--:--");
   const [past, setPast] = useState(false);
@@ -51,7 +55,7 @@ export function Countdown({
         className="hq-readout font-bold leading-[0.86] tracking-[-0.02em]"
         style={{
           fontSize: size,
-          color: past ? "var(--color-moss)" : "var(--color-sand)",
+          color: colour ?? (past ? "var(--color-moss)" : "var(--color-sand)"),
           textShadow: "0 0 60px color-mix(in srgb, currentColor 28%, transparent)",
         }}
       >

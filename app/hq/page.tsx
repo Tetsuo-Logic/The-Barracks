@@ -294,7 +294,12 @@ export default async function CommandPage({
                         </div>
 
                         <div className="shrink-0">
-                          <Countdown iso={heroIso} size="clamp(44px, 4.3vw, 80px)" labelAlign="right" />
+                          <Countdown
+                            iso={heroIso}
+                            size="clamp(44px, 4.3vw, 80px)"
+                            labelAlign="right"
+                            colour="var(--color-moss)"
+                          />
                         </div>
                       </div>
 
