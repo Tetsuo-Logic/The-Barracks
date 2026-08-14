@@ -208,7 +208,7 @@ export default async function PersonnelPage({
             defaultValue={sp.q ?? ""}
             placeholder="Search personnel…"
             className="hq-mono w-full max-w-[320px] rounded-[3px] border px-3 py-2 text-[12px] uppercase tracking-[0.1em] outline-none transition-colors focus:border-sand"
-            style={{ borderColor: "var(--color-rule)" }}
+            style={{ borderColor: "color-mix(in srgb, var(--color-sand) 45%, transparent)" }}
           />
           {query && (
             <Link href={href({ q: null })} className="hq-label hover:text-ink">

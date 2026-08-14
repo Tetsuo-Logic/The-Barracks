@@ -159,7 +159,7 @@ export default async function SquadsPage({
             defaultValue={sp.q ?? ""}
             placeholder="Filter squads…"
             className="hq-mono w-full max-w-[300px] rounded-[3px] border px-3 py-2 text-[12px] uppercase tracking-[0.1em] outline-none transition-colors focus:border-sand"
-            style={{ borderColor: "var(--color-rule)" }}
+            style={{ borderColor: "color-mix(in srgb, var(--color-sand) 45%, transparent)" }}
           />
           {query && (
             <Link href={href({ q: null })} className="hq-label hover:text-ink">

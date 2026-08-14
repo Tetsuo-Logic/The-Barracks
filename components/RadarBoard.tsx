@@ -7,6 +7,7 @@ import { addGame } from "@/app/actions/games";
 import { useAnnounce } from "@/components/Announce";
 import { shortDate } from "@/lib/dates";
 import type { RadarItem } from "@/lib/queries";
+import { DatePicker } from "@/components/DatePicker";
 
 // The games wishlist: what to get next. Add a title (+ optional release date and
 // note); everyone marks Interested / Not.
@@ -120,12 +121,9 @@ export function RadarBoard({
           </div>
 
           <label className="label mb-1 block">Release date (optional)</label>
-          <input
-            type="date"
-            value={release}
-            onChange={(e) => setRelease(e.target.value)}
-            className="mb-3 block w-full max-w-full rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
-          />
+          <div className="mb-3">
+            <DatePicker value={release} onChange={setRelease} placeholder="Release date" />
+          </div>
           <label className="label mb-1 block">Trailer link (optional)</label>
           <input
             value={trailer}

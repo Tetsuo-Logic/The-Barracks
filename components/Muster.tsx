@@ -13,6 +13,7 @@ import {
 import { useAnnounce } from "@/components/Announce";
 import { heroDate, shortTime } from "@/lib/dates";
 import type { MusterView } from "@/lib/queries";
+import { DatePicker } from "@/components/DatePicker";
 
 // One squad's Muster — the Captain's pre-week arrangement, all roles/states.
 // No muster → Captain calls one (nights + a kick-off window). Open → members say
@@ -271,12 +272,7 @@ export function Muster({
           <div className="mt-3 border-t border-rule pt-3">
             <p className="label mb-2">Approve &amp; deploy</p>
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                value={apprDate}
-                onChange={(e) => setApprDate(e.target.value)}
-                className="w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
-              />
+              <DatePicker value={apprDate} onChange={setApprDate} placeholder="Night" />
               <input
                 type="time"
                 value={apprTime}

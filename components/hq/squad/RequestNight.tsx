@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { requestNight } from "@/app/actions/squads";
 import { Portal } from "@/components/hq/Portal";
 import { TypeLine } from "@/components/hq/TypeLine";
+import { DatePicker } from "@/components/DatePicker";
 
 // REQUEST A NIGHT — the member's one big action.
 //
@@ -200,12 +201,11 @@ export function RequestNight({
                   )}
 
                   {when === "date" && (
-                    <input
-                      type="date"
+                    <DatePicker
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="hq-mono w-full rounded-[3px] border px-3 py-2.5 text-[13px] outline-none focus:border-sand"
-                      style={{ borderColor: "var(--color-rule)" }}
+                      onChange={setDate}
+                      min={new Date().toISOString().slice(0, 10)}
+                      placeholder="Pick a night"
                     />
                   )}
 

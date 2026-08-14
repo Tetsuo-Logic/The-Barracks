@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { useAnnounce } from "@/components/Announce";
 import { shortDate } from "@/lib/dates";
 import type { BroadcastKind, Profile } from "@/lib/types";
+import { DatePicker } from "@/components/DatePicker";
 
 type Mode = BroadcastKind | "court";
 
@@ -153,11 +154,11 @@ export function BroadcastCompose({ candidates }: { candidates: Profile[] }) {
         <div className="mb-3">
           <p className="label mb-1">Dates to offer</p>
           <div className="flex gap-2">
-            <input
-              type="date"
+            <DatePicker
               value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="min-w-0 flex-1 rounded-[3px] border border-rule bg-paper px-3 py-2.5 text-ink outline-none focus:border-ink"
+              onChange={setNewDate}
+              className="min-w-0 flex-1"
+              placeholder="Add a date"
             />
             <button
               type="button"

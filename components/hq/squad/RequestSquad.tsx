@@ -75,8 +75,8 @@ export function RequestSquad({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="hq-label rounded-[3px] border px-3 py-2 font-semibold transition-colors hover:text-ink"
-        style={{ borderColor: "var(--color-rule)" }}
+        className="hq-label rounded-[3px] border px-3 py-2 font-semibold transition-colors"
+        style={{ borderColor: "var(--color-sand)", color: "var(--color-sand)" }}
       >
         Request a squad
       </button>

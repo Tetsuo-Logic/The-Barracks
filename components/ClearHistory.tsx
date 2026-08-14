@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearHistory } from "@/app/actions/inbox";
 import { shortDate } from "@/lib/dates";
+import { DatePicker } from "@/components/DatePicker";
 
 // Organiser-only control to trim the activity history. Clear everything up to
 // now, or everything on/before a chosen date. Non-destructive — it only hides
@@ -55,11 +56,11 @@ export function ClearHistory({ clearedBefore }: { clearedBefore: string | null }
           <div className="mb-3">
             <label className="label mb-1 block">Clear on or before</label>
             <div className="flex gap-2">
-              <input
-                type="date"
+              <DatePicker
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="min-w-0 flex-1 rounded-[3px] border border-rule bg-card px-3 py-2.5 text-ink outline-none focus:border-ink"
+                onChange={setDate}
+                className="min-w-0 flex-1"
+                placeholder="Choose a cut-off"
               />
               <button
                 onClick={() => apply(new Date(`${date}T23:59:59`).toISOString())}

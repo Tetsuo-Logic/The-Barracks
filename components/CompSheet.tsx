@@ -16,6 +16,7 @@ import { gameHasScorecard, DEFAULT_GAME, type Game } from "@/lib/games";
 import { useAnnounce } from "@/components/Announce";
 import type { Competition, CompetitionFormat } from "@/lib/types";
 import type { SquadOption } from "@/lib/queries";
+import { DatePicker } from "@/components/DatePicker";
 
 const FORMATS: { value: CompetitionFormat; label: string }[] = [
   { value: "stroke", label: "Stroke" },
@@ -308,12 +309,7 @@ export function CompSheet({
               are unreliable side-by-side on mobile, so we don't risk it. */}
           <div className="mt-4">
             <label className="label mb-1 block">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="block w-full max-w-full rounded-[3px] border border-rule bg-card px-3 py-3 text-ink outline-none focus:border-ink"
-            />
+            <DatePicker value={date} onChange={setDate} placeholder="Pick the date" />
           </div>
           <div className="mt-4">
             <label className="label mb-1 block">{isGolf ? "Tee time" : "Start time"}</label>
